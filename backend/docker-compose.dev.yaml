@@ -1,0 +1,113 @@
+name: road-webapp
+
+services:
+# --- POSTGRESQL --- 
+  db:
+    image: postgres:16-alpine
+    container_name: postgres_dev
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - web_api
+    command: > 
+      postgres  
+      -c log_connections=on 
+      -c log_disconnections=on
+      -c log_statement=all
+      -c log_duration=on
+      -c log_line_prefix='%m [%p] %q%u@%d'
+      -c log_destination=stderr
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin_dev
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - web_api
+
+# --- REDIS ---
+  redis:
+    image: redis:7-alpine
+    container_name: redis_dev
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASS}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - web_api
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis_insight_dev
+    restart: always
+    ports:
+      - "8001:5540"
+    depends_on:
+      - redis
+    volumes:
+      - redis_insight_data:/data
+    networks:
+      - web_api
+
+# --- S3-AWS SERVICE (MINIO) ---
+  minio:
+    image: minio/minio:latest
+    container_name: minio_dev
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ADMIN}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASS}
+    volumes:
+      - miniodata:/data
+    networks:
+      - web_api
+    command: server /data --console-address ":9001"
+
+  mc:
+    image: minio/mc:latest
+    container_name: minio_mc_dev
+    depends_on:
+      - minio
+    # entrypoint: >
+    #   /bin/sh -c "
+    #   /usr/bin/mc alias rm local;
+    #   /usr/bin/mc alias set --quiet --api s3v4 local http://minio:9000 ${MINIO_ADMIN} ${MINIO_PASS};
+    #   /usr/bin/mc rb --force local/somebucketname1/;
+    #   /usr/bin/mc mb --quiet local/somebucketname1/;
+    #   /usr/bin/mc policy set public local/somebucketname1;
+    #   "
+    networks:
+      - web_api 
+    
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:
+  redis_insight_data:
+  miniodata:
+
+
+networks:
+  web_api:
+    driver: bridge
+

@@ -1,0 +1,15 @@
+# certain folders
+/certs/
+/backend/api/versions/*
+/.venv/Lib
+__pycache__/
+
+
+# temp
+*.log
+*.egg-info
+
+# env
+.idea
+.dart_tool
+.vscode
