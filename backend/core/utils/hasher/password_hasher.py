@@ -1,5 +1,7 @@
 import bcrypt
 
+from backend.src.v1.auth.domain.interfaces import IPasswordHasher
+
 
 class BCryptPasswordHash(IPasswordHasher):
     

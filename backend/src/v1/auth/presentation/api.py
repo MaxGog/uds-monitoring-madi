@@ -1,7 +1,6 @@
 from dishka import FromDishka
-from fast_depends import inject
 from fastapi import APIRouter, Form, Request
-
+from dishka.integrations.fastapi import FromDishka, inject
 
 router = APIRouter()
 
