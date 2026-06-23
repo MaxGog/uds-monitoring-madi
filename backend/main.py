@@ -3,6 +3,9 @@ from fastapi import FastAPI
 from dishka.integrations.fastapi import setup_dishka
 import uvicorn
 
+from backend.core.ioc.auth_ioc import AuthProvider
+from backend.core.ioc.dbs_ioc import DbProvider
+from backend.core.ioc.filesystem_ioc import FilesystemProvider
 from backend.src.v1.auth.presentation.api import router as auth_router
 from backend.src.v1.filesystem.presentation.api import router as fs_router
 
@@ -11,7 +14,7 @@ app = FastAPI()
 app.include_router(router=auth_router, prefix="/auth", tags=['auth'])
 app.include_router(router=fs_router, prefix="/fs", tags=['fs'])
 
-container = make_async_container(AuthProvider(), FsProvider())
+container = make_async_container(AuthProvider(), DbProvider(), FilesystemProvider())
 setup_dishka(container, app)
 
 if __name__ == "__main__":

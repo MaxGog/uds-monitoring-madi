@@ -2,6 +2,9 @@ from dishka import Provider, Scope, provide
 import redis
 
 from backend.core.utils.hasher.password_hasher import BCryptPasswordHash
+from backend.core.utils.jwt.jwt_service import TokenAuth, TokenProvider
+from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage
+from backend.src.v1.auth.infrastructure.redis_repo import RedisTokenStorage
 
 
 class AuthProvider(Provider):
