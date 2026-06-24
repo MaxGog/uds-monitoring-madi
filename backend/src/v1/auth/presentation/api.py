@@ -2,6 +2,9 @@ from dishka import FromDishka
 from fastapi import APIRouter, Form, Request
 from dishka.integrations.fastapi import FromDishka, inject
 
+from backend.core.utils.jwt_service.jwt_service import TokenData
+from backend.src.v1.auth.domain.interfaces import ITokenAuth
+
 router = APIRouter()
 
 user_router = APIRouter()
@@ -70,6 +73,14 @@ async def logout(
 async def logout_all(
 ):
     pass
+
+@router.post('/test-token', response_model=TokenData)
+@inject
+async def get_test_token(
+    auth_provider: FromDishka[ITokenAuth]
+):
+    result = await auth_provider.set_tokens()
+    return result
 
 # ... CRUD для пользователя
 

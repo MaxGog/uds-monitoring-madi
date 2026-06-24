@@ -12,6 +12,7 @@ class RedisTokenStorage(ITokenStorage):
         self.code_ttl = 300
         self.token_provider = token_provider
         self.max_sessions = 5
+        print(self.redis)
 
     async def get_and_delete_code(self, code: str) -> CodeData | None:
         '''
@@ -44,7 +45,6 @@ class RedisTokenStorage(ITokenStorage):
         # Создаёт новую сессию, храня пару a_jti:r_jti
         key = self._key(user_id)
         val = f"{access_jti}:{refresh_jti}"
-        
         async with self.redis.pipeline(transaction=True) as pipe:
             await pipe.zadd(key, {val: int(datetime.now().timestamp())})
             await pipe.zremrangebyrank(key, 0, -(self.max_sessions + 1))

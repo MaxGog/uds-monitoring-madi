@@ -48,12 +48,13 @@ class TokenProvider(ITokenProvider):
             exp=expire,
             iat=now,
         )
-
+        logger.debug(f'Encoding token with following payload: {to_encode}')
         encoded = jwt.encode(
             to_encode,
             private_key,
             algorithm=algorithm,
         )
+        logger.debug(f'Encoded token: {encoded}')
         return encoded
 
     def _decode_jwt(
@@ -67,6 +68,7 @@ class TokenProvider(ITokenProvider):
             token,
             public_key,
             algorithms=algorithm,
+            audience = "frontend",
             options={"verify_exp": verify_exp}
         )
         return decoded
@@ -85,6 +87,7 @@ class TokenProvider(ITokenProvider):
             "iss": "auth.app.local" # если архитектура микросервисная, то здесь будет доменное имя микросервиса
             }
         jwt_payload.update(token_data)
+        logger.debug(f'Creating token with following payload: {jwt_payload}')
         return self._encode_jwt(
             payload=jwt_payload,
             expire_minutes=expire_minutes,
@@ -98,13 +101,17 @@ class TokenProvider(ITokenProvider):
         один из которых не пройдёт проверку на валидность, а другой пройдёт (access и refresh токен соответственно).
         """
         try:
+            logger.debug(f'Extracting payload from token')
             return self._decode_jwt(token, verify_exp=verify_exp)
         except jwt.PyJWTError as e:
+            logger.error(f'[PyJWTError] error extracting data: {e}')
             raise HTTPException(status_code=401, detail="Invalid Token")
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            logger.error(f'[InvalidTokenError] error extracting data: {e}')
             return HTTPException(status_code=401, detail="Invalid Token")
 
     def create_access_token(self, data: dict) -> str:
+        logger.debug(f'Creating access token with following data: {data}')
         return self._create_jwt(
             token_type=TokenType.ACCESS.value,
             token_data=data,
@@ -112,6 +119,7 @@ class TokenProvider(ITokenProvider):
         )
 
     def create_refresh_token(self, data: dict) -> str:
+        logger.debug(f'Creating refresh token with following data: {data}')
         return self._create_jwt(
             token_type=TokenType.REFRESH.value,
             token_data=data,
@@ -137,21 +145,25 @@ class TokenAuth(ITokenAuth):
     async def set_tokens(self, user_id: int | None = None) -> TokenData:
         '''
         
-        '''       
+        '''    
+        user_id=1   
         data = {
             "sub": str(user_id),
         }
-
+        
         access_token = self.token_provider.create_access_token(data)
         refresh_token = self.token_provider.create_refresh_token(data)
-
-        payload = self.token_provider.extract_payload(refresh_token)
-        expire_seconds = int(payload["exp"] - payload["iat"])
+        logger.debug(f'Following token pair created:\n{access_token},\n {refresh_token}')
+        access_payload = self.token_provider.extract_payload(access_token)
+        refresh_payload = self.token_provider.extract_payload(refresh_token)
+        logger.debug(f'access payload:\n{access_payload}')
+        logger.debug(f'refresh payload:\n{refresh_payload}')
+        expire_seconds = int(refresh_payload["exp"] - refresh_payload["iat"])
 
         await self.token_storage.add_session(
             user_id=user_id,
-            access_jti=access_jti,
-            refresh_jti=refresh_jti,
+            access_jti=access_payload["jti"],
+            refresh_jti=refresh_payload["jti"],
             expire_seconds=expire_seconds
             )
 

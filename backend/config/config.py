@@ -69,14 +69,14 @@ class DbSettings(BaseModel):
 
 class RedisSettings(BaseModel):
     REDIS_ADDR: str = Field(alias="RedisAddr")
-    REDIS_PASS: str | None = Field(alias="RedisPassword", default=None)
+    REDIS_PASS: str | None = Field(alias="RedisPassword", default = None)
     REDIS_DB: int = Field(alias="RedisDb", default=0)
     POOL_SIZE: int = Field(alias="PoolSize", default=10)
 
     @property
     def REDIS_URL(self) -> str:
         # Формат: redis://[:password]@host:port/db
-        return f"redis://{self.REDIS_PASS}{self.REDIS_ADDR}/{self.REDIS_DB}"
+        return f"redis://:{self.REDIS_PASS}@{self.REDIS_ADDR}/{self.REDIS_DB}"
 
 class MinIOSettings(BaseModel):
     MINIO_ENDPOINT: str = Field(alias="MinioEndpoint", default="localhost:9000")

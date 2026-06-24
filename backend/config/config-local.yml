@@ -3,7 +3,7 @@ logger:
   DisableCaller: false
   DisableStacktrace: false
   Encoding: "console" #"json"
-  Level: "info"
+  Level: "info" #"info/debug"
 
 postgres:
   PostgresqlHost: localhost
@@ -16,13 +16,12 @@ postgres:
 
 redis:
   RedisAddr: localhost:6379
-  RedisPassword:
+  RedisPassword: "password"
   RedisDb: 0
   RedisDefaultdb: 0
   MinIdleConns: 200
   PoolSize: 12000
   PoolTimeout: 240
-  Password: "password"
   DB: 0
 
 aws:
