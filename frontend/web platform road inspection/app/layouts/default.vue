@@ -1,6 +1,6 @@
 <template>
   <div class="app-layout">
-    <AppHeader
+    <app-header
       :menu-items="menuItems"
       :user="currentUser"
       @search="handleSearch"

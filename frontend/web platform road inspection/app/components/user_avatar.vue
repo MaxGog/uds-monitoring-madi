@@ -27,31 +27,3 @@ const color = computed(() => {
   return `hsl(${hue}, 70%, 60%)`
 })
 </script>
-
-<style scoped>
-.user-avatar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.avatar-circle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 700;
-  font-size: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-}
-.avatar-circle:hover {
-  transform: scale(1.05);
-}
-.user-name {
-  font-weight: 600;
-  color: var(--text, #14133b);
-}
-</style>
