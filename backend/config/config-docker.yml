@@ -1,9 +1,16 @@
+logger:
+  Development: true
+  DisableCaller: false
+  DisableStacktrace: false
+  Encoding: "console"
+  Level: "info"
+
 postgres:
   PostgresqlHost: postgesql
   PostgresqlPort: 5432
-  PostgresqlUser: postgres
-  PostgresqlPassword: postgres
-  PostgresqlDbname: auth_db
+  PostgresqlUser: admin
+  PostgresqlPassword: password
+  PostgresqlDbname: app_db
   PostgresqlSslmode: false
   PgDriver: postgresql+asyncpg
 
@@ -15,12 +22,13 @@ redis:
   MinIdleConns: 200
   PoolSize: 12000
   PoolTimeout: 240
-  Password: ""
+  Password: "password"
   DB: 0
 
 aws:
   Endpoint: 127.0.0.1:9000
-  MinioAccessKey: minio
-  MinioSecretKey: minio123
+  MinioAccessKey: minioadmin
+  MinioSecretKey: minioadminpassword
   UseSSL: false
   MinioEndpoint: http://127.0.0.1:9000
+

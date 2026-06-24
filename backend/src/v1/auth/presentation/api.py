@@ -4,7 +4,7 @@ from dishka.integrations.fastapi import FromDishka, inject
 
 router = APIRouter()
 
-
+user_router = APIRouter()
 
 # Авторизация по OAuth 2.1, при запросе открывается страница на любом устройстве и предоставляет форму для ввода данных.
 # Происходит генерация и обмен кодами для дополнительной безопасности HTTPS протокола и т.д.
@@ -73,3 +73,19 @@ async def logout_all(
 
 # ... CRUD для пользователя
 
+@user_router.get("/me")
+@inject
+async def get_current_user_profile(
+):
+    #TODO реализовать эндпоинт для получения данных о самом себе
+    pass
+
+@user_router.patch("/update")
+async def update_user():
+    #TODO реализовать эндпоинт для обновления данных пользователя (кроме пароля)
+    pass
+
+@user_router.delete("/users/{user_id}")
+async def delete_user(user_id: str):
+    #TODO реализовать эндпоинт для удаления пользователя по id, который будет требовать аутентификацию и проверку прав доступа.
+    pass

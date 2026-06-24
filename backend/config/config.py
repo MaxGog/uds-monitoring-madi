@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Any, Dict, Tuple, Type
+from typing import Any, Dict, Literal, Tuple, Type
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from sqlalchemy import URL
 import yaml
@@ -9,7 +9,8 @@ import yaml
 
 BASE_DIR = Path(__file__).parent.parent
 
-YAML_FILE_PATH = BASE_DIR / "config.yml"
+YAML_FILE_PATH = BASE_DIR / "config" / "config-local.yml"
+
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
     """
     Источник настроек, который читает YAML файл и позволяет Pydantic 
@@ -27,20 +28,21 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
             config_data = yaml.safe_load(f)
             return config_data if config_data else {}
 
-class DbSettings(BaseSettings):
+class LoggerSettings(BaseModel):
+    DEVELOPMENT: bool = Field(alias="Development", default=True)
+    DISABLE_CALLER: bool = Field(alias="DisableCaller", default=False)
+    DISABLE_STACKTRACE: bool = Field(alias="DisableStacktrace", default=False)
+    ENCODING: Literal["console", "json"] = Field(alias="Encoding", default="console")
+    LEVEL: str = Field(alias="Level", default="INFO")
+
+class DbSettings(BaseModel):
     DB_USER: str = Field(alias="PostgresqlUser")
     DB_PASS: str = Field(alias="PostgresqlPassword")
     DB_NAME: str = Field(alias="PostgresqlDbname")
     DB_DRIVER: str = Field(alias="PgDriver", default="postgresql+asyncpg")
     DB_HOST: str = Field(alias="PostgresqlHost")
     DB_PORT: int = Field(alias="PostgresqlPort")
-    SSL_MODE: str = Field(alias="PostgresqlSslmode", default="disable")
-
-    model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8",
-        extra = "ignore"
-    )
+    SSL_MODE: bool = Field(alias="PostgresqlSslmode")
     
     @property
     def DB_URL(self) -> str:
@@ -65,7 +67,7 @@ class DbSettings(BaseSettings):
     
     #f"postgresql+asyncpg://my_admin:secret@localhost/app_db"
 
-class RedisSettings(BaseSettings):
+class RedisSettings(BaseModel):
     REDIS_ADDR: str = Field(alias="RedisAddr")
     REDIS_PASS: str | None = Field(alias="RedisPassword", default=None)
     REDIS_DB: int = Field(alias="RedisDb", default=0)
@@ -76,28 +78,26 @@ class RedisSettings(BaseSettings):
         # Формат: redis://[:password]@host:port/db
         return f"redis://{self.REDIS_PASS}{self.REDIS_ADDR}/{self.REDIS_DB}"
 
-class MinIOSettings(BaseSettings):
-    MINIO_ENDPOINT: str = Field(alias="MINIO_ENDPOINT", default="localhost:9000")
-    MINIO_ADMIN: str = Field(alias="MINIO_ADMIN", default="minioadmin")
-    MINIO_PASS: str = Field(alias="MINIO_PASS", default="minioadmin")
-    MINIO_SSL: bool = Field(alias="MINIO_USE_SSL", default=False)
-    CHAT_BUCKET_NAME: str = Field(alias="CHAT_BUCKET_NAME", default="chat")
+class MinIOSettings(BaseModel):
+    MINIO_ENDPOINT: str = Field(alias="MinioEndpoint", default="localhost:9000")
+    MINIO_ADMIN: str = Field(alias="MinioAccessKey", default="minioadmin")
+    MINIO_PASS: str = Field(alias="MinioSecretKey", default="minioadmin")
+    MINIO_SSL: bool = Field(alias="UseSSL", default=False)
 
-class AuthJWT(BaseSettings):
+class AuthJWT(BaseModel):
     private_key_path: Path = BASE_DIR / "certs" / "jwt-private.pem"
     public_key_path: Path = BASE_DIR / "certs" / "jwt-public.pem"
     algorithm: str = "RS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 14
 
-# default_factory - позволяет создавать модели при init, чтобы создавать Settings(),
-# который по дефолту не работает как factory (перестал почему то).
 class Settings(BaseSettings):
-    db: DbSettings = Field(alias="postgres", default_factory=lambda: DbSettings.model_construct())
+    db: DbSettings = Field(alias="postgres")
     auth_jwt: AuthJWT = AuthJWT()
-    redis: RedisSettings = Field(alias="redis", default_factory=lambda: RedisSettings.model_construct())
-    minio: MinIOSettings = Field(default_factory=MinIOSettings)
-
+    redis: RedisSettings = Field(alias="redis")
+    minio: MinIOSettings = Field(alias="aws")
+    logger: LoggerSettings = Field(alias="logger", default_factory=LoggerSettings)
+    
     @classmethod
     def settings_customise_sources(
         cls,
@@ -109,4 +109,4 @@ class Settings(BaseSettings):
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
         return init_settings, YamlConfigSettingsSource(settings_cls), env_settings
 
-settings = Settings()
+settings = Settings() # type: ignore

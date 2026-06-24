@@ -1,11 +1,11 @@
 from typing import AsyncGenerator, AsyncIterable
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from dishka import Provider, Scope, provide
-import redis
+import redis.asyncio as redis
 
 from backend.config.config import settings, Settings
 from backend.core.db.postgres.unit_of_work import IUnitOfWork, SQLAlchemyUnitOfWork
-
+from backend.core.db.postgres.postgres_conn import db_engine, check_db_connection
 
 class DbProvider(Provider):
     @provide(scope=Scope.APP)
@@ -13,20 +13,13 @@ class DbProvider(Provider):
         return settings
 
     @provide(scope=Scope.APP)
-    async def get_redis(self, cfg: Settings) -> redis.Redis:
+    def get_redis(self, cfg: Settings) -> redis.Redis:
         return redis.from_url(cfg.redis.REDIS_URL, decode_responses=True)
 
 
     @provide(scope=Scope.APP)
-    def engine(self) -> AsyncEngine:
-        engine = create_async_engine(
-            settings.db.DB_URL,
-            echo = settings.db.ECHO,
-            echo_pool = settings.db.ECHO_POOL,
-            pool_pre_ping = settings.db.POOL_PRE_PING,
-            pool_size = settings.db.POOL_SIZE, 
-        )
-        return engine
+    async def get_engine(self) -> AsyncEngine:
+        return db_engine
     
     @provide(scope=Scope.APP)
     def session_factory(self, engine: AsyncEngine) -> async_sessionmaker:
