@@ -5,22 +5,11 @@
         <div class="brand-icon">▮</div>
         <div class="brand-text">
           <span class="brand-title">Мониторинг состояния объектов УДС</span>
+          <span class="brand-sub">Управление дорожной сетью</span>
         </div>
       </div>
 
-      <nav class="nav-menu">
-        <NuxtLink
-          v-for="item in menuItems"
-          :key="item.to"
-          :to="item.to"
-          class="nav-link"
-          :class="{ active: isActive(item.to) }"
-          @click="onNavigate(item)"
-        >
-          <span class="nav-icon">{{ item.icon }}</span>
-          {{ item.label }}
-        </NuxtLink>
-      </nav>
+      <NavPanel :items="filteredMenuItems" @navigate="onNavigate" />
     </div>
 
     <SearchBar
@@ -43,12 +32,16 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter, useRoute } from '#app'
+import { useRouter } from '#app'
+import NavPanel from './nav_menu.vue'
+import SearchBar from './search_bar.vue'
+import UserAvatar from './user_avatar.vue'
 
 interface MenuItem {
   label: string
   to: string
   icon: string
+  adminOnly?: boolean
 }
 
 const props = defineProps<{
@@ -63,8 +56,6 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const route = useRoute()
-
 const searchQuery = ref('')
 
 const defaultMenu: MenuItem[] = [
@@ -78,14 +69,10 @@ const defaultMenu: MenuItem[] = [
   { label: 'Пользователи', to: '/users', icon: '👤', adminOnly: true },
 ]
 
-const menuItems = computed(() => {
-  const items = props.menuItems?.length ? props.menuItems : defaultMenu
-  return items.filter(item => !item.adminOnly || props.user?.role === 'Администратор')
+const filteredMenuItems = computed(() => {
+  const base = props.menuItems?.length ? props.menuItems : defaultMenu
+  return base.filter(item => !item.adminOnly || props.user?.role === 'Администратор')
 })
-
-const isActive = (to: string) => {
-  return route.path === to || route.path.startsWith(to + '/')
-}
 
 const onNavigate = (item: MenuItem) => {
   emit('navigate', item)
@@ -158,44 +145,6 @@ const onNotifications = () => {
   color: var(--muted, #737895);
 }
 
-.nav-menu {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 30px;
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--muted, #737895);
-  text-decoration: none;
-  transition: background 0.2s, color 0.2s, transform 0.1s;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.nav-link .nav-icon {
-  font-size: 16px;
-}
-.nav-link:hover {
-  background: rgba(103, 82, 245, 0.06);
-  color: var(--violet, #6752f5);
-  transform: translateY(-1px);
-}
-.nav-link.active {
-  background: linear-gradient(135deg, var(--violet, #6752f5), var(--violet-2, #8a6cff));
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(103, 82, 245, 0.25);
-}
-.nav-link.active:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(103, 82, 245, 0.35);
-}
-
 .header-search {
   flex: 1;
   max-width: 480px;
@@ -229,7 +178,6 @@ const onNotifications = () => {
   box-shadow: 0 4px 12px rgba(103, 82, 245, 0.12);
 }
 
-/* Адаптивность */
 @media (max-width: 1100px) {
   .app-header {
     flex-wrap: wrap;
@@ -239,9 +187,6 @@ const onNotifications = () => {
   .header-left {
     width: 100%;
     justify-content: space-between;
-  }
-  .nav-menu {
-    display: none;
   }
   .header-search {
     order: 3;
