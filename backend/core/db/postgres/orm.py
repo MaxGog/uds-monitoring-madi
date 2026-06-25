@@ -1,6 +1,6 @@
 import enum
 from sqlalchemy import Column, Integer, String, ForeignKey, Table
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 Base = declarative_base()
 
@@ -32,7 +32,9 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     email = Column(String, unique=True, nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"))
+    pwdhash: Mapped[str] = mapped_column(String, nullable=False)
     
     role = relationship("Role", lazy="joined")

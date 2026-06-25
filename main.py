@@ -9,6 +9,7 @@ import uvicorn
 from backend.core.ioc.auth_ioc import AuthProvider
 from backend.core.ioc.dbs_ioc import DbProvider
 from backend.core.ioc.filesystem_ioc import FilesystemProvider
+from backend.core.ioc.repo_ioc import RepoProvider
 from backend.core.utils.logger.app_logger import setup_logger
 from backend.src.v1.auth.presentation.api import router as auth_router
 from backend.src.v1.auth.presentation.api import user_router
@@ -35,7 +36,7 @@ app.include_router(router=auth_router, prefix="/auth", tags=['auth'])
 app.include_router(router=user_router, prefix='/user', tags=['user'])
 app.include_router(router=fs_router, prefix="/fs", tags=['fs'])
 
-container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider())
+container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider())
 setup_dishka(container, app)
 
 if __name__ == "__main__":

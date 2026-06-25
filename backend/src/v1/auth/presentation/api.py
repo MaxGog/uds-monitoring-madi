@@ -1,13 +1,45 @@
-from dishka import FromDishka
-from fastapi import APIRouter, Form, Request
-from dishka.integrations.fastapi import FromDishka, inject
+from typing import Annotated
 
+from dishka import FromDishka
+from fastapi import APIRouter, Depends, Form, HTTPException, Header, Request, status
+
+from dishka.integrations.fastapi import FromDishka, inject
+from fastapi.security import HTTPBearer
+
+from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.core.utils.jwt_service.jwt_service import TokenData
-from backend.src.v1.auth.domain.interfaces import ITokenAuth
+from backend.src.v1.auth.domain.interfaces import ITokenAuth, ITokenProvider
 
 router = APIRouter()
 
 user_router = APIRouter()
+
+# РКН заблокировал возможности интеграции бэкенда и фронтенда. Появляется легаси код из других проектов, где токены принимали через хедер.
+security_bearer = HTTPBearer()
+@inject
+async def get_current_user_payload(
+    #credentials: Annotated[HTTPAuthorizationCredentials, Depends(security_bearer)],
+    provider_service: FromDishka[ITokenProvider],
+    auth_service: FromDishka[ITokenAuth],
+    auth_header: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> dict:
+    try:
+        # validate_token выбросит HTTPException(401), если токен отозван
+        auth_header = auth_header.replace('Bearer ', '')
+        payload = provider_service.extract_payload(auth_header)
+        await auth_service.is_token_valid(auth_header)
+
+        return payload
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
+# Алиас для удобства
+CurrentUserPayload = Annotated[dict, Depends(get_current_user_payload)]
 
 # Авторизация по OAuth 2.1, при запросе открывается страница на любом устройстве и предоставляет форму для ввода данных.
 # Происходит генерация и обмен кодами для дополнительной безопасности HTTPS протокола и т.д.
@@ -64,8 +96,15 @@ async def register(
 @router.post("/logout")
 @inject
 async def logout(
+    auth_header: Annotated[str | None, Header(alias="Authorization")] = None,
+    x_refresh_token: Annotated[str | None, Header(alias="X-Refresh-Token")] = None,
+    auth_service: FromDishka[ITokenAuth] = None
 ):
-    pass
+    if not auth_header or not x_refresh_token:
+        raise HTTPException(status_code=401, detail="Missing tokens in headers")
+    auth_header = auth_header.replace('Bearer ','')
+    await auth_service.revoke_specific_session(auth_header, x_refresh_token)
+    return {"detail": "Successfully logged out from current device"}
 
 # Эндпоинт выхода со всех устройств
 @router.post("/logout-all")
@@ -87,9 +126,16 @@ async def get_test_token(
 @user_router.get("/me")
 @inject
 async def get_current_user_profile(
+    payload: CurrentUserPayload,
+    uow: FromDishka[IUnitOfWork]
 ):
-    #TODO реализовать эндпоинт для получения данных о самом себе
-    pass
+    user_id = payload.get("sub")
+    async with uow:
+        result = await uow.users.get_user_by_id(user_id)
+        if result:
+            return result
+        else:
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
 @user_router.patch("/update")
 async def update_user():
