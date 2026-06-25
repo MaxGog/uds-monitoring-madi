@@ -34,6 +34,10 @@ class LoggerSettings(BaseModel):
     DISABLE_STACKTRACE: bool = Field(alias="DisableStacktrace", default=False)
     ENCODING: Literal["console", "json"] = Field(alias="Encoding", default="console")
     LEVEL: str = Field(alias="Level", default="INFO")
+    # AIOREDIS_LOGGING: bool = Field(alias="aioredis_logging", default = True) 
+    # UVICORN_LOGGING: bool = Field(alias="uvicorn_logging", default = True)
+    # SQLALCHEMY_LOGGING: bool = Field(alias = "sqlalchemy_logging", default = False)
+    # PROTOCOL_LOGGING: bool = Field(alias="protocol_logging", default = True)
 
 class DbSettings(BaseModel):
     DB_USER: str = Field(alias="PostgresqlUser")
@@ -85,9 +89,9 @@ class MinIOSettings(BaseModel):
     MINIO_SSL: bool = Field(alias="UseSSL", default=False)
 
 class AuthJWT(BaseModel):
-    private_key_path: Path = BASE_DIR / "certs" / "jwt-private.pem"
-    public_key_path: Path = BASE_DIR / "certs" / "jwt-public.pem"
-    algorithm: str = "RS256"
+    private_key_path: Path = BASE_DIR / "certs" / "ec256-private.pem"
+    public_key_path: Path = BASE_DIR / "certs" / "ec256-public.pem"
+    algorithm: str = "ES256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 14
 

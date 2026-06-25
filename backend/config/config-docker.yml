@@ -4,6 +4,10 @@ logger:
   DisableStacktrace: false
   Encoding: "console"
   Level: "info"
+  # aioredis_logging: false
+  # uvicorn_logging: true
+  # sqlalchemy_logging: false
+  # protocol_logging: false
 
 postgres:
   PostgresqlHost: postgesql

@@ -19,13 +19,13 @@ from backend.core.db.postgres.postgres_conn import db_engine, check_db_connectio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logger()
     result = await check_db_connection(db_engine)
     logger.info(f'Tested db conn: {result}')
     yield
 
     await db_engine.dispose()
 
-setup_logger()
 logger = logging.getLogger("backend")
 
 app = FastAPI(lifespan=lifespan)
@@ -47,4 +47,5 @@ if __name__ == "__main__":
         host = "0.0.0.0",
         port = 8000,
         reload_excludes=["*.log", "app.log"],
+        log_config=None
     )
