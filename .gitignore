@@ -3,7 +3,7 @@
 /backend/api/versions/*
 /.venv/Lib
 __pycache__/
-
+backend/migrations/versions/
 
 # temp
 *.log
