@@ -47,5 +47,5 @@ if __name__ == "__main__":
         host = "0.0.0.0",
         port = 8000,
         reload_excludes=["*.log", "app.log"],
-        log_config=None
+        #log_config=None
     )
