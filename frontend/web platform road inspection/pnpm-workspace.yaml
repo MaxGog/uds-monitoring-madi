@@ -1,0 +1,4 @@
+allowBuilds:
+  '@parcel/watcher': set this to true or false
+minimumReleaseAgeExclude:
+  - pnpm@11.9.0
