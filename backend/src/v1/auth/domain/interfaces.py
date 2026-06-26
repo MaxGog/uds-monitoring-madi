@@ -20,8 +20,7 @@ class ITokenStorage(Protocol):
     pass
 
 class ITokenAuth(Protocol):
-    async def set_tokens(self, user_id: int | None = None):
-        pass
+    ...
 
 class IPasswordHasher(Protocol):
     pass

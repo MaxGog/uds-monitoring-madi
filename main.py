@@ -1,15 +1,20 @@
 import logging
 
 from dishka import make_async_container
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from dishka.integrations.fastapi import setup_dishka
 from fastapi.concurrency import asynccontextmanager
+from fastapi.responses import JSONResponse
+from fastapi_csrf_protect import CsrfProtect
+from fastapi_csrf_protect.exceptions import CsrfProtectError
 import uvicorn
 
 from backend.core.ioc.auth_ioc import AuthProvider
 from backend.core.ioc.dbs_ioc import DbProvider
 from backend.core.ioc.filesystem_ioc import FilesystemProvider
 from backend.core.ioc.repo_ioc import RepoProvider
+from backend.core.utils.csrf.csrf import CsrfSettings
 from backend.core.utils.logger.app_logger import setup_logger
 from backend.src.v1.auth.presentation.api import router as auth_router
 from backend.src.v1.auth.presentation.api import user_router
@@ -31,6 +36,31 @@ logger = logging.getLogger("backend")
 
 app = FastAPI(lifespan=lifespan)
 
+
+# Порядок вызовов функционала влияет
+@CsrfProtect.load_config
+def get_csrf_settings():
+    return CsrfSettings()
+
+@app.exception_handler(CsrfProtectError)
+def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message}
+    )
+
+origins = [
+    "http://localhost:4000",
+    "http://127.0.0.1:4000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(router=auth_router, prefix="/auth", tags=['auth'])
 app.include_router(router=user_router, prefix='/user', tags=['user'])

@@ -15,8 +15,6 @@ backend/migrations/versions/
 .vscode
 
 node_modules/
-package-lock.json
-package.json
 
 .venv/
 venv/
