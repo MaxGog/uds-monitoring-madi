@@ -80,7 +80,7 @@ async def authorize(
 
     BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
     TEMPLATES_DIR = BASE_DIR / "templates"
-
+    
     response = Jinja2Templates(directory=str(TEMPLATES_DIR)).TemplateResponse(
         request=request,
         name="login_form.html",
@@ -107,7 +107,6 @@ async def login(
     password = form_data.get("password")
     redirect_uri = form_data.get("redirect_uri")
     code_challenge = form_data.get("code_challenge")
-
     await csrf_protect.validate_csrf(request)
 
     result = await uc.login(email=email, password = password, code_challenge=code_challenge)
@@ -118,7 +117,6 @@ async def login(
              status_code=status.HTTP_302_FOUND
          )
         return response
-
     nuxt_callback_url = f"{redirect_uri}?code={result}"
     response = JSONResponse(content={"url": nuxt_callback_url}, status_code=status.HTTP_200_OK)
 

@@ -63,7 +63,7 @@ class AuthUsecases:
     async def exchange_code_for_tokens(self, code: str, code_verifier: str) -> LoginResultDTO:
         """Юзкейс 3: Обмен OAuth2 Authorization Code на JWT (Access/Refresh)"""
         code_data = await self.token_repo.get_and_delete_code(code)
-        print(code_data)
+
         if not code_data:
             raise ValueError("Invalid or expired code")
         
