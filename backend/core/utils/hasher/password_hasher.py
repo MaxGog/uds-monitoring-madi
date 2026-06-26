@@ -12,4 +12,6 @@ class BCryptPasswordHash(IPasswordHasher):
         return password_hash_bytes.decode('utf-8')
     
     def validate_password(self, password: str, hashed_password: str) -> bool:
-        return bcrypt.checkpw(password=password.encode(), hashed_password=hashed_password.encode())
+        pwd_bytes: bytes = password.encode('utf-8')
+        hashed_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(password=pwd_bytes, hashed_password=hashed_bytes)

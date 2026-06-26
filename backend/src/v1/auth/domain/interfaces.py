@@ -22,6 +22,9 @@ class ITokenStorage(Protocol):
 class ITokenAuth(Protocol):
     ...
 
+class IAuthUsecases(Protocol):
+    ...
+
 class IPasswordHasher(Protocol):
     pass
 

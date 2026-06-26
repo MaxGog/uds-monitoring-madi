@@ -36,7 +36,7 @@ class LoggerSettings(BaseModel):
     LEVEL: str = Field(alias="Level", default="INFO")
     # AIOREDIS_LOGGING: bool = Field(alias="aioredis_logging", default = True) 
     # UVICORN_LOGGING: bool = Field(alias="uvicorn_logging", default = True)
-    # SQLALCHEMY_LOGGING: bool = Field(alias = "sqlalchemy_logging", default = False)
+    #SQLALCHEMY_LOGGING: bool = Field(alias = "sqlalchemy_logging", default = False)
     # PROTOCOL_LOGGING: bool = Field(alias="protocol_logging", default = True)
 
 class DbSettings(BaseModel):
@@ -47,6 +47,7 @@ class DbSettings(BaseModel):
     DB_HOST: str = Field(alias="PostgresqlHost")
     DB_PORT: int = Field(alias="PostgresqlPort")
     SSL_MODE: bool = Field(alias="PostgresqlSslmode")
+    LOGGING: bool = Field(alias="logging")
     
     @property
     def DB_URL(self) -> str:
@@ -60,9 +61,9 @@ class DbSettings(BaseModel):
         ).render_as_string(hide_password=False)
     
     @property
-    def ECHO(self) -> bool: return True
+    def ECHO(self) -> bool: return self.LOGGING
     @property
-    def ECHO_POOL(self) -> bool: return True
+    def ECHO_POOL(self) -> bool: return self.LOGGING
     @property
     def POOL_PRE_PING(self) -> bool: return True
     @property

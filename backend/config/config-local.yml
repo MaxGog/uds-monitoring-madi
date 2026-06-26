@@ -4,6 +4,10 @@ logger:
   DisableStacktrace: false
   Encoding: "console" #"json"
   Level: "info" #"info/debug"
+  # aioredis_logging: false
+  # uvicorn_logging: true
+  # sqlalchemy_logging: false
+  # protocol_logging: false
 
 postgres:
   PostgresqlHost: localhost
@@ -13,6 +17,7 @@ postgres:
   PostgresqlDbname: app_db
   PostgresqlSslmode: false
   PgDriver: postgresql+asyncpg
+  logging: false
 
 redis:
   RedisAddr: localhost:6379

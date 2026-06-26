@@ -12,7 +12,6 @@ class RedisTokenStorage(ITokenStorage):
         self.code_ttl = 300
         self.token_provider = token_provider
         self.max_sessions = 5
-        print(self.redis)
 
     async def get_and_delete_code(self, code: str) -> CodeData | None:
         '''

@@ -4,12 +4,11 @@ import json
 
 @dataclass
 class UserModel:
-    id: int | None
+    id: int
+    username: str
     email: str
-    hashed_password: str
-    is_active: bool
-    created_at: datetime
-    
+
+
 
 @dataclass
 class CodeData:
@@ -32,3 +31,9 @@ class CodeData:
     @classmethod
     def from_json(cls, data: str):
         return cls(**json.loads(data))
+    
+@dataclass
+class LoginResultDTO:
+    access_token: str
+    refresh_token: str
+    user: UserModel

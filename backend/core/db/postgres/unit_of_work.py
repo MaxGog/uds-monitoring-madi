@@ -32,7 +32,9 @@ class SQLAlchemyUnitOfWork(IUnitOfWork):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
             # При ошибке автоматически откатывает транзакцию.
-            await self.rollback()
+            #await self.rollback()
+            # Может изредка вызвать циклический rollback
+            pass
         else:
             pass
 
