@@ -1,6 +1,7 @@
 import base64
 from dataclasses import dataclass
 import hashlib
+import secrets
 from typing import Optional
 
 from fastapi import HTTPException
@@ -33,16 +34,36 @@ class AuthUsecases:
             user = await self.uow.users.create_user(dto)
         return user
 
-    async def validate_user_credentials(self, email: str, password: str) -> Optional[UserResponseDTO]:
+    async def login(self, email: str, password: str, code_challenge: str) -> str:
         """Юзкейс 2: Проверка логина/пароля перед выдачей OAuth2 Code"""
-        user = await self.user_repo.get_by_email(email)
-        # if not user or not user.check_password(password):
-        #     return None
-        return UserResponseDTO.from_attributes(user)
+        user = await self._validate_user_credentials(email=email, password=password)
+        auth_code = secrets.token_urlsafe(32)
+        result = await self.token_repo.save_code(
+            code=auth_code,
+            user_id=user.id,
+            challenge=code_challenge
+        )
+        if not result:
+            raise HTTPException(status_code=403, detail='Invalid data')
+        return auth_code
+
+    async def _validate_user_credentials(self, email: str, password: str) -> Optional[UserResponseDTO]:
+        async with self.uow:
+            user = await self.uow.users.get_by_email(email)
+        if not user:
+            raise HTTPException(status_code=409, detail='Incorrect email or password')
+        is_password_valid = await self._check_password(pwd_hash=user.pwdhash, password=password)
+        if not is_password_valid:
+            raise HTTPException(status_code=409, detail='Incorrect email or password')
+        return user
+    
+    async def _check_password(self, pwd_hash, password):
+        return self.hasher.validate_password(password=password, hashed_password=pwd_hash)
 
     async def exchange_code_for_tokens(self, code: str, code_verifier: str) -> LoginResultDTO:
         """Юзкейс 3: Обмен OAuth2 Authorization Code на JWT (Access/Refresh)"""
         code_data = await self.token_repo.get_and_delete_code(code)
+        print(code_data)
         if not code_data:
             raise ValueError("Invalid or expired code")
         

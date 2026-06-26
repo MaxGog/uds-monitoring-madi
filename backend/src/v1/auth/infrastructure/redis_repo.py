@@ -30,10 +30,11 @@ class RedisTokenStorage(ITokenStorage):
         except (json.JSONDecodeError, TypeError):
             return None
 
-    async def save_code(self, code: str, user_id: int, challenge: str, code_ttl: int = 600):
+    async def save_code(self, code: str, user_id: int, challenge: str, code_ttl: int = 600) -> str:
         data = CodeData(user_id=user_id, challenge=challenge)
         key = f"auth_code:{code}"
         await self.redis.setex(key, code_ttl, data.to_json())
+        return code
 
 
     def _key(self, user_id: int) -> str:

@@ -16,7 +16,7 @@ class PGUserRepository(IUserRepository):
         super().__init__()
         self.session = session
 
-    async def get_by_email(self, email: str) -> User | None:
+    async def get_by_email(self, email: str) -> UserResponseDTO | None:
         logger.info("Getting user by email")
         stmt = select(User).where(User.email == email)
         logger.debug("Looking for email match")
