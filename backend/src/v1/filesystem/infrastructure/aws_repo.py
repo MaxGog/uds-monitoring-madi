@@ -1,8 +1,9 @@
 from minio import Minio
 from uuid6 import uuid7
 from backend.config.config import settings
+from backend.src.v1.filesystem.domain.interfaces import IAwsService
 
-class MinioFileService:
+class MinioFileService(IAwsService):
     def __init__(self, client: Minio):
         self.client = client
         self.bucket_name = settings.minio.FILE_BUCKET_NAME

@@ -8,8 +8,10 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import JSONResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
+from types_aiobotocore_s3 import S3Client
 import uvicorn
 
+from backend.core.db.redis.redis_conn import check_redis_connection
 from backend.core.ioc.auth_ioc import AuthProvider
 from backend.core.ioc.dbs_ioc import DbProvider
 from backend.core.ioc.filesystem_ioc import FilesystemProvider
@@ -20,14 +22,16 @@ from backend.src.v1.auth.presentation.api import router as auth_router
 from backend.src.v1.auth.presentation.api import user_router
 from backend.src.v1.filesystem.presentation.api import router as fs_router
 from backend.core.db.postgres.postgres_conn import db_engine, check_db_connection
-
-
+from backend.core.db.redis.redis_conn import redis_client
+from backend.core.db.aws.minio_conn import check_aws_connection
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logger()
-    result = await check_db_connection(db_engine)
-    logger.info(f'Tested db conn: {result}')
+    await check_db_connection(db_engine)
+    await check_redis_connection(redis_client)
+    client = await container().get(S3Client)
+    await check_aws_connection(client)
     yield
 
     await db_engine.dispose()
@@ -78,5 +82,6 @@ if __name__ == "__main__":
         host = "0.0.0.0",
         port = 8000,
         reload_excludes=["*.log", "app.log"],
+        #loop="asyncio"
         #log_config=None
     )

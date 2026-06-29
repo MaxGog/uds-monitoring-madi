@@ -6,8 +6,9 @@ import redis.asyncio as redis
 
 from backend.config.config import settings, Settings
 from backend.core.db.postgres.unit_of_work import IUnitOfWork, SQLAlchemyUnitOfWork
-from backend.core.db.postgres.postgres_conn import db_engine, check_db_connection
-from backend.core.db.aws.minio_conn import minio_client
+from backend.core.db.postgres.postgres_conn import db_engine
+from backend.core.db.redis.redis_conn import redis_client
+
 
 class DbProvider(Provider):
     @provide(scope=Scope.APP)
@@ -15,8 +16,8 @@ class DbProvider(Provider):
         return settings
 
     @provide(scope=Scope.APP)
-    def get_redis(self, cfg: Settings) -> redis.Redis:
-        return redis.from_url(cfg.redis.REDIS_URL, decode_responses=True)
+    def get_redis(self) -> redis.Redis:
+        return redis_client
 
     @provide(scope=Scope.APP)
     async def get_engine(self) -> AsyncEngine:

@@ -24,6 +24,13 @@ services:
       -c log_duration=on
       -c log_line_prefix='%m [%p] %q%u@%d'
       -c log_destination=stderr
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -53,6 +60,12 @@ services:
       - redis_data:/data
     networks:
       - web_api
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
 
   redis-insight:
     image: redis/redisinsight:latest
@@ -82,6 +95,13 @@ services:
     networks:
       - web_api
     command: server /data --console-address ":9001"
+    healthcheck:
+      # Специальный внутренний эндпоинт MinIO для проверки готовности ноды
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   mc:
     image: minio/mc:latest
