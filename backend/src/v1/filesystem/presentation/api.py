@@ -10,9 +10,10 @@ from backend.config.config import settings
 router = APIRouter()
 
 @router.get('files')
+@inject
 async def get_files(
     uc: FromDishka[FsUsecases]
-) -> List[str]:
+):
     # TODO сначала проверка прав доступа
     try:
         result = await uc.get_files()
@@ -24,6 +25,7 @@ async def get_files(
     return result
 
 @router.post('upload')
+@inject
 async def upload_file(
     body: UploadLinkRequest,
     uc: FromDishka[FsUsecases]
@@ -42,8 +44,10 @@ async def upload_file(
     return result
 
 @router.get('/{file_id}')
+@inject
 async def generate_download_url(
     file_id: str,
     uc: FromDishka[FsUsecases]
 ):
     # TODO сначала проверка прав доступа, потом поход в postgresql, потом получение ссылки в minio и проверяем наличие файла в minio, потом генерация ссылки на скачивание
+    pass
