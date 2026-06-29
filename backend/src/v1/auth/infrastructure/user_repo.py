@@ -31,8 +31,8 @@ class PGUserRepository(IUserRepository):
         logger.debug(f"Found: {result}")
         return result.unique().scalar_one_or_none()
 
-    async def get_by_id(self, user_id: int) -> User | None:
-        stmt = select(User).where(User.id == int(user_id))
+    async def get_by_id(self, user_id: str) -> User | None:
+        stmt = select(User).where(User.id == str(user_id))
         result = await self.session.execute(stmt)
         return result.unique().scalar_one_or_none()
 

@@ -4,6 +4,7 @@ from typing import Protocol
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.v1.auth.infrastructure.user_repo import PGUserRepository
+from backend.src.v1.filesystem.infrastructure.file_repo import PgFileRepo
 
 
 # Автоматический хелпер для работы с асинхронными транзакциями через контекстный менеджер. Сразу через интерфейс.
@@ -25,7 +26,8 @@ class SQLAlchemyUnitOfWork(IUnitOfWork):
     def __init__(self, session: AsyncSession):
         self.session = session
         self.users = PGUserRepository(session)
-
+        self.file_repo = PgFileRepo(session)
+        
     async def __aenter__(self):
         return self
 
