@@ -88,6 +88,7 @@ class MinIOSettings(BaseModel):
     MINIO_ADMIN: str = Field(alias="MinioAccessKey", default="minioadmin")
     MINIO_PASS: str = Field(alias="MinioSecretKey", default="minioadmin")
     MINIO_SSL: bool = Field(alias="UseSSL", default=False)
+    FILE_BUCKET_NAME: str = Field(alias="FileBucketName")
 
 class AuthJWT(BaseModel):
     private_key_path: Path = BASE_DIR / "certs" / "ec256-private.pem"
