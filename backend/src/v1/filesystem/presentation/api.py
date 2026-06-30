@@ -5,9 +5,10 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from dishka.integrations.fastapi import FromDishka, inject
 from types_aiobotocore_s3 import S3Client
 import uuid6
+import httpx
 
 from backend.src.v1.filesystem.application.usecases import FsUsecases
-from backend.src.v1.filesystem.domain.interfaces import IFsUsecases
+from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFsUsecases
 from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest
 from backend.config.config import settings
 
@@ -75,6 +76,66 @@ async def test_upload_to_minio(
     )
     
     return {"status": "success", "s3_key": s3_object_key}
+
+
+@router.post("/test-presigned-upload")
+@inject
+async def test_presigned_upload(
+    file: UploadFile = File(...),
+    aws_service: FromDishka[IAwsService] = None
+):
+    """
+    Тестовый эндпоинт: имитирует поведение фронтенда.
+    1. Генерирует асинshared временную PUT-ссылку.
+    2. Через асинхронный HTTP-клиент загружает файл по этой ссылке в MinIO.
+    """
+    # 1: Формируем параметры для генерации ссылки
+    bucket_name = settings.minio.FILE_BUCKET_NAME
+    object_key = f"test_{file.filename}"
+    content_type = file.content_type
+
+    try:
+        upload_url = await aws_service.generate_url(
+            ClientMethod="put_object",
+            Params={
+                "Bucket": bucket_name,
+                "Key": object_key,
+                "ContentType": content_type
+            },
+            ExpiresIn=300
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка генерации Presigned URL: {str(e)}"
+        )
+
+    file_bytes = await file.read()
+
+    # 2: Имитируем фронтенд — делаем PUT запрос на полученный URL
+    async with httpx.AsyncClient() as http_client:
+        response = await http_client.put(
+            upload_url,
+            content=file_bytes,
+            headers={"Content-Type": content_type}
+        )
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "msg": "MinIO отклонил загрузку по Presigned URL",
+                "minio_response": response.text,
+                "attempted_url": upload_url
+            }
+        )
+
+    return {
+        "status": "success",
+        "message": "Файл успешно загружен через Presigned URL",
+        "s3_key": object_key,
+        "used_presigned_url": upload_url
+    }
 
 @router.get('/{file_id}')
 @inject
