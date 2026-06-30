@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import ObjectCard from '~/components/object_card.vue'
+import ObjectCard from '~/components/cards/object_card.vue'
 
 const tabs = [
   { label: 'Все объекты', value: 'all' },
