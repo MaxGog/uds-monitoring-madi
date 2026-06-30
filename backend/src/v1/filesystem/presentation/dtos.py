@@ -1,4 +1,14 @@
+import uuid
+
 from pydantic import BaseModel, Field
+
+class FileCreateResponse(BaseModel):
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    name: str
+    s3_key: str
+    content_type: str
+    
 
 class UploadLinkRequest(BaseModel):
     filename: str = Field(..., description="Оригинальное имя файла с расширением")

@@ -10,7 +10,7 @@ from backend.config.config import settings
 from backend.core.db.aws.minio_conn import MinioClientFactory
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.filesystem.application.usecases import FsUsecases
-from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFsUsecases
+from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 from backend.src.v1.filesystem.infrastructure.aws_repo import MinioFileService
 
 class FilesystemProvider(Provider):
@@ -39,5 +39,5 @@ class FilesystemProvider(Provider):
         return MinioFileService(client = client)
     
     @provide(scope=Scope.REQUEST)
-    async def get_fs_uc(self, aws_service: IAwsService, uow: IUnitOfWork) -> IFsUsecases:
-        return FsUsecases(aws_service = aws_service, uow = uow)
+    async def get_fs_uc(self, aws_service: IAwsService, uow: IUnitOfWork, file_repo: IFileRepo) -> IFsUsecases:
+        return FsUsecases(aws_service = aws_service, uow = uow, file_repo = file_repo)

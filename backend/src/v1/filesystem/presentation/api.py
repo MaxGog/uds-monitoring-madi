@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from dishka.integrations.fastapi import FromDishka, inject
 from types_aiobotocore_s3 import S3Client
 import uuid6
+from backend.core.db.postgres.unit_of_work import IUnitOfWork
 import httpx
 
 from backend.src.v1.filesystem.application.usecases import FsUsecases
@@ -81,17 +82,20 @@ async def test_upload_to_minio(
 @router.post("/test-presigned-upload")
 @inject
 async def test_presigned_upload(
+    uow: FromDishka[IUnitOfWork],
     file: UploadFile = File(...),
-    aws_service: FromDishka[IAwsService] = None
+    aws_service: FromDishka[IAwsService] = None,
 ):
     """
     Тестовый эндпоинт: имитирует поведение фронтенда.
     1. Генерирует асинshared временную PUT-ссылку.
     2. Через асинхронный HTTP-клиент загружает файл по этой ссылке в MinIO.
     """
-    # 1: Формируем параметры для генерации ссылки
     bucket_name = settings.minio.FILE_BUCKET_NAME
-    object_key = f"test_{file.filename}"
+    # 1: Формируем параметры для генерации ссылки
+    file_id = str(uuid6.uuid7())
+    extension = file.filename.split(".")[-1] if "." in file.filename else ""
+    object_key = f"{file_id}.{extension}" if extension else file_id
     content_type = file.content_type
 
     try:
@@ -129,12 +133,31 @@ async def test_presigned_upload(
                 "attempted_url": upload_url
             }
         )
+    # Передаём в бд
+    try:
+        async with uow:
+            await uow.file_repo.create_file(
+                id=file_id,
+                user_id = '019f17ea-a900-7fe9-b66f-43d82725afca',
+                name=file.filename, 
+                content_type=content_type, 
+                s3_key=object_key
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Файл загружен в MinIO, но произошла ошибка записи в БД: {str(e)}"
+        )
 
     return {
         "status": "success",
-        "message": "Файл успешно загружен через Presigned URL",
-        "s3_key": object_key,
-        "used_presigned_url": upload_url
+        "message": "Цикл обработки полностью завершен",
+        "database_record": {
+            "id": file_id,
+            "filename": file.filename,
+            "s3_key": object_key
+        },
+        "used_link": upload_url
     }
 
 @router.get('/{file_id}')
@@ -143,5 +166,12 @@ async def generate_download_url(
     file_id: str,
     uc: FromDishka[IFsUsecases]
 ):
-    # TODO сначала проверка прав доступа, потом поход в postgresql, потом получение ссылки в minio и проверяем наличие файла в minio, потом генерация ссылки на скачивание
-    pass
+    # TODO сначала проверка прав доступа
+    try:
+        result = await uc.get_file(id = file_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get files: {e}"
+        )
+    return result

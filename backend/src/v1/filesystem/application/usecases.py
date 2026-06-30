@@ -4,7 +4,7 @@ import uuid
 import uuid6
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
-from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFsUsecases
+from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 from backend.config.config import settings
 from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest, UploadLinkResponse
 
@@ -12,6 +12,7 @@ from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest, Uploa
 class FsUsecases(IFsUsecases):
     uow: IUnitOfWork
     aws_service: IAwsService
+    file_repo: IFileRepo
 
     async def upload_file(self, body: UploadLinkRequest) -> UploadLinkResponse:
         file_id = str(uuid6.uuid7())
@@ -29,18 +30,16 @@ class FsUsecases(IFsUsecases):
             ExpiresIn=3600
         )
         
-        #async with self.uow as uow:
-            #result = await uow.file_repo.create_file(name = body.filename, content_type = content_type, s3_key = s3_object_key)
+        async with self.uow as uow:
+            result = await uow.file_repo.create_file(name = body.filename, content_type = content_type, s3_key = s3_object_key)
 
         return UploadLinkResponse(file_id=file_id, upload_url=upload_url)    
 
     async def get_file(self, id: uuid.UUID):
-        async with self.uow as uow:
-            result = await uow.file_repo.get_file_by_id(id = id)
+        result = await self.file_repo.get_by_id(id = id)
         return result
 
     async def get_files(self):
-        async with self.uow as uow:
-            result = await uow.file_repo.get_files()
+        result = await self.file_repo.get_files()
         return result
 
