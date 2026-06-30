@@ -8,7 +8,9 @@ from typing import AsyncContextManager
 from types_aiobotocore_s3 import S3Client
 from backend.config.config import settings
 from backend.core.db.aws.minio_conn import MinioClientFactory
-from backend.src.v1.filesystem.domain.interfaces import IAwsService
+from backend.core.db.postgres.unit_of_work import IUnitOfWork
+from backend.src.v1.filesystem.application.usecases import FsUsecases
+from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFsUsecases
 from backend.src.v1.filesystem.infrastructure.aws_repo import MinioFileService
 
 class FilesystemProvider(Provider):
@@ -20,7 +22,7 @@ class FilesystemProvider(Provider):
     def get_factory(self, session: aioboto3.Session) -> MinioClientFactory:
         return MinioClientFactory()
 
-    @provide(scope=Scope.REQUEST)
+    @provide(scope=Scope.APP)
     async def get_s3_client(self, factory: MinioClientFactory) -> AsyncIterator[S3Client]:
         async with factory.get_minio_client() as client:
             try:
@@ -33,5 +35,9 @@ class FilesystemProvider(Provider):
             yield client
     
     @provide(scope=Scope.REQUEST)
-    async def AwsRepo(self) -> IAwsService:
-        return MinioFileService
+    async def AwsRepo(self, client: S3Client) -> IAwsService:
+        return MinioFileService(client = client)
+    
+    @provide(scope=Scope.REQUEST)
+    async def get_fs_uc(self, aws_service: IAwsService, uow: IUnitOfWork) -> IFsUsecases:
+        return FsUsecases(aws_service = aws_service, uow = uow)
