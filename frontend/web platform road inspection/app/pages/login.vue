@@ -1,3 +1,62 @@
+<template>
+  <div class="auth-card">
+    <h2 class="auth-title">Авторизация</h2>
+    <p class="auth-subtitle">Система мониторинга состояния объектов УДС</p>
+
+    <div class="auth-form">
+      <button 
+        class="btn-primary" 
+        :disabled="isLoading" 
+        @click="handleLogin"
+      >
+        <span v-if="isLoading">Инициализация входа...</span>
+        <span v-else>Войти через Единую Учетную Запись</span>
+      </button>
+
+      <div v-if="authError" class="error-message">
+        {{ authError }}
+      </div>
+
+      <div class="fluent-divider">Или войти как разработчик</div>
+
+      <button 
+        class="btn-secondary dev-btn" 
+        @click="loginAsDeveloper"
+        type="button"
+      >
+        <span class="dev-icon">⚙️</span> Локальный вход (Bypass)
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useAuth } from '~/composables/useAuth'
+
+// Указываем Nuxt использовать лэйаут для авторизации
+definePageMeta({
+  layout: 'auth'
+})
+
+const { loginWithPKCE, isLoading, authError } = useAuth()
+
+const handleLogin = async () => {
+  await loginWithPKCE()
+}
+
+// Заглушка, если на этапе разработки нужно быстро пропустить авторизацию
+const loginAsDeveloper = () => {
+  const token = useCookie('access_token')
+  token.value = 'mock-developer-token'
+  
+  const userState = useState('auth_user')
+  userState.value = { id: 0, email: 'dev@madi.ru', role: 'Администратор' }
+  
+  navigateTo('/')
+}
+</script>
+
+<style scoped>
 .auth-card {
     margin: auto;
     position: relative;
@@ -142,3 +201,14 @@
 .dev-icon {
     font-size: 14px;
 }
+
+.error-message {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: #fde7e9;
+  border-left: 3px solid #d13438;
+  color: #a80000;
+  font-size: 13px;
+  border-radius: 4px;
+}
+</style>
