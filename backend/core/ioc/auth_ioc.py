@@ -31,5 +31,5 @@ class AuthProvider(Provider):
         return RedisTokenStorage(r, token_provider)
     
     @provide(scope = Scope.REQUEST)
-    def get_auth_uc(self, uow: IUnitOfWork, token_storage: ITokenStorage, token_service: ITokenAuth, hasher: IPasswordHasher) -> IAuthUsecases:
-        return AuthUsecases(uow=uow, token_repo=token_storage, token_service=token_service, hasher=hasher)
+    def get_auth_uc(self, uow: IUnitOfWork, token_storage: ITokenStorage, token_service: ITokenAuth, token_provider: ITokenProvider, hasher: IPasswordHasher) -> IAuthUsecases:
+        return AuthUsecases(uow=uow, token_repo=token_storage, token_service=token_service, token_provider=token_provider, hasher=hasher)

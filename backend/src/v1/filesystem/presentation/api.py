@@ -9,7 +9,7 @@ from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest
 from backend.config.config import settings
 router = APIRouter()
 
-@router.get('files')
+@router.get('/files')
 @inject
 async def get_files(
     uc: FromDishka[FsUsecases]
@@ -24,7 +24,7 @@ async def get_files(
         )
     return result
 
-@router.post('upload')
+@router.post('/upload')
 @inject
 async def upload_file(
     body: UploadLinkRequest,

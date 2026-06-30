@@ -12,18 +12,26 @@ from fastapi.templating import Jinja2Templates
 
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_csrf_protect import CsrfProtect
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.core.utils.jwt_service.jwt_service import TokenData
 from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider
-from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO
+from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
 
 router = APIRouter()
 user_router = APIRouter()
 
 security_bearer = HTTPBearer()
+
+access_token_scheme = HTTPBearer(
+    bearerFormat="JWT",
+)
+
+refresh_token_scheme = HTTPBearer(
+    bearerFormat="JWT"
+)
 
 logger = logging.getLogger("auth_api")
 
@@ -36,14 +44,13 @@ class GrantTypes(str, Enum):
 
 @inject
 async def get_current_user_payload(
-    #credentials: Annotated[HTTPAuthorizationCredentials, Depends(security_bearer)],
     provider_service: FromDishka[ITokenProvider],
     auth_service: FromDishka[ITokenAuth],
-    auth_header: Annotated[str | None, Header(alias="Authorization")] = None,
+    auth_header: Annotated[HTTPAuthorizationCredentials, Depends(access_token_scheme)],
 ) -> dict:
     try:
         # validate_token выбросит HTTPException(401), если токен отозван
-        auth_header = auth_header.replace('Bearer ', '')
+        auth_header = auth_header.credentials
         payload = provider_service.extract_payload(auth_header)
         await auth_service.is_token_valid(auth_header)
 
@@ -142,8 +149,16 @@ async def exchange_code_for_token(
 @router.post("/refresh")
 @inject
 async def refresh_tokens(
+    uc: FromDishka[IAuthUsecases],
+    access_token: Annotated[HTTPAuthorizationCredentials, Depends(access_token_scheme)],
+    refresh_token: str = Header(..., alias="X-Refresh-Token"),
 ):
-    pass
+    if not access_token or not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing tokens")
+
+    new_tokens = await uc.rotate_tokens(access_token = access_token.credentials, refresh_token = refresh_token)
+
+    return new_tokens
 
 # Эндпоинт регистрации юзера
 @router.post("/register")
@@ -159,15 +174,15 @@ async def register(
 @router.post("/logout")
 @inject
 async def logout(
-    auth_header: Annotated[str | None, Header(alias="Authorization")] = None,
-    x_refresh_token: Annotated[str | None, Header(alias="X-Refresh-Token")] = None,
-    auth_service: FromDishka[ITokenAuth] = None
+    auth_service: FromDishka[ITokenAuth],
+    access_token: Annotated[HTTPAuthorizationCredentials, Depends(access_token_scheme)],
+    x_refresh_token: str = Header(..., alias="X-Refresh-Token"),
 ):
-    if not auth_header or not x_refresh_token:
+    if not access_token or not x_refresh_token:
         raise HTTPException(status_code=401, detail="Missing tokens in headers")
-    auth_header = auth_header.replace('Bearer ','')
-    await auth_service.revoke_specific_session(auth_header, x_refresh_token)
-    return {"detail": "Successfully logged out from current device"}
+
+    await auth_service.revoke_specific_session(access_token.credentials, x_refresh_token)
+    return {"detail": "Successfully logged out current session"}
 
 # Эндпоинт выхода со всех устройств
 @router.post("/logout-all")
@@ -179,22 +194,24 @@ async def logout_all(
 @router.post('/test-token', response_model=TokenData)
 @inject
 async def get_test_token(
+
     auth_provider: FromDishka[ITokenAuth]
 ):
-    result = await auth_provider.set_tokens()
+    result = await auth_provider.set_tokens(user_id = '019f17ea-a900-7fe9-b66f-43d82725afca') # беру напрямую из бд
     return result
 
 # ... CRUD для пользователя
 
-@user_router.get("/me")
+@user_router.get("/me", response_model=UserResponseDTO)
 @inject
 async def get_current_user_profile(
     payload: CurrentUserPayload,
-    uow: FromDishka[IUnitOfWork]
+    uow: FromDishka[IUnitOfWork],
 ):
-    user_id = payload.get("sub")
+    user_id = payload.get('sub')
+
     async with uow:
-        result = await uow.users.get_user_by_id(user_id)
+        result = await uow.users.get_by_id(user_id)
         if result:
             return result
         else:

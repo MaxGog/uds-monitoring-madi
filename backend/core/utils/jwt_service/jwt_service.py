@@ -145,8 +145,7 @@ class TokenAuth(ITokenAuth):
     async def set_tokens(self, user_id: int | None = None) -> TokenData:
         '''
         
-        '''    
-        user_id=1   
+        '''  
         data = {
             "sub": str(user_id),
         }
@@ -184,11 +183,12 @@ class TokenAuth(ITokenAuth):
             raise HTTPException(status_code=401, detail="Invalid token")
 
         old_storage_value = f"{old_access_payload['jti']}:{old_refresh_payload['jti']}"
-        new_access_jti = str(uuid6.uuid6())
-        new_refresh_jti = str(uuid6.uuid6())
 
-        new_access_token = self.token_provider.create_access_token(data={"sub": str(user_id) }, jti = new_access_jti)
-        new_refresh_token = self.token_provider.create_refresh_token(data={"sub": str(user_id) }, jti = new_refresh_jti)
+        new_access_token = self.token_provider.create_access_token(data={"sub": str(user_id) })
+        new_refresh_token = self.token_provider.create_refresh_token(data={"sub": str(user_id) })
+
+        new_access_jti = self.token_provider.extract_payload(new_access_token).get('jti')
+        new_refresh_jti = self.token_provider.extract_payload(new_refresh_token).get('jti')
 
         new_storage_value = f"{new_access_jti}:{new_refresh_jti}"
 
@@ -201,14 +201,15 @@ class TokenAuth(ITokenAuth):
             refresh_token=new_refresh_token
         )
 
-    #TODO Переделать код, т.к. не должна быть лютая логика в хранилище токенов, а должна быть в сервисе аутентификации, а хранилище должно просто хранить токены и проверять их наличие
+    # TODO: надо сделать проверку валидности сессии
     async def revoke_specific_session(self, access_token: str, refresh_token: str):
         access_payload = self.token_provider.extract_payload(access_token, verify_exp = False)
         refresh_payload = self.token_provider.extract_payload(refresh_token)
+
         a_jti = access_payload["jti"]
         r_jti = refresh_payload["jti"]
         if a_jti and r_jti:
-            user_id = int(refresh_payload["sub"])
+            user_id = str(refresh_payload["sub"])
             await self.token_storage.remove_session(
                 user_id=user_id, 
                 a_jti=a_jti, 
@@ -221,9 +222,11 @@ class TokenAuth(ITokenAuth):
     async def is_token_valid(self, access_token: str) -> bool:
         payload = self.token_provider.extract_payload(access_token)
 
-        user_id = int(payload.get("sub"))
+        user_id = str(payload.get("sub"))
         a_jti = payload.get("jti")
+
         is_valid = await self.token_storage.is_token_valid(user_id, a_jti)
+        
         if not is_valid:
             raise HTTPException(status_code=401, detail="Session revoked or expired")
         return True
@@ -231,7 +234,7 @@ class TokenAuth(ITokenAuth):
     async def is_session_valid(self, access_token: str, refresh_token: str) -> bool:
         payload = self.token_provider.extract_payload(access_token, verify_exp = False)
 
-        user_id = int(payload.get("sub"))
+        user_id = str(payload.get("sub"))
         a_jti = payload.get("jti")
         r_jti = self.token_provider.extract_payload(refresh_token).get("jti")
         # Проверка Stateful (есть ли токен в белом списке Redis)

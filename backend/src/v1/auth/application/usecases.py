@@ -7,8 +7,9 @@ from typing import Optional
 from fastapi import HTTPException
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
-from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenStorage, IUserRepository
+from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage, IUserRepository
 from backend.src.v1.auth.domain.models import LoginResultDTO
+from backend.src.v1.auth.presentation.dto.auth_dto import RefreshSessionDTO
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
 
 
@@ -21,17 +22,18 @@ class AuthUsecases:
     uow: IUnitOfWork
     token_repo: ITokenStorage
     token_service: ITokenAuth
+    token_provider: ITokenProvider
     hasher: IPasswordHasher
 
     async def register_new_user(self, dto: UserCreateDTO) -> UserResponseDTO:
         """Юзкейс 1: Регистрация"""
-        async with self.uow:
-            existing_user = await self.uow.users.get_by_email(dto.email)
+        async with self.uow as uow:
+            existing_user = await uow.users.get_by_email(dto.email)
             if existing_user:
                 raise HTTPException(status_code=409, detail='username or email already exists')
             password_hash_str = self.hasher.hash_password(dto.password)
             dto.password = password_hash_str
-            user = await self.uow.users.create_user(dto)
+            user = await uow.users.create_user(dto)
         return user
 
     async def login(self, email: str, password: str, code_challenge: str) -> str:
@@ -77,6 +79,17 @@ class AuthUsecases:
         expected = base64.urlsafe_b64encode(digest).decode('utf-8').rstrip('=')
         return challenge == expected
         
-    async def refresh_session(self, refresh_token: str) -> LoginResultDTO:
-        """Юзкейс 4: Обновление протухшего Access-токена"""
-        pass
+    async def rotate_tokens(self, access_token: str, refresh_token: str) -> RefreshSessionDTO:
+        """Юзкейс 4: Обновление протухшего Access-токена"""       
+        await self.token_service.is_session_valid(access_token, refresh_token)
+
+        old_payload = self.token_provider.extract_payload(refresh_token)
+        user_id = str(old_payload.get("sub"))
+
+        new_tokens = await self.token_service.rotate_tokens(
+            user_id,
+            old_access_token=access_token,
+            old_refresh_token=refresh_token
+        )
+
+        return new_tokens
