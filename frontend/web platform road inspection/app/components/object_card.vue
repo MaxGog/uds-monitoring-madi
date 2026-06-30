@@ -115,5 +115,125 @@ const contractProperties = computed(() => ({
 </script>
 
 <style scoped>
-@import './object_card.css';
+.object-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--fluent-gray-40);
+    font-family: var(--fluent-font);
+    max-width: 550px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.card-header {
+    margin-bottom: 20px;
+}
+
+.object-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--fluent-gray-100);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 12px 0;
+    line-height: 1.3;
+}
+
+.badge-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-blue {
+    background-color: var(--fluent-blue-light);
+    color: var(--fluent-blue);
+}
+
+.badge-orange {
+    background-color: #fff4ce;
+    color: #a4261d;
+}
+
+.badge-orange .dot {
+    width: 6px;
+    height: 6px;
+    background-color: #e81123;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.badge-green-outline {
+    background-color: #f3f9f4;
+    color: #107c41;
+    border: 1px solid #dff0d8;
+}
+
+.card-section {
+    margin: 16px 0;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fluent-gray-100);
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-icon {
+    font-size: 14px;
+    color: var(--fluent-gray-80);
+}
+
+.property-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.property-table tr {
+    height: 24px;
+}
+
+.prop-label {
+    font-size: 12px;
+    color: var(--fluent-gray-60);
+    width: 40%;
+    padding-right: 8px;
+    vertical-align: middle;
+}
+
+.prop-value {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--fluent-gray-100);
+    width: 60%;
+    vertical-align: middle;
+}
+
+.value-highlight {
+    font-weight: 600;
+}
+
+.divider {
+    border: none;
+    height: 1px;
+    background-color: var(--fluent-gray-20);
+    margin: 16px 0;
+}
 </style>

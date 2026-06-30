@@ -6,17 +6,10 @@
         <span class="burger-line" :class="{ active: isMenuOpen }"></span>
         <span class="burger-line" :class="{ active: isMenuOpen }"></span>
       </button>
-      
       <h1 class="header-title">Мониторинг состояния объектов УДС</h1>
     </div>
 
     <div class="search-wrapper">
-      <span class="search-icon">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M16 16l4 4" />
-        </svg>
-      </span>
       <SearchBar
         v-model="searchQuery"
         class="header-search"
@@ -26,9 +19,9 @@
 
     <div class="header-right">
       <UserAvatar :full-name="user?.fullName" :email="user?.email" show-name />
-
+      
       <button class="icon-btn" @click="onNotifications" title="Уведомления">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
@@ -72,34 +65,23 @@ const props = defineProps<{
   user?: { fullName?: string; email?: string; role?: string }
 }>()
 
-const emit = defineEmits<{
-  (e: 'navigate', item: MenuItem): void
-  (e: 'search', query: string): void
-  (e: 'notifications'): void
-}>()
+const emit = defineEmits(['navigate', 'search', 'notifications'])
 
 const router = useRouter()
 const route = useRoute()
 const searchQuery = ref('')
 const isMenuOpen = ref(true)
 
-const defaultMenu: MenuItem[] = [
-  { label: 'Главная', to: '/', icon: '🏠' },
-  { label: 'Мониторинг объектов', to: '/monitoring', icon: '📊' },
-  { label: 'Работа с актами', to: '/acts', icon: '📄' },
-  { label: 'Статусы работ', to: '/work-statuses', icon: '📈' },
-  { label: 'Формирование ДК', to: '/roadmap', icon: '🗺️' },
-  { label: 'Задачи', to: '/tasks', icon: '✔️' },
-  { label: 'Пользователи', to: '/users', icon: '👤', adminOnly: true },
-]
+const defaultMenu: MenuItem[] = []
 
 const filteredMenuItems = computed(() => {
-  const base = props.menuItems?.length ? props.menuItems : defaultMenu
-  return base.filter(item => !item.adminOnly || props.user?.role === 'Администратор')
+  return (props.menuItems || defaultMenu).filter(
+    item => !item.adminOnly || props.user?.role === 'Администратор'
+  )
 })
 
 const isActive = (to: string) => {
-  return route.path === to || route.path.startsWith(to + '/')
+  return route.path === to || (to !== '/' && route.path.startsWith(to + '/'))
 }
 
 const updateSidebarWidthVariable = () => {
@@ -130,3 +112,156 @@ const toggleMenu = () => {
   updateSidebarWidthVariable()
 }
 </script>
+
+<style scoped>
+.app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 0 24px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--fluent-gray-40);
+    z-index: 200;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.header-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fluent-gray-100);
+    margin: 0;
+}
+
+.search-wrapper {
+    flex: 1;
+    max-width: 480px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fluent-gray-100);
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.icon-btn:hover {
+    background: var(--fluent-gray-20);
+}
+
+.burger-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 16px;
+    height: 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.burger-line {
+    display: block;
+    width: 100%;
+    height: 1.5px;
+    background: var(--fluent-gray-100);
+    border-radius: 1px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.sidebar-menu {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: #f3f3f3;
+    border-right: 1px solid #e5e5e5;
+    padding: 12px 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    z-index: 150;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
+}
+
+.mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mobile-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    height: 36px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 400;
+    color: #242424;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.1s ease;
+}
+
+.mobile-link .nav-icon {
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    color: #1a153b;
+}
+
+.mobile-link:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.mobile-link.active {
+    background: #e2e2e2; 
+    font-weight: 600;
+}
+
+.sidebar-menu.is-collapsed .link-label {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .sidebar-menu {
+        transform: translateX(-100%);
+        width: 260px !important;
+    }
+    .sidebar-menu:not(.is-collapsed) {
+        transform: translateX(0);
+    }
+}
+</style>
