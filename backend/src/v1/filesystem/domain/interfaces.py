@@ -8,3 +8,6 @@ class IFileRepo(Protocol):
 
 class IFsUsecases(Protocol):
     ...
+
+class IFileAuthUsecases(Protocol):
+    ...

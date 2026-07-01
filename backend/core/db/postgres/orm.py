@@ -3,7 +3,19 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Table
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid6
+
 Base = declarative_base()
+
+class RoleName(str, enum.Enum):
+    ADMIN = "admin"
+    VIEWER = "viewer"
+    USER = "user"
+
+class FileAccessType(str, enum.Enum):
+    READ = "read"
+    WRITE = "write"
+    DELETE = "delete"
+    UPDATE = 'update'
 
 class User(Base):
     __tablename__ = "users"

@@ -1,15 +1,15 @@
 import logging
-from typing import List
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from dishka.integrations.fastapi import FromDishka, inject
 from types_aiobotocore_s3 import S3Client
 import uuid6
+from backend.core.db.postgres.orm import FileAccessType
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
+from backend.src.v1.auth.presentation.api import CurrentUserPayload
 import httpx
 
-from backend.src.v1.filesystem.application.usecases import FsUsecases
-from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFsUsecases
+from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFsUsecases
 from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest
 from backend.config.config import settings
 
@@ -20,11 +20,14 @@ router = APIRouter()
 @router.get('/files')
 @inject
 async def get_files(
-    uc: FromDishka[IFsUsecases]
+    payload: CurrentUserPayload,
+    uc: FromDishka[IFsUsecases],
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
-    # TODO сначала проверка прав доступа
+    user_id = payload.get('sub')
     try:
-        result = await uc.get_files()
+        result = await uc.get_files(user_id = user_id, required_action = FileAccessType.READ)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -32,23 +35,43 @@ async def get_files(
         )
     return result
 
-@router.post('/upload')
+@router.get('/{file_id}')
 @inject
-async def upload_file(
+async def generate_download_url(
+    file_id: str,
+    payload: CurrentUserPayload,
+    auth_uc: FromDishka[IFileAuthUsecases],
+    uc: FromDishka[IFsUsecases],
+):
+    user_id = payload.get('sub')
+    try:
+        result = await uc.get_file(user_id, file_id = file_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get files: {e}"
+        )
+    return result
+
+@router.post("/generate-upload-url")
+@inject
+async def get_upload_url(
     body: UploadLinkRequest,
+    payload: CurrentUserPayload,
     uc: FromDishka[IFsUsecases]
 ):
     """
-    Генерирует временную PUT-ссылку для загрузки файла напрямую в MinIO.
+    Генерирует временную PUT-ссылку для загрузки файла в MinIO.
     """
-    # TODO сначала проверка прав доступа
-    try :
-        result = await uc.upload_file(body=body)
+    user_id = payload.get('sub')
+    try:
+        result = await uc.generate_upload_url(user_id = user_id, body = body)
     except Exception as e:
+        print(e)
         logger.error(f'Error generating presigned URL for UPLOAD: {e}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate upload URL: {e}"
+            detail=f"Failed to generate upload URL"
         )
     return result
 
@@ -78,8 +101,7 @@ async def test_upload_to_minio(
     
     return {"status": "success", "s3_key": s3_object_key}
 
-
-@router.post("/test-presigned-upload")
+@router.post("/test-presigned-upload", tags=['dev-tools'])
 @inject
 async def test_presigned_upload(
     uow: FromDishka[IUnitOfWork],
@@ -88,7 +110,7 @@ async def test_presigned_upload(
 ):
     """
     Тестовый эндпоинт: имитирует поведение фронтенда.
-    1. Генерирует асинshared временную PUT-ссылку.
+    1. Генерирует временную PUT-ссылку.
     2. Через асинхронный HTTP-клиент загружает файл по этой ссылке в MinIO.
     """
     bucket_name = settings.minio.FILE_BUCKET_NAME
@@ -159,19 +181,3 @@ async def test_presigned_upload(
         },
         "used_link": upload_url
     }
-
-@router.get('/{file_id}')
-@inject
-async def generate_download_url(
-    file_id: str,
-    uc: FromDishka[IFsUsecases]
-):
-    # TODO сначала проверка прав доступа
-    try:
-        result = await uc.get_file(id = file_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get files: {e}"
-        )
-    return result

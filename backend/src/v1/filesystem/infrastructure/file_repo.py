@@ -28,9 +28,9 @@ class PgFileRepo(IFileRepo):
         result = await self.session.execute(stmt)
         return result.unique().scalars().all()
 
-    async def create_file(self, id: uuid.UUID, user_id, name: str, content_type: str, s3_key: uuid6.UUID) -> FileCreateResponse:
+    async def create_file(self, file_id: uuid.UUID, user_id, name: str, content_type: str, s3_key: uuid6.UUID) -> FileCreateResponse:
         document_orm = Document(
-            id = id,
+            id = file_id,
             owner_id = user_id,
             name = name,
             s3_bucket = settings.minio.FILE_BUCKET_NAME,
@@ -49,8 +49,6 @@ class PgFileRepo(IFileRepo):
             name = document_orm.name,
             content_type = document_orm.content_type,
         )
-
-        #stmt = insert(Document).values(owner_id = user_id, name = name, s3_bucket = settings.minio.FILE_BUCKET_NAME, s3_key = s3_key, content_type = content_type)
         await self.session.commit()
         return result
 

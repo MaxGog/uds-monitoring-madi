@@ -4,7 +4,7 @@ from typing import Protocol
 
 # Интерфейсы, можно легко подменять реализации и мокать
 
-class IUserRepository(Protocol):
+class IUserRepo(Protocol):
     pass
 
 class ITokenProvider(Protocol):

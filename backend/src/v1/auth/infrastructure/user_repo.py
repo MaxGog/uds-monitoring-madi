@@ -2,8 +2,8 @@ import logging
 
 from sqlalchemy import select
 
-from backend.core.db.postgres.orm import User
-from backend.src.v1.auth.domain.interfaces import IUserRepository
+from backend.core.db.postgres.orm import Role, User
+from backend.src.v1.auth.domain.interfaces import IUserRepo
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.v1.auth.domain.models import UserModel
@@ -11,7 +11,7 @@ from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserRes
 
 logger = logging.getLogger('UserRepo')
 
-class PGUserRepository(IUserRepository):
+class PGUserRepo(IUserRepo):
     def __init__(self, session: AsyncSession):
         super().__init__()
         self.session = session
@@ -61,6 +61,10 @@ class PGUserRepository(IUserRepository):
         logger.info(f"User created successfully: id={result.id}, email={result.email}")
         return result
 
+    async def get_role(self, user_id: str):
+        stmt = select(Role.name).join(User).where(User.id == user_id)
+        result = await self.session.execute(stmt)
+        return result.unique().scalar_one_or_none()
 
     async def update_user_by_id(self, user_id: str) -> User:
         pass

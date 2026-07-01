@@ -7,7 +7,7 @@ import secrets
 from typing import Annotated
 
 from dishka import FromDishka
-from fastapi import APIRouter, Depends, Form, HTTPException, Header, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Header, Query, Request, status
 from fastapi.templating import Jinja2Templates
 
 from dishka.integrations.fastapi import FromDishka, inject
@@ -191,13 +191,16 @@ async def logout_all(
 ):
     pass
 
-@router.post('/test-token', response_model=TokenData)
+@router.post('/test-token', response_model=TokenData, tags=["dev-tools"])
 @inject
 async def get_test_token(
-
-    auth_provider: FromDishka[ITokenAuth]
+    auth_provider: FromDishka[ITokenAuth],
+    role: str = Query(default = 'admin'),
 ):
-    result = await auth_provider.set_tokens(user_id = '019f17ea-a900-7fe9-b66f-43d82725afca') # беру напрямую из бд
+    if role == 'admin':
+        result = await auth_provider.set_tokens(user_id = '019f17ea-a900-7fe9-b66f-43d82725afca') # беру напрямую из бд
+    else:
+        result = await auth_provider.set_tokens(user_id = '019f17eb-219a-7f4d-a5ad-124044d79754')
     return result
 
 # ... CRUD для пользователя

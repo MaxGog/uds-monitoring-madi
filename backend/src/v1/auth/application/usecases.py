@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
-from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage, IUserRepository
+from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage
 from backend.src.v1.auth.domain.models import LoginResultDTO
 from backend.src.v1.auth.presentation.dto.auth_dto import RefreshSessionDTO
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO

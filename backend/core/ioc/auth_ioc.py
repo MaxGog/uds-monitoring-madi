@@ -7,7 +7,7 @@ from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.core.utils.hasher.password_hasher import BCryptPasswordHash
 from backend.core.utils.jwt_service.jwt_service import TokenAuth, TokenProvider
 from backend.src.v1.auth.application.usecases import AuthUsecases
-from backend.src.v1.auth.domain.interfaces import IAuthUsecases, IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage, IUserRepository
+from backend.src.v1.auth.domain.interfaces import IAuthUsecases, IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage
 from backend.src.v1.auth.infrastructure.redis_repo import RedisTokenStorage
 
 logger = logging.getLogger("auth_ioc")

@@ -1,6 +1,5 @@
 from typing import AsyncGenerator, AsyncIterable
-from minio import Minio
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from dishka import Provider, Scope, provide
 import redis.asyncio as redis
 
