@@ -74,8 +74,6 @@ export function useAuth() {
         body: formData.toString()
       })
       console.log(response)
-      useCookie('access_token').value = response.access_token
-      useCookie('refresh_token').value = response.refresh_token
 
       accessToken.value = response.access_token
       refreshToken.value = response.refresh_token

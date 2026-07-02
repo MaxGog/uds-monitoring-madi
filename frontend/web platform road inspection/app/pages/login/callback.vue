@@ -1,18 +1,3 @@
-<template>
-  <div class="auth-card loading-card">
-    <div class="fluent-spinner">
-      <div class="spinner-circle"></div>
-    </div>
-    <h3 class="processing-title">Завершение авторизации</h3>
-    <p class="processing-subtitle">Пожалуйста, подождите, проверяем параметры сессии...</p>
-
-    <div v-if="authError" class="error-container">
-      <p class="error-message">{{authError}}</p>
-      <NuxtLink to="/login" class="btn-secondary error-retry-btn">Вернуться на страницу входа</NuxtLink>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 const route = useRoute()
 const { handleCallback, authError, isLoading } = useAuth()
@@ -28,6 +13,21 @@ onMounted(async () => {
     }
 })
 </script>
+
+<template>
+  <div class="auth-card loading-card">
+    <div class="fluent-spinner">
+      <div class="spinner-circle"></div>
+    </div>
+    <h3 class="processing-title">Завершение авторизации</h3>
+    <p class="processing-subtitle">Пожалуйста, подождите, проверяем параметры сессии...</p>
+
+    <div v-if="authError" class="error-container">
+      <p class="error-message">{{authError}}</p>
+      <NuxtLink to="/login" class="btn-secondary error-retry-btn">Вернуться на страницу входа</NuxtLink>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 

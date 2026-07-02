@@ -1,189 +1,214 @@
-<!-- <template>
-  <div class="auth-card">
-    <h2 class="auth-title">Вход в систему</h2>
-    <p class="auth-subtitle">Мониторинг состояния объектов УДС</p>
-
-    <form @submit.prevent="handleSubmit" class="auth-form">
-      <div class="input-group">
-        <label for="email">Электронная почта</label>
-        <input 
-          id="email" 
-          v-model="form.email" 
-          type="email" 
-          placeholder="name@example.com" 
-          required 
-        />
-      </div>
-
-      <div class="input-group">
-        <label for="password">Пароль</label>
-        <input 
-          id="password" 
-          v-model="form.password" 
-          type="password" 
-          placeholder="••••••••" 
-          required 
-        />
-      </div>
-
-      <button type="submit" class="btn-primary">Войти</button>
-    </form>
-
-    <div class="fluent-divider">
-      <span>или</span>
-    </div>
-
-    <button type="button" class="btn-secondary dev-btn" @click="handleDevLogin">
-      <span class="dev-icon">⚡</span> Войти как разработчик
-    </button>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { reactive } from 'vue'
-import { useRouter } from 'vue-router'
-
-definePageMeta({
-  layout: 'auth' as any
-})
-
-const router = useRouter()
-const authToken = useCookie('auth_token')
-
-const form = reactive({
-  email: '',
-  password: ''
-})
-
-const handleSubmit = () => {
-  authToken.value = 'fake-jwt-token-from-server'
-  console.log('Авторизация успешна:', form.email)
-  router.push('/')
-}
-
-const handleDevLogin = () => {
-  authToken.value = 'developer-bypass-token'
-  console.log('Вход в режиме разработчика...')
-  router.push('/')
-}
-</script> -->
-
-<script setup lang="ts">
-const { loginWithPKCE, isLoading, authError } = useAuth()
-</script>
-
 <template>
-  <div class="login-page">
-    <div class="login-card">
-      <h2>Вход в систему</h2>
-      <p class="subtitle">MADI Infrastructure Platform</p>
+  <div class="auth-card">
+    <h2 class="auth-title">Авторизация</h2>
+    <p class="auth-subtitle">Система мониторинга состояния объектов УДС</p>
 
-      <button @click="loginWithPKCE" :disabled="isLoading" class="btn-submit">
-        {{ isLoading ? 'Перенаправление...' : 'Войти через Единую Систему' }}
+    <div class="auth-form">
+      <button 
+        class="btn-primary" 
+        :disabled="isLoading" 
+        @click="handleLogin"
+      >
+        <span v-if="isLoading">Инициализация входа...</span>
+        <span v-else>Войти через Единую Учетную Запись</span>
       </button>
 
-      <p v-if="authError" class="error-message">{{ authError }}</p>
+      <div v-if="authError" class="error-message">
+        {{ authError }}
+      </div>
+
+      <div class="fluent-divider">Или войти как разработчик</div>
+
+      <button 
+        class="btn-secondary dev-btn" 
+        @click="loginAsDeveloper"
+        type="button"
+      >
+        <span class="dev-icon">⚙️</span> Локальный вход (Bypass)
+      </button>
     </div>
   </div>
 </template>
 
+<script setup lang="ts">
+import { useAuth } from '~/composables/useAuth'
+
+// Указываем Nuxt использовать лэйаут для авторизации
+definePageMeta({
+  layout: 'auth'
+})
+
+const { loginWithPKCE, isLoading, authError } = useAuth()
+
+const handleLogin = async () => {
+  await loginWithPKCE()
+}
+
+// Заглушка, если на этапе разработки нужно быстро пропустить авторизацию
+const loginAsDeveloper = () => {
+  const token = useCookie('access_token')
+  token.value = 'mock-developer-token'
+  
+  const userState = useState('auth_user')
+  userState.value = { id: 0, email: 'dev@madi.ru', role: 'Администратор' }
+  
+  navigateTo('/')
+}
+</script>
+
 <style scoped>
-.login-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #f5f7fb;
-  font-family: system-ui, -apple-system, sans-serif;
+.auth-card {
+    margin: auto;
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--fluent-gray-40, #e1e3e8);
+    border-radius: 8px;
+    padding: 36px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-.login-card {
-  background: #ffffff;
-  padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  max-width: 400px;
+.auth-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--fluent-gray-100, #323742);
+    margin-bottom: 4px;
+    margin-top: 0;
 }
 
-h2 {
-  margin: 0 0 0.5rem 0;
-  color: #1e293b;
-  font-size: 1.75rem;
-  text-align: center;
+.auth-subtitle {
+    font-size: 13px;
+    color: var(--fluent-gray-60, #a0a6b3);
+    margin-bottom: 28px;
 }
 
-.subtitle {
-  margin: 0 0 2rem 0;
-  color: #64748b;
-  font-size: 0.875rem;
-  text-align: center;
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
 }
 
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.input-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fluent-gray-100, #323742);
 }
 
-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #334155;
+.input-group input {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 14px;
+    background: #ffffff;
+    border: 1px solid var(--fluent-gray-40, #e1e3e8);
+    border-bottom: 1px solid var(--fluent-gray-60, #a0a6b3);
+    border-radius: 4px;
+    outline: none;
+    transition: all 0.1s ease;
 }
 
-input {
-  padding: 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
+.input-group input:hover {
+    background-color: #f9f9f9;
+    border-color: var(--fluent-gray-60, #a0a6b3);
 }
 
-input:focus {
-  outline: none;
-  border-color: #3b82f6;
+.input-group input:focus {
+    background: #ffffff;
+    border-color: transparent;
+    box-shadow:
+        0 0 0 1px var(--fluent-blue, #0078d4) inset,
+        0 -2px 0 0 var(--fluent-blue, #0078d4) inset;
 }
 
-input:disabled {
-  background-color: #f8fafc;
-  cursor: not-allowed;
+.btn-primary,
+.btn-secondary {
+    height: 32px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s ease;
+}
+
+.btn-primary {
+    background-color: var(--fluent-blue, #0078d4);
+    color: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 2px 4px rgba(0, 120, 212, 0.2);
+}
+
+.btn-primary:hover {
+    background-color: #106ebe;
+}
+
+.btn-primary:active {
+    background-color: #005a9e;
+}
+
+.btn-secondary {
+    background-color: #ffffff;
+    color: var(--fluent-gray-100, #323742);
+    border: 1px solid var(--fluent-gray-40, #e1e3e8);
+}
+
+.btn-secondary:hover {
+    background-color: #f3f4f6;
+    border-color: var(--fluent-gray-60, #a0a6b3);
+}
+
+.fluent-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+    color: var(--fluent-gray-60, #a0a6b3);
+    font-size: 12px;
+}
+
+.fluent-divider::before,
+.fluent-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--fluent-gray-40, #e1e3e8);
+}
+
+.fluent-divider:not(:empty)::before {
+    margin-right: .5em;
+}
+
+.fluent-divider:not(:empty)::after {
+    margin-left: .5em;
+}
+
+.dev-btn {
+    width: 100%;
+    gap: 8px;
+    border-style: dashed;
+}
+
+.dev-icon {
+    font-size: 14px;
 }
 
 .error-message {
-  background-color: #fef2f2;
-  color: #dc2626;
-  padding: 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  border: 1px solid #fee2e2;
-}
-
-.btn-submit {
-  background-color: #2563eb;
-  color: white;
-  padding: 0.75rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 0.5rem;
-}
-
-.btn-submit:hover:not(:disabled) {
-  background-color: #1d4ed8;
-}
-
-.btn-submit:disabled {
-  background-color: #93c5fd;
-  cursor: not-allowed;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: #fde7e9;
+  border-left: 3px solid #d13438;
+  color: #a80000;
+  font-size: 13px;
+  border-radius: 4px;
 }
 </style>
