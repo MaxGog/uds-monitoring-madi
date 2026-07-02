@@ -8,8 +8,7 @@ from fastapi import HTTPException
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage
-from backend.src.v1.auth.domain.models import LoginResultDTO
-from backend.src.v1.auth.presentation.dto.auth_dto import RefreshSessionDTO
+from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
 
 
@@ -42,7 +41,7 @@ class AuthUsecases:
         auth_code = secrets.token_urlsafe(32)
         result = await self.token_repo.save_code(
             code=auth_code,
-            user_id=user.id,
+            user_id=str(user.id),
             challenge=code_challenge
         )
         if not result:

@@ -211,7 +211,7 @@ async def get_current_user_profile(
     payload: CurrentUserPayload,
     uow: FromDishka[IUnitOfWork],
 ):
-    user_id = payload.get('sub')
+    user_id = str(payload.get('sub'))
 
     async with uow:
         result = await uow.users.get_by_id(user_id)

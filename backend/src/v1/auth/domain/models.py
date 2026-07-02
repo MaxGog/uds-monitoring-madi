@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 import json
 
 @dataclass
@@ -8,7 +9,13 @@ class UserModel:
     username: str
     email: str
 
+class UserRole(StrEnum):
+    admin = "admin"
+    viewer = "viewer"
 
+class UserStatus(StrEnum):
+    active = "active"
+    blocked = "blocked"
 
 @dataclass
 class CodeData:
@@ -21,7 +28,7 @@ class CodeData:
     Сервер хэширует code verifier и сравнивает с сохраненным code challenge.
     Выдаются токены если всё валидно.
     '''
-    user_id: int
+    user_id: str
     challenge: str
     scope: str = "default"
 
@@ -32,8 +39,3 @@ class CodeData:
     def from_json(cls, data: str):
         return cls(**json.loads(data))
     
-@dataclass
-class LoginResultDTO:
-    access_token: str
-    refresh_token: str
-    user: UserModel

@@ -6,7 +6,6 @@ from backend.core.db.postgres.orm import Role, User
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.v1.auth.domain.models import UserModel
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
 
 logger = logging.getLogger('UserRepo')

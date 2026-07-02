@@ -7,7 +7,7 @@
     <p class="processing-subtitle">Пожалуйста, подождите, проверяем параметры сессии...</p>
 
     <div v-if="authError" class="error-container">
-      <p class="error-message">{{ authError }}</p>
+      <p class="error-message">{{authError}}</p>
       <NuxtLink to="/login" class="btn-secondary error-retry-btn">Вернуться на страницу входа</NuxtLink>
     </div>
   </div>

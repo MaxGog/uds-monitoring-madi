@@ -29,7 +29,7 @@ export function useAuth() {
       sessionStorage.setItem('pkce_code_verifier', verifier)
 
       // URL для эндпоинта авторизации FastAPI
-      const authUrl = new URL('http://127.0.0.1:8000/auth/authorize')
+      const authUrl = new URL('http://localhost:8000/auth/authorize')
       authUrl.searchParams.append('response_type', 'code')
       authUrl.searchParams.append('client_id', 'web-platform-madi')
       authUrl.searchParams.append('redirect_uri', redirectUri)

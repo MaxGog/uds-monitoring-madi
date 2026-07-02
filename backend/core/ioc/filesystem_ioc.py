@@ -37,11 +37,3 @@ class FilesystemProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def AwsRepo(self, client: S3Client) -> IAwsService:
         return MinioFileService(client = client)
-    
-    @provide(scope=Scope.REQUEST)
-    async def get_fs_uc(self, aws_service: IAwsService, uow: IUnitOfWork, file_repo: IFileRepo, user_repo: IUserRepo) -> IFsUsecases:
-        return FsUsecases(aws_service = aws_service, uow = uow, file_repo = file_repo, user_repo = user_repo)
-    
-    @provide(scope = Scope.REQUEST)
-    async def get_file_auth_uc(self, uow: IUnitOfWork, aws_service: IAwsService, file_repo: IFileRepo, user_repo: IUserRepo) -> IFileAuthUsecases:
-        return FileAuthUsecases(uow = uow, aws_service = aws_service, file_repo = file_repo, user_repo = user_repo)
