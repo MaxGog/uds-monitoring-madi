@@ -3,17 +3,29 @@ import uuid
 
 from pydantic import BaseModel, EmailStr
 
+T = TypeVar("T")
+
+class BaseResponse(BaseModel, Generic[T]):
+    data: T
+
+class BaseRequest(BaseModel, Generic[T]):
+   data: T
+
 class UserCreateDTO(BaseModel):
     username: str
     email: EmailStr
     password: str
+    role: str | None
+    position: str | None
+    company: str | None
+
 
 
 class UserResponseDTO(BaseModel):
     id: str #uuid.UUID конвертация происходит на уровне БД пока что
-    username: str
-    email: EmailStr
-    role: str
+    username: str = 'test user'
+    email: EmailStr = 'test@mail.ru'
+    role: str = 'viewer'
     company: str = 'Some company'
     position: str = 'Some position'
     status: str = 'Some status'

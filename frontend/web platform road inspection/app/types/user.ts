@@ -12,7 +12,7 @@ export interface UserCreate {
   email: string;
   username: string;
   password?: string;
-  role_id: number;
+  role: string;
 }
 
 export interface UserUpdate {

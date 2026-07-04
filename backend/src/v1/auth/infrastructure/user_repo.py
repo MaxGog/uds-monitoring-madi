@@ -69,7 +69,7 @@ class PGUserRepo(IUserRepo):
         logger.debug("Session flushed successfully")
 
         result = UserResponseDTO(
-            id=user_orm.id,
+            id=str(user_orm.id),
             email=user_orm.email,
             username=user_orm.username,
         )

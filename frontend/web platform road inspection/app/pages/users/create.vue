@@ -14,7 +14,7 @@
         <div class="form-row">
           <div class="form-group">
             <label>ФИО сотрудника *</label>
-            <input v-model="form.name" type="text" class="fluent-input" placeholder="Иванов Петр Сергеевич" required />
+            <input v-model="form.username" type="text" class="fluent-input" placeholder="Иванов Петр Сергеевич" required />
           </div>
           <div class="form-group">
             <label>Должность</label>
@@ -65,6 +65,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUser } from '#imports'
+import type { UserCreate } from '~/types/user'
+
+const { 
+  users, 
+  isLoading, 
+  error, 
+  cleanError,
+  createUser,
+} = useUser()
 
 const router = useRouter()
 
@@ -77,19 +87,20 @@ const mockCompanies = [
 ]
 
 const form = ref({
-  name: '',
-  position: '',
+  username: 'user',
+  email: 'user@madi.ru',
+  password: 'secret',
+  position: 'pos',
   company: mockCompanies[0],
   role: 'inspector',
-  email: '',
-  password: ''
 })
 
-const submitForm = () => {
+const submitForm = async () => {
   console.log('Данные нового пользователя отправлены:', form.value)
   // Тут будет отправка на бэкенд: await useFetch('/api/users', { method: 'POST', body: form.value })
-  
-  // Возвращаемся обратно на страницу списка
+  //if (confirm('Вы уверены, что хотите создать этого пользователя?')) {
+    await createUser(form.value)
+  //}
   router.push('/users')
 }
 </script>

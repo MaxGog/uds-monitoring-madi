@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import secrets
 import time
-from typing import Annotated
+from typing import Annotated, List
 
 from dishka import FromDishka
 from fastapi import APIRouter, Depends, Form, HTTPException, Header, Query, Request, status
@@ -19,7 +19,7 @@ from fastapi_csrf_protect import CsrfProtect
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.core.utils.jwt_service.jwt_service import TokenData
 from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider, IUserUsecases
-from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO, UsersListResponse
+from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateDTO, UserResponseDTO, UsersListResponse
 
 router = APIRouter()
 user_router = APIRouter()
@@ -207,57 +207,76 @@ async def get_test_token(
 # ... CRUD для пользователя
 
 # Эндпоинт админа, который создаёт юзеров сам, передавая токены
-@user_router.post("/")
+@user_router.post("/", response_model=BaseResponse[UserResponseDTO])
 @inject
 async def create_user(
-    payload: CurrentUserPayload
+    current_user: CurrentUserPayload,
+    payload: BaseRequest[UserCreateDTO],
+    uc: FromDishka[IUserUsecases]
 ):
-    pass
+    user_id = current_user.get('sub')
+    data = payload.data
+    try:
+        result = await uc.create_user(creator_id = user_id, data = data)
+        return {"data": result}
+    except HTTPException as e:
+        logger.error(e)
+        raise e
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Couldn't create new user")
+
 
 @user_router.get("/me", response_model=UserResponseDTO)
 @inject
 async def get_current_user_profile(
-    payload: CurrentUserPayload,
-    uow: FromDishka[IUnitOfWork],
+    current_user: CurrentUserPayload,
+    uc: FromDishka[IUserUsecases],
 ):
-    user_id = str(payload.get('sub'))
+    user_id = str(current_user.get('sub'))
+    try:
+        result = await uc.get_me(user_id)
+        return result
+    except HTTPException as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-    async with uow:
-        result = await uow.users.get_by_id(user_id)
-        if result:
-            return result
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-@user_router.get('/', response_model=UsersListResponse)
+@user_router.get('/', response_model=BaseResponse[List[UserResponseDTO]])
 @inject
 async def get_users(
+    current_user: CurrentUserPayload,
     uc: FromDishka[IUserUsecases]
 ):
-    
+    user_id = current_user.get('sub')
     try:
-        result = await uc.get_users()
-        time.sleep(2)
-        print({"data": result})
+        result = await uc.get_users(user_id = user_id)
         return { "data": result }
     except Exception as e:
+        logger.error(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error getting users")
 
-@user_router.get('/{user_id}')
+# TODO реализовать нижестоящие эндпоинты
+@user_router.get('/{user_id}', response_model=BaseResponse[UserResponseDTO])
 @inject
 async def get_user(
-    payload: CurrentUserPayload,
+    current_user: CurrentUserPayload,
 ):
     pass
 
-@user_router.patch("/{user_id}")
+@user_router.patch("/{user_id}", response_model=BaseResponse[UserResponseDTO])
 async def update_user(
-    payload: CurrentUserPayload
+    current_user: CurrentUserPayload
 ):
     #TODO реализовать эндпоинт для обновления данных пользователя (кроме пароля)
     pass
 
-@user_router.delete("/{user_id}")
-async def delete_user(user_id: str):
+@user_router.delete("/{user_id}", response_model=BaseResponse[UserResponseDTO])
+async def delete_user(
+    current_user: CurrentUserPayload,
+    user_id: str
+    ):
     #TODO реализовать эндпоинт для удаления пользователя по id, который будет требовать аутентификацию и проверку прав доступа.
     pass

@@ -52,7 +52,10 @@ export function useUser() {
     try {
       const response = await apiFetch<ApiResponse<User>>('/users', {
         method: 'POST',
-        body: payload
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: { 'data': payload },
       })
       const newUser = response.data
       users.value.push(newUser)
