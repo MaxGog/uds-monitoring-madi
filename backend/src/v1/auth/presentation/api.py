@@ -4,6 +4,7 @@ import hashlib
 import logging
 from pathlib import Path
 import secrets
+import time
 from typing import Annotated
 
 from dishka import FromDishka
@@ -17,8 +18,8 @@ from fastapi_csrf_protect import CsrfProtect
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.core.utils.jwt_service.jwt_service import TokenData
-from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider
-from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
+from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider, IUserUsecases
+from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO, UsersListResponse
 
 router = APIRouter()
 user_router = APIRouter()
@@ -205,6 +206,14 @@ async def get_test_token(
 
 # ... CRUD для пользователя
 
+# Эндпоинт админа, который создаёт юзеров сам, передавая токены
+@user_router.post("/")
+@inject
+async def create_user(
+    payload: CurrentUserPayload
+):
+    pass
+
 @user_router.get("/me", response_model=UserResponseDTO)
 @inject
 async def get_current_user_profile(
@@ -218,14 +227,37 @@ async def get_current_user_profile(
         if result:
             return result
         else:
-            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-@user_router.patch("/update")
-async def update_user():
+@user_router.get('/', response_model=UsersListResponse)
+@inject
+async def get_users(
+    uc: FromDishka[IUserUsecases]
+):
+    
+    try:
+        result = await uc.get_users()
+        time.sleep(2)
+        print({"data": result})
+        return { "data": result }
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error getting users")
+
+@user_router.get('/{user_id}')
+@inject
+async def get_user(
+    payload: CurrentUserPayload,
+):
+    pass
+
+@user_router.patch("/{user_id}")
+async def update_user(
+    payload: CurrentUserPayload
+):
     #TODO реализовать эндпоинт для обновления данных пользователя (кроме пароля)
     pass
 
-@user_router.delete("/users/{user_id}")
+@user_router.delete("/{user_id}")
 async def delete_user(user_id: str):
     #TODO реализовать эндпоинт для удаления пользователя по id, который будет требовать аутентификацию и проверку прав доступа.
     pass

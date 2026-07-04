@@ -1,118 +1,174 @@
 <template>
   <div class="monitoring-page">
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <h2 class="page-title">Пользователи системы</h2>
-        <span class="objects-count">Всего: {{ filteredUsers.length }}</span>
-      </div>
-      
-      <div class="toolbar-actions">
-        <div class="fluent-pivot">
-          <button 
-            v-for="role in roles" 
-            :key="role.value"
-            class="pivot-item"
-            :class="{ active: currentFilter === role.value }"
-            @click="currentFilter = role.value"
-          >
-            {{ role.label }}
-          </button>
+    <div v-if="isLoading" class="loading-state">
+      Загрузка пользователей...
+    </div>
+    <div v-else class="content-wrapper">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <h2 class="page-title">Пользователи системы</h2>
+          <!-- <span class="objects-count">Всего: {{ filteredUsers.length }}</span> -->
+          <span class="objects-count">Всего: {{ users?.length ?? 0 }}</span>
         </div>
         
-        <NuxtLink to="/users/create" class="btn-primary">
-          <span class="btn-icon">＋</span> Добавить пользователя
-        </NuxtLink>
+        <div class="toolbar-actions">
+          <div class="fluent-pivot">
+            <button 
+              v-for="role in roles" 
+              :key="role.value"
+              class="pivot-item"
+              :class="{ active: currentFilter === role.value }"
+              @click="currentFilter = role.value"
+            >
+              {{ role.label }}
+            </button>
+          </div>
+          
+          <NuxtLink to="/users/create" class="btn-primary">
+            <span class="btn-icon">＋</span> Добавить пользователя
+          </NuxtLink>
+        </div>
       </div>
-    </div>
 
-    <div class="users-container" v-if="filteredUsers.length > 0">
-      <table class="fluent-table">
-        <thead>
-          <tr>
-            <th>ФИО пользователя</th>
-            <th>Роль в системе</th>
-            <th>Организация</th>
-            <th>Email / Логин</th>
-            <th>Статус</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in filteredUsers" :key="user.id">
-            <td class="user-name-cell">
-              <div class="user-avatar">{{ user.name.charAt(0) }}</div>
-              <div>
-                <div class="font-semibold">{{ user.name }}</div>
-                <div class="text-muted">{{ user.position }}</div>
-              </div>
-            </td>
-            <td>{{ user.roleLabel }}</td>
-            <td>{{ user.company }}</td>
-            <td>{{ user.email }}</td>
-            <td>
-              <span class="status-badge" :class="user.status">
-                {{ user.status === 'active' ? 'Активен' : 'Заблокирован' }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <div class="users-container" v-if="filteredUsers.length > 0">
+        <table class="fluent-table">
+          <thead>
+            <tr>
+              <th>ФИО пользователя</th>
+              <th>Роль в системе</th>
+              <th>Организация</th>
+              <th>Email / Логин</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in filteredUsers" :key="user.id">
+              <td class="user-name-cell">
+                <div class="user-avatar">{{ user.username.charAt(0) }}</div>
+                <div>
+                  <div class="font-semibold">{{ user.username }}</div>
+                  <div class="text-muted">{{ user.position }}</div>
+                </div>
+              </td>
+              <td>{{ user.role }}</td>
+              <td>{{ user.company }}</td>
+              <td>{{ user.email }}</td>
+              <td>
+                <span class="status-badge" :class="user.status">
+                  {{ user.status }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-    <div v-else class="empty-state">
-      <div class="empty-icon">🔍</div>
-      <h3>Пользователи не найдены</h3>
-      <p>Попробуйте изменить параметры фильтрации ролей.</p>
+      <div v-else class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>Пользователи не найдены</h3>
+        <p>Попробуйте изменить параметры фильтрации ролей.</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useUser } from '~/composables/useUser'
+import type { UserUpdate } from '~/types/user'
 
 const roles = [
+  { label: 'Все', value: 'all' },
   { label: 'Пользователь', value: 'user' },
   { label: 'Администраторы', value: 'admin' },
+  { label: 'Аудит', value: 'viewer' },  // Аудит это типо глобальная роль viewer
 ]
+
+// Извлекаем нужные состояния и методы из нашего композбла
+const { 
+  users, 
+  isLoading, 
+  error, 
+  cleanError,
+  fetchUsers,
+  updateUser, 
+  deleteUser,
+} = useUser()
+
+onMounted(async () => {
+  await fetchUsers()
+})
+
+const handleUpdate = async (id: string, payload: UserUpdate) => {
+  if (confirm('Вы уверены, что хотите обновить данные этого пользователя?')) {
+    await updateUser(id, payload)
+  }
+}
+
+// Обработчик удаления юзера
+const handleDelete = async (id: string) => {
+  if (confirm('Вы уверены, что хотите удалить этого пользователя?')) {
+    await deleteUser(id)
+  }
+}
+
+
 
 const currentFilter = ref('all')
 
-const mockUsers = ref([
-  {
-    id: 1,
-    name: 'Иванов Иван Иванович',
-    position: 'Главный специалист',
-    role: 'admin',
-    roleLabel: 'Администратор',
-    company: 'ГБУ Автомобильные дороги',
-    email: 'ivanov.ii@uds.mos.ru',
-    status: 'active'
-  },
-  {
-    id: 2,
-    name: 'Петров Петр Петрович',
-    position: 'Ведущий инженер технадзора',
-    role: 'user',
-    roleLabel: 'Технический надзор',
-    company: 'АО Мосинжпроект',
-    email: 'petrov.pp@mosinzh.ru',
-    status: 'active'
-  },
-  {
-    id: 3,
-    name: 'Сидоров Сидор Сергеевич',
-    position: 'Начальник участка',
-    role: 'user',
-    roleLabel: 'Подрядчик',
-    company: 'ООО ТехСтрой',
-    email: 'sidorov@techstroy.ru',
-    status: 'active'
-  }
-])
-
 const filteredUsers = computed(() => {
-  if (currentFilter.value === 'all') return mockUsers.value
-  return mockUsers.value.filter(u => u.role === currentFilter.value)
+
+  if (currentFilter.value === 'all') {
+    return users.value
+  }
+
+  return users.value.filter(u => u.role === currentFilter.value)
 })
+
+// const filteredUsers = computed(() => {
+//   if (currentFilter.value === 'all') return users.value
+//   return users.value.filter(u => u.role === currentFilter.value)
+// })
+
+// const mockUsers = ref([
+//   {
+//     id: 1,
+//     name: 'Иванов Иван Иванович',
+//     position: 'Главный специалист',
+//     role: 'admin',
+//     roleLabel: 'Администратор',
+//     company: 'ГБУ Автомобильные дороги',
+//     email: 'ivanov.ii@uds.mos.ru',
+//     status: 'active'
+//   },
+//   {
+//     id: 2,
+//     name: 'Петров Петр Петрович',
+//     position: 'Ведущий инженер технадзора',
+//     role: 'user',
+//     roleLabel: 'Технический надзор',
+//     company: 'АО Мосинжпроект',
+//     email: 'petrov.pp@mosinzh.ru',
+//     status: 'active'
+//   },
+//   {
+//     id: 3,
+//     name: 'Сидоров Сидор Сергеевич',
+//     position: 'Начальник участка',
+//     role: 'user',
+//     roleLabel: 'Подрядчик',
+//     company: 'ООО ТехСтрой',
+//     email: 'sidorov@techstroy.ru',
+//     status: 'active'
+//   }
+// ])
+
+// const filteredUsers = computed(() => {
+//   if (currentFilter.value === 'all') return mockUsers.value
+//   return mockUsers.value.filter(u => u.role === currentFilter.value)
+// })
+
+
 </script>
 
 <style scoped>

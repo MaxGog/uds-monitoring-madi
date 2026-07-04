@@ -68,7 +68,7 @@ app.add_middleware(
 )
 
 app.include_router(router=auth_router, prefix="/auth", tags=['auth'])
-app.include_router(router=user_router, prefix='/user', tags=['user'])
+app.include_router(router=user_router, prefix='/users', tags=['user'])
 app.include_router(router=fs_router, prefix="/fs", tags=['fs'])
 
 container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())

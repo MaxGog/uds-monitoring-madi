@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import String, cast, select
 
 from backend.core.db.postgres.orm import Role, User
 from backend.src.v1.auth.domain.interfaces import IUserRepo
@@ -34,6 +34,23 @@ class PGUserRepo(IUserRepo):
         stmt = select(User).where(User.id == str(user_id))
         result = await self.session.execute(stmt)
         return result.unique().scalar_one_or_none()
+
+    async def get_all(self, limit: int, offset: int) -> list[User] | None:
+        logger.info('Getting all users')
+        stmt = (
+            select(
+            cast(User.id, String).label("id"),
+            User.username,
+            User.email,
+            Role.name.label('role')
+            )
+        .join(Role, User.role_id == Role.id)
+        .limit(limit)
+        .offset(offset)
+        )
+        logger.debug('Looking for all users')
+        result = await self.session.execute(stmt)
+        return result.mappings().all()
 
     async def create_user(self, user: UserCreateDTO) -> UserResponseDTO:
         """Создает пользователя из UserCreate DTO и возвращает UserModel"""

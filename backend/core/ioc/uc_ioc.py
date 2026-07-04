@@ -4,7 +4,8 @@
 from dishka import Provider, Scope, provide
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
-from backend.src.v1.auth.domain.interfaces import IUserRepo
+from backend.src.v1.auth.application.user_uc import UserUsecases
+from backend.src.v1.auth.domain.interfaces import IUserRepo, IUserUsecases
 from backend.src.v1.data.application.acts_usecases import ActUsecases
 from backend.src.v1.data.application.objects_usecases import ObjectUsecases
 from backend.src.v1.data.application.roadmap_usecases import RoadmapUsecases
@@ -21,6 +22,10 @@ from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUs
 
 
 class UsecaseProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    async def get_user_uc(self, uow: IUnitOfWork, user_repo: IUserRepo) -> IUserUsecases:
+        return UserUsecases(uow = uow, user_repo = user_repo)
+
     @provide(scope=Scope.REQUEST)
     async def get_fs_uc(self, aws_service: IAwsService, uow: IUnitOfWork, file_repo: IFileRepo, user_repo: IUserRepo) -> IFsUsecases:
         return FsUsecases(aws_service = aws_service, uow = uow, file_repo = file_repo, user_repo = user_repo)
