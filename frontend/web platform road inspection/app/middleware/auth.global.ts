@@ -1,11 +1,21 @@
-export default defineNuxtRouteMiddleware((to, from) => {
-    const accessToken = useCookie('access_token')
+export default defineNuxtRouteMiddleware(async (to, from) => {
+  if (to.path === "/login/callback" || to.path === "/login") {
+    return;
+  }
 
-    if (to.path === '/login/callback' || to.path === '/login') {
-        return
-    }
+  const accessToken = useState("access_token");
 
-    if (!accessToken.value) {
-        return navigateTo('/login')
+  if (!accessToken.value) {
+    try {
+      const { access } = await $fetch<{ access: string }>(
+        "/auth/refresh",
+        {
+            method: "POST"
+        },
+      );
+      accessToken.value = access;
+    } catch (e) {
+      return navigateTo("/login");
     }
-})
+  }
+});

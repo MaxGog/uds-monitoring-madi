@@ -56,10 +56,13 @@ class RedisTokenStorage(ITokenStorage):
         sessions = await self.redis.zrange(self._key(user_id), 0, -1)
         return any(s.startswith(f"{a_jti}:") for s in sessions)
 
-    async def is_session_valid(self, user_id: int, a_jti: str, r_jti: str) -> bool:
+    async def is_session_valid(self, user_id: int, r_jti: str, a_jti: str | None = None) -> bool:
         sessions = await self.redis.zrange(self._key(user_id), 0, -1)
         # Ищем, есть ли активная сессия с таким access_jti и refresh_jti
-        return any(s.startswith(f"{a_jti}:{r_jti}") for s in sessions)
+        if a_jti:
+            return any(s.startswith(f"{a_jti}:{r_jti}") for s in sessions)
+        else:
+            return any(s.endswith(r_jti) for s in sessions)
 
 
     async def rotate_session(self, user_id: int, old_value: str, new_value: str, expire_seconds: int):

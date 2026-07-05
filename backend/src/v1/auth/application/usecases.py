@@ -1,16 +1,18 @@
 import base64
 from dataclasses import dataclass
 import hashlib
+import logging
 import secrets
 from typing import Optional
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
 
+logger = logging.getLogger(__file__)
 
 @dataclass
 class AuthUsecases:
@@ -78,17 +80,23 @@ class AuthUsecases:
         expected = base64.urlsafe_b64encode(digest).decode('utf-8').rstrip('=')
         return challenge == expected
         
-    async def rotate_tokens(self, access_token: str, refresh_token: str) -> RefreshSessionDTO:
-        """Юзкейс 4: Обновление протухшего Access-токена"""       
-        await self.token_service.is_session_valid(access_token, refresh_token)
+    async def rotate_tokens(self, refresh_token: str, access_token: str | None = None) -> RefreshSessionDTO:
+        """Юзкейс 4: Обновление протухшего Access-токена"""
+        try:
+            await self.token_service.is_session_valid(access_token = access_token, refresh_token = refresh_token)
 
-        old_payload = self.token_provider.extract_payload(refresh_token)
-        user_id = str(old_payload.get("sub"))
+            old_payload = self.token_provider.extract_payload(refresh_token)
+            user_id = str(old_payload.get("sub"))
 
-        new_tokens = await self.token_service.rotate_tokens(
-            user_id,
-            old_access_token=access_token,
-            old_refresh_token=refresh_token
-        )
-
-        return new_tokens
+            new_tokens = await self.token_service.rotate_tokens(
+                user_id,
+                old_access_token=access_token,
+                old_refresh_token=refresh_token
+            )
+            return new_tokens
+        except HTTPException as e:
+            logger.error(e)
+            raise HTTPException(status_code=401, detail="Invalid token")
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

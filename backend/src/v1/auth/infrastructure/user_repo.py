@@ -50,7 +50,8 @@ class PGUserRepo(IUserRepo):
         )
         logger.debug('Looking for all users')
         result = await self.session.execute(stmt)
-        return result.mappings().all()
+        return result.mappings().all() # type: ignore
+
 
     async def create_user(self, user: UserCreateDTO) -> UserResponseDTO:
         """Создает пользователя из UserCreate DTO и возвращает UserModel"""
@@ -70,7 +71,7 @@ class PGUserRepo(IUserRepo):
 
         result = UserResponseDTO(
             id=str(user_orm.id),
-            email=user_orm.email,
+            email=user_orm.email,  # type: ignore
             username=user_orm.username,
         )
         await self.session.commit()
@@ -83,7 +84,7 @@ class PGUserRepo(IUserRepo):
         return result.unique().scalar_one_or_none()
 
     async def update_user_by_id(self, user_id: str) -> User:
-        pass
+        return User()
 
     async def delete_user_by_id(self, user_id: str) -> None:
-        pass
+        return

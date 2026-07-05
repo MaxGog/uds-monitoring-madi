@@ -8,7 +8,7 @@ import time
 from typing import Annotated, List
 
 from dishka import FromDishka
-from fastapi import APIRouter, Depends, Form, HTTPException, Header, Query, Request, status
+from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Header, Query, Request, Response, status
 from fastapi.templating import Jinja2Templates
 
 from dishka.integrations.fastapi import FromDishka, inject
@@ -20,6 +20,7 @@ from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.core.utils.jwt_service.jwt_service import TokenData
 from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider, IUserUsecases
 from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateDTO, UserResponseDTO, UsersListResponse
+from backend.config.config import settings
 
 router = APIRouter()
 user_router = APIRouter()
@@ -48,20 +49,25 @@ async def get_current_user_payload(
     provider_service: FromDishka[ITokenProvider],
     auth_service: FromDishka[ITokenAuth],
     auth_header: Annotated[HTTPAuthorizationCredentials, Depends(access_token_scheme)],
-) -> dict:
+):
     try:
         # validate_token выбросит HTTPException(401), если токен отозван
-        auth_header = auth_header.credentials
-        payload = provider_service.extract_payload(auth_header)
-        await auth_service.is_token_valid(auth_header)
+        token = auth_header.credentials
+        payload = provider_service.extract_payload(token)
+        await auth_service.is_token_valid(token)
 
         return payload
-    except HTTPException:
-        raise
-    except Exception as e:
+    except HTTPException as e:
+        logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
+        )
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 # Алиас для удобства
@@ -138,12 +144,21 @@ async def login(
 @inject
 async def exchange_code_for_token(
     uc: FromDishka[IAuthUsecases],
+    response: Response,
     code: str = Form(...),
     code_verifier: str = Form(...),
     #grant_type: str = Form("authorization_code"),
 ):
     tokens = await uc.exchange_code_for_tokens(code, code_verifier)
-    return tokens
+    response.set_cookie(
+        key = settings.server.cookie_name,
+        value = tokens.refresh_token,
+        httponly = True,
+        samesite = 'lax',
+        max_age = settings.auth_jwt.refresh_token_expire_days * 24 * 60 * 60,
+        secure = settings.server.ssl
+    )
+    return { "access_token": tokens.access_token }
 
 
 # Эндпоинт обновления токена
@@ -151,15 +166,24 @@ async def exchange_code_for_token(
 @inject
 async def refresh_tokens(
     uc: FromDishka[IAuthUsecases],
+    response: Response,
     access_token: Annotated[HTTPAuthorizationCredentials, Depends(access_token_scheme)],
-    refresh_token: str = Header(..., alias="X-Refresh-Token"),
+    #refresh_token: str = Header(..., alias="X-Refresh-Token"),
+    refresh_token: str = Cookie(None),
 ):
-    if not access_token or not refresh_token:
+    logger.info(f'Trying to refresh token')
+    if not refresh_token or not access_token:
         raise HTTPException(status_code=401, detail="Missing tokens")
-
-    new_tokens = await uc.rotate_tokens(access_token = access_token.credentials, refresh_token = refresh_token)
-
-    return new_tokens
+    new_tokens = await uc.rotate_tokens(refresh_token = refresh_token, access_token = access_token.credentials)
+    response.set_cookie(
+        key = settings.server.cookie_name,
+        value = new_tokens.refresh_token,
+        httponly = True,
+        samesite = 'lax',
+        max_age = settings.auth_jwt.refresh_token_expire_days * 24 * 60 * 60,
+        secure = settings.server.ssl
+    )
+    return { "access_token": new_tokens.access_token }
 
 # Эндпоинт регистрации юзера
 @router.post("/register")
@@ -212,7 +236,7 @@ async def get_test_token(
 async def create_user(
     current_user: CurrentUserPayload,
     payload: BaseRequest[UserCreateDTO],
-    uc: FromDishka[IUserUsecases]
+    uc: FromDishka[IUserUsecases],
 ):
     user_id = current_user.get('sub')
     data = payload.data

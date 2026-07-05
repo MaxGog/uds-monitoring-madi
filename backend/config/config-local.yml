@@ -1,3 +1,11 @@
+server:
+  Host: localhost
+  Port: 8000
+  Mode: Development
+  Cookie-name: refresh_token #refresh
+  SSL: false
+  CSRF: true
+
 logger:
   Development: true
   DisableCaller: false

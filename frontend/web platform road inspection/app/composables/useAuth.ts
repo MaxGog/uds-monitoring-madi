@@ -8,8 +8,9 @@ interface TokenResponse {
 }
 
 export function useAuth() {
-  const accessToken = useCookie<string | null>('access_token', { default: () => null })
-  const refreshToken = useCookie<string | null>('refresh_token', { default: () => null })
+
+  const accessToken = useState<string | null>('access_token', () => null)
+
   const user = useState('auth_user', () => null)
   
   const isLoading = ref(false)
@@ -74,11 +75,8 @@ export function useAuth() {
         body: formData.toString()
       })
       console.log(response)
-
       accessToken.value = response.access_token
-      refreshToken.value = response.refresh_token
-      user.value = response.user
-
+      //user.value = response.user
       sessionStorage.removeItem('pkce_code_verifier')
       
       await navigateTo('/')

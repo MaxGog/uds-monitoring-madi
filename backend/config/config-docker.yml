@@ -1,9 +1,18 @@
+server:
+  Host: localhost
+  Port: 8000
+  Mode: Development
+  Cookie-name: refresh_token #refresh
+  SSL: true
+  CSRF: true
+
+
 logger:
   Development: true
   DisableCaller: false
   DisableStacktrace: false
   Encoding: "console"
-  Level: "info"
+  Level: "debug"
   # aioredis_logging: false
   # uvicorn_logging: true
   # sqlalchemy_logging: false

@@ -1,9 +1,14 @@
+const BACKEND_URL = "http://localhost:8000";
+let refreshPromise: Promise<string | null> | null = null;
+
 export const apiFetch = $fetch.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: BACKEND_URL,
+  credentials: "include",
+
   async onRequest({ options }) {
     const headers = new Headers(options.headers);
 
-    const accessToken = useCookie("access_token").value;
+    const accessToken = useState("access_token").value;
     if (accessToken) {
       headers.set("Authorization", `Bearer ${accessToken}`);
     }
@@ -17,40 +22,40 @@ export const apiFetch = $fetch.create({
     options.headers = headers;
   },
   async onResponseError({ request, response, options }) {
-    console.log('Поймали ошибку:', response.status);
-    if (response.status === 401 && !request.toString().includes('/auth/refresh')) {
-      console.log('Это 401, пробуем обновить...');
-      const accessToken = useCookie("access_token");
-      const refreshToken = useCookie("refresh_token");
+    console.log("Поймали ошибку:", response.status);
+    const accessToken = useState("access_token");
 
-      if (refreshToken.value) {
-        try {
-          const newTokens = await $fetch<{ access: string }>(
-            "http://127.0.0.1:8000/auth/refresh",
-            {
-              method: "POST",
-              body: {
-                access_token: accessToken.value,
-                refresh_token: refreshToken.value 
-              },
-            },
-          );
+    if (response.status === 401 && !request.toString().includes("/auth/refresh")) {
+      console.log("Это 401, пробуем обновить...");
+      if (!refreshPromise) {
+        refreshPromise = (async () => {
+      try {
+        const newTokens = await $fetch<{ access_token: string }>(`${BACKEND_URL}/auth/refresh`, {
+          method: "POST",
+          credentials: 'include',
+          headers: {
+            "Authorization": `Bearer ${accessToken.value}`
+          },
+        });
 
-          accessToken.value = newTokens.access;
-          // Повторяем исходный запрос
-          options.headers = new Headers(options.headers);
-          options.headers.set("Authorization", `Bearer ${newTokens.access}`);
-          return $fetch(request);
-        } catch (refreshError) {
-          // Если refresh токен тоже протух — логаут
-          accessToken.value = null;
-          refreshToken.value = null;
-          navigateTo("/login");
-        }
-      } else {
-        // Нет токена — редирект на логин
-        navigateTo("/login");
+        accessToken.value = newTokens.access_token;
+        // Повторяем исходный запрос
+        options.headers = new Headers(options.headers);
+        options.headers.set("Authorization", `Bearer ${newTokens.access_token}`);
+        return $fetch(request, options);
+      } catch (refreshError) {
+        console.log('Refresh токен протух или отсутствует, выкидываем на логин');
+        const accessToken = useState("access_token");
+        accessToken.value = null;
+        return navigateTo("/login");
+      } finally {
+        refreshPromise = null;
       }
+    })()
+  }
+    } else {
+      // Нет токена — редирект на логин
+      navigateTo("/login");
     }
   },
 });

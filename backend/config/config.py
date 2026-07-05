@@ -94,8 +94,16 @@ class AuthJWT(BaseModel):
     private_key_path: Path = BASE_DIR / "certs" / "ec256-private.pem"
     public_key_path: Path = BASE_DIR / "certs" / "ec256-public.pem"
     algorithm: str = "ES256"
-    access_token_expire_minutes: int = 15
+    access_token_expire_minutes: int = 1
     refresh_token_expire_days: int = 14
+
+class ApiServer(BaseModel):
+    host: str = Field(alias='Host', default='localhost')
+    port: int = Field(alias='Port', default=8000)
+    mode: str = Field(alias='Mode', default='development')
+    ssl: bool = Field(alias='SSL', default=True)
+    csrf: bool = Field(alias='CSRF', default=True)
+    cookie_name: str = Field(alias='Cookie-name', default='refresh_token')
 
 class Settings(BaseSettings):
     db: DbSettings = Field(alias="postgres")
@@ -103,6 +111,7 @@ class Settings(BaseSettings):
     redis: RedisSettings = Field(alias="redis")
     minio: MinIOSettings = Field(alias="aws")
     logger: LoggerSettings = Field(alias="logger", default_factory=LoggerSettings)
+    server: ApiServer = Field(alias="server")
     
     @classmethod
     def settings_customise_sources(

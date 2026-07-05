@@ -6,22 +6,12 @@ import logging
 from fastapi import HTTPException, Request, Response
 import jwt
 
-from backend.src.v1.auth.domain.interfaces import ITokenAuth, ITokenProvider, ITokenStorage
+from backend.src.v1.auth.domain.interfaces import ITokenAuth, ITokenProvider, ITokenStorage, TokenData, TokenType
 from backend.config.config import settings
 
 logger = logging.getLogger("jwt_service")
 
 TOKEN_TYPE_FIELD = "type"
-
-class TokenType(str, Enum):
-    ACCESS = "access"
-    REFRESH = "refresh"
-
-@dataclass
-class TokenData():
-    access_token: str
-    refresh_token: str | None = None
-    token_type: str = "Bearer"
 
 
 class TokenProvider(ITokenProvider):
@@ -101,14 +91,14 @@ class TokenProvider(ITokenProvider):
         один из которых не пройдёт проверку на валидность, а другой пройдёт (access и refresh токен соответственно).
         """
         try:
-            logger.debug(f'Extracting payload from token')
+            logger.debug(f'Extracting payload from token: {token}')
             return self._decode_jwt(token, verify_exp=verify_exp)
         except jwt.PyJWTError as e:
             logger.error(f'[PyJWTError] error extracting data: {e}')
             raise HTTPException(status_code=401, detail="Invalid Token")
         except jwt.InvalidTokenError as e:
             logger.error(f'[InvalidTokenError] error extracting data: {e}')
-            return HTTPException(status_code=401, detail="Invalid Token")
+            raise HTTPException(status_code=401, detail="Invalid Token")
 
     def create_access_token(self, data: dict) -> str:
         logger.debug(f'Creating access token with following data: {data}')
@@ -155,8 +145,6 @@ class TokenAuth(ITokenAuth):
         logger.debug(f'Following token pair created:\n{access_token},\n {refresh_token}')
         access_payload = self.token_provider.extract_payload(access_token)
         refresh_payload = self.token_provider.extract_payload(refresh_token)
-        logger.debug(f'access payload:\n{access_payload}')
-        logger.debug(f'refresh payload:\n{refresh_payload}')
         expire_seconds = int(refresh_payload["exp"] - refresh_payload["iat"])
 
         await self.token_storage.add_session(
@@ -175,14 +163,19 @@ class TokenAuth(ITokenAuth):
     async def set_token(self, token: str, token_type: TokenType):
         pass
     
-    async def rotate_tokens(self, user_id: int, old_access_token: str, old_refresh_token: str) -> TokenData:
-        old_access_payload = self.token_provider.extract_payload(old_access_token, verify_exp = False)
+    async def rotate_tokens(self, user_id: int, old_refresh_token: str, old_access_token: str | None = None) -> TokenData:
+        old_access_payload = None
+        a_jti = None
+
+        if old_access_token:
+            old_access_payload = self.token_provider.extract_payload(old_access_token, verify_exp = False)
+            a_jti = old_access_payload.get('jti')
         old_refresh_payload = self.token_provider.extract_payload(old_refresh_token)
 
         if not old_access_payload or not old_refresh_payload:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        old_storage_value = f"{old_access_payload['jti']}:{old_refresh_payload['jti']}"
+        old_storage_value = f"{a_jti}:{old_refresh_payload['jti']}"
 
         new_access_token = self.token_provider.create_access_token(data={"sub": str(user_id) })
         new_refresh_token = self.token_provider.create_refresh_token(data={"sub": str(user_id) })
@@ -231,14 +224,20 @@ class TokenAuth(ITokenAuth):
             raise HTTPException(status_code=401, detail="Session revoked or expired")
         return True
 
-    async def is_session_valid(self, access_token: str, refresh_token: str) -> bool:
-        payload = self.token_provider.extract_payload(access_token, verify_exp = False)
+    async def is_session_valid(self, refresh_token: str, access_token: str | None = None) -> bool:
+        a_jti = None
+        if access_token:
+            a_payload = self.token_provider.extract_payload(access_token, verify_exp = False)
+            a_jti = a_payload.get("jti")
+        r_payload = self.token_provider.extract_payload(refresh_token)
+        r_jti = r_payload.get("jti")
 
-        user_id = str(payload.get("sub"))
-        a_jti = payload.get("jti")
-        r_jti = self.token_provider.extract_payload(refresh_token).get("jti")
+        user_id = str(r_payload.get("sub"))
         # Проверка Stateful (есть ли токен в белом списке Redis)
-        is_valid = await self.token_storage.is_session_valid(user_id, a_jti, r_jti)
+        if r_jti:
+            is_valid = await self.token_storage.is_session_valid(user_id = user_id, r_jti = r_jti, a_jti = a_jti)
+        else:
+            is_valid = await self.token_storage.is_session_valid(user_id = user_id, r_jti = r_jti)
         if not is_valid:
             raise HTTPException(status_code=401, detail="Session revoked or expired")
             
