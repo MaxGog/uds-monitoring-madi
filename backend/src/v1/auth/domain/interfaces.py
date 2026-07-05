@@ -56,7 +56,7 @@ class IUserRepo(Protocol):
 
 class IUserUsecases(Protocol):
     @abstractmethod
-    async def get_me(self, user_id) -> UserResponseDTO:
+    async def get_me(self, user_id: str) -> UserResponseDTO:
         pass
 
     @abstractmethod
@@ -93,7 +93,7 @@ class ITokenStorage(Protocol):
         pass
 
     @abstractmethod
-    async def add_session(self, user_id: int, access_jti: str, refresh_jti: str, expire_seconds: int):
+    async def add_session(self, user_id: str, access_jti: str, refresh_jti: str, expire_seconds: int):
         pass
 
     @abstractmethod
@@ -101,21 +101,21 @@ class ITokenStorage(Protocol):
         pass
 
     @abstractmethod
-    async def rotate_session(self, user_id: int, old_value: str, new_value: str, expire_seconds: int):
+    async def rotate_session(self, user_id: str, old_value: str, new_value: str, expire_seconds: int):
         pass
 
     @abstractmethod
-    async def remove_session(self, user_id: int, a_jti: str, r_jti: str):
+    async def remove_session(self, user_id: str, a_jti: str, r_jti: str):
         pass
 
     @abstractmethod
-    async def remove_all_sessions(self, user_id: int):
+    async def remove_all_sessions(self, user_id: str):
         pass
     ...
 
 class ITokenAuth(Protocol):
     @abstractmethod
-    async def set_tokens(self, user_id: int | None = None) -> TokenData:
+    async def set_tokens(self, user_id: str | None = None) -> TokenData:
         pass
 
     @abstractmethod
@@ -123,7 +123,7 @@ class ITokenAuth(Protocol):
         pass
 
     @abstractmethod
-    async def rotate_tokens(self, user_id: int, old_refresh_token: str, old_access_token: str | None = None) -> TokenData:
+    async def rotate_tokens(self, user_id: str, old_refresh_token: str, old_access_token: str | None = None) -> TokenData:
         pass
 
     @abstractmethod
@@ -131,7 +131,7 @@ class ITokenAuth(Protocol):
         pass
 
     @abstractmethod
-    async def revoke_all_sessions(self, user_id: int) -> None:
+    async def revoke_all_sessions(self, user_id: str) -> None:
         pass
 
     @abstractmethod

@@ -117,13 +117,13 @@ async def login(
     csrf_protect: CsrfProtect = Depends()
 ):
     form_data = await request.form()
-    email = form_data.get("email")
-    password = form_data.get("password")
+    email = str(form_data.get("email"))
+    password = str(form_data.get("password"))
     redirect_uri = form_data.get("redirect_uri")
-    code_challenge = form_data.get("code_challenge")
+    code_challenge = str(form_data.get("code_challenge"))
     await csrf_protect.validate_csrf(request)
 
-    result = await uc.login(email=email, password = password, code_challenge=code_challenge)
+    result = await uc.login(email = email, password = password, code_challenge = code_challenge)
 
     if result == None:
         response = JSONResponse(
@@ -224,7 +224,7 @@ async def get_test_token(
 ):
     if role == 'admin':
         result = await auth_provider.set_tokens(user_id = '019f17ea-a900-7fe9-b66f-43d82725afca') # беру напрямую из бд
-    else:
+    elif role == 'viewer':
         result = await auth_provider.set_tokens(user_id = '019f17eb-219a-7f4d-a5ad-124044d79754')
     return result
 
@@ -238,7 +238,7 @@ async def create_user(
     payload: BaseRequest[UserCreateDTO],
     uc: FromDishka[IUserUsecases],
 ):
-    user_id = current_user.get('sub')
+    user_id = str(current_user.get('sub'))
     data = payload.data
     try:
         result = await uc.create_user(creator_id = user_id, data = data)
@@ -274,7 +274,7 @@ async def get_users(
     current_user: CurrentUserPayload,
     uc: FromDishka[IUserUsecases]
 ):
-    user_id = current_user.get('sub')
+    user_id = str(current_user.get('sub'))
     try:
         result = await uc.get_users(user_id = user_id)
         return { "data": result }
