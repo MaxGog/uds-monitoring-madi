@@ -1,16 +1,26 @@
 <template>
   <div class="create-act-page">
-    <div class="create-header">
-      <NuxtLink to="/acts" class="back-link">← Назад к списку актов</NuxtLink>
-      <h2 class="page-title">Первичный ввод объёмов / Создание Акта</h2>
-      <p class="page-subtitle">Двухэтапная валидация данных ИС (Интеграция со скриптом Code.gs)</p>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <h2 class="page-title">Первичный ввод объёмов / Создание Акта</h2>
+        <span class="page-subtitle">Двухэтапная валидация данных ИС (Интеграция со скриптом Code.gs)</span>
+      </div>
+      <div class="toolbar-actions">
+        <NuxtLink to="/acts" class="fluent-button button-secondary">
+          Отмена
+        </NuxtLink>
+        <button class="fluent-button button-primary" @click="handleSubmit">
+          Сформировать акт
+        </button>
+      </div>
     </div>
 
-    <form @submit.prevent="handleSubmit" class="fluent-form-container">
+    <form @submit.prevent="handleSubmit" class="form-layout">
+      
       <div class="form-section">
-        <h3 class="section-title">1. Основные реквизиты объекта и контракта</h3>
+        <h3 class="section-title">Основные реквизиты объекта и контракта</h3>
         <div class="form-grid">
-          <div class="fluent-field">
+          <div class="form-field full-width">
             <label>Наименование объекта (ОДХ)</label>
             <input 
               v-model="form.objectName" 
@@ -21,7 +31,7 @@
             />
           </div>
 
-          <div class="fluent-field">
+          <div class="form-field">
             <label>Государственный контракт / Основание</label>
             <input 
               v-model="form.contractNumber" 
@@ -32,7 +42,7 @@
             />
           </div>
 
-          <div class="fluent-field">
+          <div class="form-field">
             <label>Территориальное управление (Округ)</label>
             <select v-model="form.region" required class="fluent-select">
               <option value="" disabled>Выберите округ</option>
@@ -40,7 +50,7 @@
             </select>
           </div>
 
-          <div class="fluent-field">
+          <div class="form-field">
             <label>Генеральный подрядчик</label>
             <input 
               v-model="form.contractor" 
@@ -51,7 +61,7 @@
             />
           </div>
 
-          <div class="fluent-field">
+          <div class="form-field">
             <label>Тип документационного контроля</label>
             <select v-model="form.type" class="fluent-select">
               <option value="Приёмка работ">Приёмка работ</option>
@@ -60,7 +70,7 @@
             </select>
           </div>
 
-          <div class="fluent-field">
+          <div class="form-field full-width">
             <label>Общая плановая сумма контракта (₽)</label>
             <input 
               v-model="form.planAmount" 
@@ -73,7 +83,7 @@
       </div>
 
       <div class="form-section">
-        <h3 class="section-title">2. Контролируемые технологические объёмы (Диапазон C:M)</h3>
+        <h3 class="section-title">Контролируемые технологические объёмы (Диапазон C:M)</h3>
         <p class="section-desc">Строки со значениями 0 или пусто согласно логике бэкенда будут исключены из печатной формы Google Docs.</p>
         
         <div class="volumes-table-wrapper">
@@ -81,8 +91,8 @@
             <thead>
               <tr>
                 <th>Наименование технологической операции / Контрольной позиции</th>
-                <th width="150">План</th>
-                <th width="150">Факт</th>
+                <th width="140">План</th>
+                <th width="140">Факт</th>
                 <th width="100">Ед. изм.</th>
               </tr>
             </thead>
@@ -103,18 +113,11 @@
       </div>
 
       <div class="form-section">
-        <h3 class="section-title">3. Дополнительные сведения</h3>
-        <div class="fluent-field full-width">
+        <h3 class="section-title">Дополнительные сведения</h3>
+        <div class="form-field full-width">
           <label>Примечания инспектора / Журнал разногласий</label>
           <textarea v-model="form.notes" rows="3" placeholder="Укажите замечания или комментарии к объемам..." class="fluent-textarea"></textarea>
         </div>
-      </div>
-
-      <div class="form-actions">
-        <NuxtLink to="/acts" class="fluent-button button-secondary">Отмена</NuxtLink>
-        <button type="submit" class="fluent-button button-primary">
-          ✨ Сформировать акт (Двухэтапная запись)
-        </button>
       </div>
     </form>
   </div>
@@ -139,7 +142,7 @@ const form = reactive({
   volumes: [
     { name: '1. Фрезерование асфальтобетонного покрытия', plan: 0, fact: 0, unit: 'м³' },
     { name: '2. Укладка нижнего слоя покрытия из горячих смесей', plan: 0, fact: 0, unit: 'т' },
-    { name: '3. Укладка верхнего слоя (ЩМА-16) на ПБВ', plan: 0, fact: 0, unit: 'т' },
+    { name: '3. Укладка upper слоя (ЩМА-16) на ПБВ', plan: 0, fact: 0, unit: 'т' },
     { name: '4. Демонтаж и установка бортового камня', plan: 0, fact: 0, unit: 'п.м.' },
     { name: '5. Ремонт и регулировка высотного положения люков колодцев', plan: 0, fact: 0, unit: 'шт' },
     { name: '6. Устройство подстилающих слоев из песка', plan: 0, fact: 0, unit: 'м³' },
@@ -179,7 +182,6 @@ const handleSubmit = () => {
   }
 
   acts.value.unshift(newAct)
-
   router.push('/acts')
 }
 </script>
@@ -189,87 +191,196 @@ const handleSubmit = () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 900px;
-  margin: 0 auto;
-  padding-bottom: 40px;
+  padding-bottom: 4px;
 }
-.create-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.back-link {
-  font-size: 13px;
-  color: #0078d4;
-  text-decoration: none;
-  font-weight: 500;
-  margin-bottom: 6px;
-}
-.back-link:hover { text-decoration: underline; }
-.page-title { margin: 0; font-size: 22px; font-weight: 600; color: #242424; }
-.page-subtitle { margin: 0; font-size: 13px; color: #616161; }
 
-.fluent-form-container {
+.toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-.form-section {
+  justify-content: space-between;
+  align-items: center;
   background: #ffffff;
+  padding: 16px 24px;
+  border-radius: 8px;
   border: 1px solid #e1e3e8;
-  border-radius: 4px;
-  padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-.section-title { margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #242424; border-bottom: 1px solid #f3f2f1; padding-bottom: 8px; }
-.section-desc { font-size: 12px; color: #797979; margin: -10px 0 16px 0; }
+
+.toolbar-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fluent-gray-100);
+}
+
+.page-subtitle {
+  font-size: 12px;
+  color: #616161;
+  margin-top: 4px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.fluent-button {
+  padding: 6px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s, border-color 0.1s;
+}
+
+.button-secondary {
+  background: #ffffff;
+  border: 1px solid #d2d0ce;
+  color: #323130;
+}
+
+.button-secondary:hover {
+  background: #f3f2f1;
+}
+
+.button-primary {
+  background: #0078d4;
+  border: 1px solid #0078d4;
+  color: #ffffff;
+}
+
+.button-primary:hover {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+
+.form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-section {
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #e1e3e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  margin: 0 0 20px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fluent-gray-100);
+  border-bottom: 1px solid #f3f2f1;
+  padding-bottom: 8px;
+}
+
+.section-desc {
+  font-size: 12px;
+  color: #616161;
+  margin: -12px 0 16px 0;
+}
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
 }
-.fluent-field {
+
+.form-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.fluent-field.full-width { grid-column: span 2; }
-.fluent-field label { font-size: 12px; font-weight: 600; color: #616161; }
 
-.fluent-input, .fluent-select, .fluent-textarea {
+.form-field.full-width {
+  grid-column: span 2;
+}
+
+.form-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #616161;
+}
+
+.fluent-input,
+.fluent-select,
+.fluent-textarea {
   border: 1px solid #d6d9dc;
   border-radius: 4px;
   padding: 8px 12px;
   font-size: 13px;
   font-family: inherit;
   background: #ffffff;
+  color: var(--fluent-gray-100);
 }
-.fluent-input:focus, .fluent-select:focus, .fluent-textarea:focus {
+
+.fluent-input:focus,
+.fluent-select:focus,
+.fluent-textarea:focus {
   border-color: #0078d4;
   outline: none;
 }
 
-.volumes-table-wrapper { border: 1px solid #edebe9; border-radius: 4px; overflow: hidden; }
-.volumes-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-.volumes-table th { background: #f3f2f1; padding: 10px 12px; font-weight: 600; color: #323130; border-bottom: 1px solid #edebe9; }
-.volumes-table td { padding: 8px 12px; border-bottom: 1px solid #f3f2f1; vertical-align: middle; }
-.vol-name { color: #242424; font-weight: 500; }
-.vol-unit { color: #616161; font-size: 12px; text-align: center; }
+.volumes-table-wrapper {
+  border: 1px solid #e1e3e8;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.volumes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.volumes-table th {
+  background: #f3f4f6;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: #242424;
+  border-bottom: 1px solid #e1e3e8;
+}
+
+.volumes-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.vol-name {
+  color: var(--fluent-gray-100);
+  font-weight: 500;
+}
+
+.vol-unit {
+  color: #616161;
+  font-size: 12px;
+}
 
 .fluent-table-input {
   width: 100%;
   border: 1px solid #d6d9dc;
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 6px 10px;
   font-size: 13px;
+  box-sizing: border-box;
 }
-.fluent-table-input:focus { border-color: #0078d4; outline: none; }
 
-.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
-.fluent-button { font-size: 13px; padding: 6px 20px; border-radius: 4px; cursor: pointer; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; }
-.button-secondary { background: #ffffff; border: 1px solid #d2d0ce; color: #323130; }
-.button-secondary:hover { background: #f3f2f1; }
-.button-primary { background: #0078d4; border: 1px solid #0078d4; color: #ffffff; }
-.button-primary:hover { background: #106ebe; }
+.fluent-table-input:focus {
+  border-color: #0078d4;
+  outline: none;
+}
 </style>
