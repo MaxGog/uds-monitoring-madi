@@ -3,130 +3,125 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h2 class="page-title">Мониторинг объектов УДС</h2>
-        <span class="objects-count">Всего: {{ filteredObjects.length }}</span>
+        <span class="objects-count">
+          Найдено ОДХ: <strong>{{ filteredObjects.length }}</strong> из {{ objects.length }}
+        </span>
       </div>
-      
+
       <div class="toolbar-actions">
         <div class="fluent-pivot">
-          <button 
-            v-for="tab in tabs" 
+          <button
+            v-for="tab in statusTabs"
             :key="tab.value"
             class="pivot-item"
-            :class="{ active: currentTab === tab.value }"
-            @click="currentTab = tab.value"
+            :class="{ active: currentStatusFilter === tab.value }"
+            @click="currentStatusFilter = tab.value"
           >
             {{ tab.label }}
           </button>
         </div>
+
+        <NuxtLink to="/monitoring/create" class="fluent-btn-primary">
+          <span class="btn-icon">➕</span> Регистрация ОДХ
+        </NuxtLink>
       </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input
+          v-model="searchQuery"
+          class="fluent-input"
+          placeholder="Поиск по наименованию, контракту или подрядчику..."
+        />
+      </div>
+
+      <select v-model="regionFilter" class="fluent-select">
+        <option value="all">Все административные округа</option>
+        <option value="ЦАО">ЦАО (Центральный)</option>
+        <option value="САО">САО (Северный)</option>
+        <option value="ЮАО">ЮАО (Южный)</option>
+        <option value="ЗАО">ЗАО (Западный)</option>
+        <option value="ВАО">ВАО (Восточный)</option>
+      </select>
+
+      <select v-model="sourceFilter" class="fluent-select">
+        <option value="all">Все источники данных</option>
+        <option value="АСУ ПРИЗ">АСУ ПРИЗ</option>
+        <option value="ЕАИСТ">ЕАИСТ</option>
+        <option value="Ручной ввод">Локальный ввод</option>
+      </select>
     </div>
 
     <div v-if="filteredObjects.length > 0" class="objects-grid">
       <ObjectCard
         v-for="obj in filteredObjects"
         :key="obj.id"
-        :title="obj.title"
-        :region="obj.region"
-        :status="obj.status"
-        :contractor="obj.contractor"
-        :executor="obj.executor"
-        :status-properties="obj.statusProperties"
+        :obj="obj"
       />
     </div>
 
     <div v-else class="empty-state">
-      <div class="empty-icon">🔍</div>
+      <div class="empty-icon">📂</div>
       <h3>Объекты не найдены</h3>
-      <p>Попробуйте изменить параметры фильтрации.</p>
+      <p>Попробуйте изменить параметры поиска или сбросить фильтры.</p>
+      <button class="fluent-link-btn" @click="resetFilters">Сбросить все фильтры</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useMockData } from '~/composables/useMockData'
 import ObjectCard from '~/components/cards/object_card.vue'
 
-const tabs = [
-  { label: 'Все объекты', value: 'all' },
-  { label: 'В работе', value: 'В работе' },
-  { label: 'Приостановлено', value: 'Приостановлено' },
-  { label: 'Выполнено', value: 'Выполнено' }
+const { objects } = useMockData()
+
+const searchQuery = ref('')
+const currentStatusFilter = ref('all')
+const regionFilter = ref('all')
+const sourceFilter = ref('all')
+
+const statusTabs = [
+  { label: 'Все ОДХ', value: 'all' },
+  { label: 'Активные', value: 'Активный' },
+  { label: 'На проверке', value: 'На проверке' },
+  { label: 'В планировании', value: 'Планирование' },
+  { label: 'Завершенные', value: 'Завершено' }
 ]
 
-const currentTab = ref('all')
-
-const mockObjects = ref([
-  {
-    id: 1,
-    title: 'Капитальный ремонт ул. Тверская (участок от Манежной пл. до Садового кольца)',
-    region: 'ЦАО',
-    status: 'В работе',
-    contractor: 'ГБУ Автомобильные дороги',
-    executor: 'ООО ТехСтрой',
-    statusProperties: {
-      'Текущая фаза': 'Фрезерование покрытия',
-      'Техника на объекте': '12 ед.',
-      'Рабочие': '24 чел.',
-      'Замечания технадзора': 'Нет'
-    }
-  },
-  {
-    id: 2,
-    title: 'Реконструкция путепровода на пересечении Ленинградского шоссе и МЦД-3',
-    region: 'САО',
-    status: 'Приостановлено',
-    contractor: 'АО Мосинжпроект',
-    executor: 'ООО Мостоотряд-4',
-    statusProperties: {
-      'Текущая фаза': 'Монтаж пролетных строений',
-      'Техника на объекте': '2 ед.',
-      'Рабочие': '4 чел.',
-      'Замечания технадзора': 'Требуется согласование "окна" РЖД'
-    }
-  },
-  {
-    id: 3,
-    title: 'Благоустройство территории парка и УДС в районе Нагатинская Пойма',
-    region: 'ЮАО',
-    status: 'В работе',
-    contractor: 'ГБУ Автомобильные дороги ЮАО',
-    executor: 'ООО ДорСтройРегион',
-    statusProperties: {
-      'Текущая фаза': 'Укладка нижнего слоя асфальтобетона',
-      'Техника на объекте': '8 ед.',
-      'Рабочие': '16 чел.',
-      'Замечания технадзора': 'Нет'
-    }
-  },
-  {
-    id: 4,
-    title: 'Ремонт локальных разрушений покрытия дублера Кутузовского проспекта',
-    region: 'ЗАО',
-    status: 'Выполнено',
-    contractor: 'ГБУ Автомобильные дороги',
-    executor: 'Собственные силы',
-    statusProperties: {
-      'Текущая фаза': 'Объект сдан',
-      'Техника на объекте': '0 ед.',
-      'Рабочие': '0 чел.',
-      'Замечания технадзора': 'Нет'
-    }
-  }
-])
-
 const filteredObjects = computed(() => {
-  if (currentTab.value === 'all') {
-    return mockObjects.value
-  }
-  return mockObjects.value.filter(obj => obj.status === currentTab.value)
+  return objects.value.filter(obj => {
+    const text = searchQuery.value.trim().toLowerCase()
+    const matchesText = !text || 
+      obj.title.toLowerCase().includes(text) ||
+      obj.contractor.toLowerCase().includes(text) ||
+      obj.contractNumber.toLowerCase().includes(text)
+
+    const matchesStatus = currentStatusFilter.value === 'all' || obj.status === currentStatusFilter.value
+
+    const matchesRegion = regionFilter.value === 'all' || obj.region === regionFilter.value
+
+    const matchesSource = sourceFilter.value === 'all' || obj.source === sourceFilter.value
+
+    return matchesText && matchesStatus && matchesRegion && matchesSource
+  })
 })
+
+const resetFilters = () => {
+  searchQuery.value = ''
+  currentStatusFilter.value = 'all'
+  regionFilter.value = 'all'
+  sourceFilter.value = 'all'
+}
 </script>
 
 <style scoped>
 .monitoring-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .toolbar {
@@ -136,37 +131,35 @@ const filteredObjects = computed(() => {
   background: #ffffff;
   padding: 16px 24px;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border: 1px solid #e1e3e8;
-}
-
-.toolbar-left {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .page-title {
-  font-size: 18px;
+  margin: 0;
+  font-size: 20px;
   font-weight: 600;
   color: #242424;
-  margin: 0;
 }
 
 .objects-count {
-  font-size: 13px;
+  font-size: 12px;
   color: #616161;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .fluent-pivot {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid #eaeaea;
-  padding-bottom: 4px;
+  gap: 8px;
 }
 
 .pivot-item {
-  background: transparent;
+  background: none;
   border: none;
   padding: 6px 12px;
   font-size: 14px;
@@ -190,47 +183,119 @@ const filteredObjects = computed(() => {
 .pivot-item.active::after {
   content: '';
   position: absolute;
-  bottom: -5px;
-  left: 12px;
-  right: 12px;
+  bottom: -4px;
+  left: 0;
+  right: 0;
   height: 2px;
   background-color: #0078d4;
-  border-radius: 2px;
+}
+
+.fluent-btn-primary {
+  background: #0078d4;
+  border: 1px solid #0078d4;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fluent-btn-primary:hover {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  background: #ffffff;
+  padding: 12px 24px;
+  border: 1px solid #e1e3e8;
+  border-radius: 4px;
+}
+
+.search-box {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 14px;
+  color: #797979;
+}
+
+.search-box .fluent-input {
+  padding-left: 32px;
+  width: 100%;
+}
+
+.fluent-input,
+.fluent-select {
+  border: 1px solid #d6d9dc;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #242424;
+  background: #ffffff;
+  outline: none;
+}
+
+.fluent-input:focus,
+.fluent-select:focus {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.fluent-select {
+  min-width: 220px;
+  cursor: pointer;
 }
 
 .objects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-@media (max-width: 480px) {
-  .objects-grid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
 }
 
 .empty-state {
   text-align: center;
-  padding: 60px;
+  padding: 48px;
   background: #ffffff;
-  border-radius: 8px;
-  border: 1px dashed #c5c9d1;
+  border: 1px dashed #c8c9cc;
+  border-radius: 4px;
   color: #616161;
 }
 
 .empty-icon {
-  font-size: 36px;
-  margin-bottom: 12px;
+  font-size: 32px;
+  margin-bottom: 8px;
 }
 
 .empty-state h3 {
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   color: #242424;
 }
 
 .empty-state p {
-  margin: 0;
+  margin: 0 0 12px 0;
   font-size: 13px;
+}
+
+.fluent-link-btn {
+  background: none;
+  border: none;
+  color: #0078d4;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
 }
 </style>

@@ -81,6 +81,26 @@ export interface MockUser {
     signatureId: string
 }
 
+export interface MockObject {
+    id: number
+    title: string
+    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
+    status: 'Активный' | 'На проверке' | 'Планирование' | 'Завершено'
+    contractor: string
+    executor: string
+    progressSMR: number
+    source: string
+    sourceLabel: string
+    contractNumber: string
+    contractDate: string
+    contractAmount: string
+    spentAmount: string
+    remainingAmount: string
+    hasActs: boolean
+    connectedActsCount: number
+    historyLog: Array<{ date: string; action: string; user: string }>
+}
+
 
 const mockActsList: MockAct[] = [
     {
@@ -134,6 +154,95 @@ const mockActsList: MockAct[] = [
         ]
     }
 ]
+
+const mockObjectsList = ref<MockObject[]>([
+    {
+        id: 1,
+        title: 'Капитальный ремонт ул. Тверская (от Манежной пл. до Настасьинского пер.)',
+        region: 'ЦАО',
+        status: 'Активный',
+        contractor: 'ООО ТехСтрой',
+        executor: 'Объединение административно-технических инспекций (ОАТИ)',
+        progressSMR: 72,
+        source: 'АСУ ПРИЗ',
+        sourceLabel: 'Интеграция с АСУ ПРИЗ включена',
+        contractNumber: 'К-77-0021/2026',
+        contractDate: '12.01.2026',
+        contractAmount: '154 200 000 ₽',
+        spentAmount: '111 024 000 ₽',
+        remainingAmount: '43 176 000 ₽',
+        hasActs: true,
+        connectedActsCount: 3,
+        historyLog: [
+            { date: '04.07.2026', action: 'Загружен новый Акт приемки №1', user: 'Петров С. В.' },
+            { date: '25.06.2026', action: 'Актуализирован физический объем (Фрезерование)', user: 'Иванов И. И.' },
+            { date: '10.06.2026', action: 'Объект переведен в статус "Активный"', user: 'Сидоров А. П.' }
+        ]
+    },
+    {
+        id: 2,
+        title: 'Реконструкция путепровода Ленинградское шоссе на пересечении с МЦД-3',
+        region: 'САО',
+        status: 'На проверке',
+        contractor: 'АО МосИнжПроект',
+        executor: 'Мосгосстройнадзор',
+        progressSMR: 45,
+        source: 'ЕАИСТ',
+        sourceLabel: 'Синхронизировано с ЕАИСТ',
+        contractNumber: 'ГК-2026-991',
+        contractDate: '05.02.2026',
+        contractAmount: '420 500 000 ₽',
+        spentAmount: '189 225 000 ₽',
+        remainingAmount: '231 275 000 ₽',
+        hasActs: true,
+        connectedActsCount: 1,
+        historyLog: [
+            { date: '29.06.2026', action: 'Инициирован технический контроль геодезистов', user: 'Петров С. В.' }
+        ]
+    },
+    {
+        id: 3,
+        title: 'Благоустройство территории и ОДХ в районе Нагатинская Пойма',
+        region: 'ЮАО',
+        status: 'Планирование',
+        contractor: 'ООО СпецДорСервис',
+        executor: 'Департамент капитального ремонта',
+        progressSMR: 5,
+        source: 'Ручной ввод',
+        sourceLabel: 'Локальный объект (без внешних систем)',
+        contractNumber: 'ВН-9922-АК',
+        contractDate: '18.05.2026',
+        contractAmount: '89 000 000 ₽',
+        spentAmount: '4 450 000 ₽',
+        remainingAmount: '84 550 000 ₽',
+        hasActs: false,
+        connectedActsCount: 0,
+        historyLog: [
+            { date: '30.06.2026', action: 'Создана карточка планирования объекта', user: 'Иванов И. И.' }
+        ]
+    },
+    {
+        id: 4,
+        title: 'Строительство дублёра Кутузовского проспекта (участок от МКАД до Минского шоссе)',
+        region: 'ЗАО',
+        status: 'Завершено',
+        contractor: 'АО Дороги и Мосты',
+        executor: 'Ростехнадзор',
+        progressSMR: 100,
+        source: 'АСУ ПРИЗ',
+        sourceLabel: 'Архивные данные АСУ ПРИЗ',
+        contractNumber: 'К-77-0001/2025',
+        contractDate: '10.03.2025',
+        contractAmount: '850 000 000 ₽',
+        spentAmount: '850 000 000 ₽',
+        remainingAmount: '0 ₽',
+        hasActs: true,
+        connectedActsCount: 12,
+        historyLog: [
+            { date: '03.07.2026', action: 'Объект успешно закрыт в системе, все акты подписаны', user: 'Морозов А. А.' }
+        ]
+    }
+])
 
 const mockWorkStatusesList: MockWorkStatus[] = [
     {
@@ -210,7 +319,21 @@ const roadmapItems = ref<MockRoadmapItem[]>(mockRoadmapItemsList)
 const tasks = ref<MockTask[]>(mockTasksList)
 const users = ref<MockUser[]>(mockUsersList)
 
+const objects = mockObjectsList
+
+const addObject = (newObj: Omit<MockObject, 'id' | 'hasActs' | 'connectedActsCount' | 'historyLog'>) => {
+    const id = mockObjectsList.value.length + 1
+    mockObjectsList.value.push({
+        ...newObj,
+        id,
+        hasActs: false,
+        connectedActsCount: 0,
+        historyLog: [{ date: new Date().toLocaleDateString('ru-RU'), action: 'Объект зарегистрирован в системе', user: 'Иванов Иван' }]
+    })
+}
+
 export function useMockData() {
+    
     return {
         acts,
         workStatuses,
@@ -218,6 +341,8 @@ export function useMockData() {
         tasks,
         users,
         types: computed(() => Array.from(new Set(acts.value.map(a => a.type)))),
-        regions: computed(() => Array.from(new Set(acts.value.map(a => a.region))))
+        regions: computed(() => Array.from(new Set(acts.value.map(a => a.region)))),
+        objects,
+        addObject
     }
 }

@@ -199,13 +199,13 @@ const pendingCount = computed(() => acts.value.filter(act => act.status !== 'ÐŸÐ
 
 .filter-bar {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   background: #ffffff;
-  padding: 16px 24px;
-  border-radius: 8px;
+  padding: 12px 24px;
   border: 1px solid #e1e3e8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
 }
+
 
 .search-input {
   flex: 1;
