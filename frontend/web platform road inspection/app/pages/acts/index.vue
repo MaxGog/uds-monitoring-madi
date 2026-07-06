@@ -1,36 +1,22 @@
 <template>
   <div class="acts-page">
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <h2 class="page-title">Работа с актами</h2>
-        <span class="objects-count">
-          Всего: {{ acts.length }} (Подписано: {{ signedCount }}, Ожидает: {{ pendingCount }})
-        </span>
-      </div>
-
-      <div class="toolbar-actions">
-        <div class="fluent-pivot">
-          <button
-            v-for="tab in statusTabs"
-            :key="tab.value"
-            class="pivot-item"
-            :class="{ active: statusFilter === tab.value }"
-            @click="statusFilter = tab.value"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
-
+    <PageToolbar
+      title="Работа с актами"
+      :countText="`Всего: ${acts.length} (Подписано: ${signedCount}, Ожидает: ${pendingCount})`"
+      :tabs="statusTabs"
+      :activeTab="statusFilter"
+      @update:activeTab="value => statusFilter = value"
+    >
+      <template #actions>
         <NuxtLink to="/acts/create" class="fluent-add-button">
           <span class="plus-icon">＋</span> Создать Акт
         </NuxtLink>
-      </div>
-    </div>
+      </template>
+    </PageToolbar>
 
-    <div class="filter-bar">
-      <input
+    <FilterBar>
+      <SearchBar
         v-model="search"
-        class="fluent-input search-input"
         placeholder="Поиск по объекту, номеру или подрядчику..."
       />
       
@@ -40,7 +26,7 @@
           {{ type }}
         </option>
       </select>
-    </div>
+    </FilterBar>
 
     <div v-if="filteredActs.length > 0" class="acts-grid">
       <ActCard
@@ -50,9 +36,11 @@
       />
     </div>
 
-    <div v-else class="empty-state">
-      <p>Записи, удовлетворяющие критериям фильтрации, не найдены.</p>
-    </div>
+    <EmptyState
+      v-else
+      title="Записи не найдены"
+      description="Ничего не подошло под текущие фильтры. Попробуйте изменить запрос или тип акта."
+    />
   </div>
 </template>
 
@@ -60,6 +48,10 @@
 import { ref, computed } from 'vue'
 import { useMockData } from '~/composables/useMockData'
 import ActCard from '~/components/cards/act_card.vue'
+import PageToolbar from '~/components/common/page_toolbar.vue'
+import FilterBar from '~/components/common/filter_bar.vue'
+import EmptyState from '~/components/common/empty_state.vue'
+import SearchBar from '~/components/search_bar.vue'
 
 const { acts, types } = useMockData()
 
@@ -98,78 +90,6 @@ const pendingCount = computed(() => acts.value.filter(act => act.status !== 'П�
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #ffffff;
-  padding: 16px 24px;
-  border-radius: 8px;
-  border: 1px solid #e1e3e8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.toolbar-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #242424;
-}
-
-.objects-count {
-  font-size: 12px;
-  color: #616161;
-}
-
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.fluent-pivot {
-  display: flex;
-  gap: 8px;
-}
-
-.pivot-item {
-  background: none;
-  border: none;
-  padding: 6px 12px;
-  font-size: 14px;
-  color: #616161;
-  cursor: pointer;
-  border-radius: 4px;
-  position: relative;
-  transition: all 0.15s ease;
-}
-
-.pivot-item:hover {
-  background: #f3f3f3;
-  color: #242424;
-}
-
-.pivot-item.active {
-  color: #0078d4;
-  font-weight: 600;
-}
-
-.pivot-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: #0078d4;
 }
 
 .fluent-add-button {

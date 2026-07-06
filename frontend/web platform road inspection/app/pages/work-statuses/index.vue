@@ -1,30 +1,22 @@
 <template>
   <div class="work-statuses-page">
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <div class="title-row">
-          <h2 class="page-title">Статусы работ</h2>
-        </div>
-        <span class="objects-count">
-          Всего объектов: <strong>{{ workStatuses.length }}</strong> (Найдено: {{ filteredWorkStatuses.length }})
-        </span>
-      </div>
-      <div class="toolbar-actions">
+    <PageToolbar
+      title="Статусы работ"
+      :countText="`Всего объектов: ${workStatuses.length} (Найдено: ${filteredWorkStatuses.length})`"
+      :tabs="[]"
+    >
+      <template #actions>
         <NuxtLink to="/work-statuses/create" class="fluent-button button-primary">
           ➕ Инициализировать статус
         </NuxtLink>
-      </div>
-    </div>
+      </template>
+    </PageToolbar>
 
-    <div class="filter-bar">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input
-          v-model="search"
-          class="fluent-input"
-          placeholder="Поиск по объекту или менеджеру..."
-        />
-      </div>
+    <FilterBar>
+      <SearchBar
+        v-model="search"
+        placeholder="Поиск по объекту или менеджеру..."
+      />
 
       <select v-model="stageFilter" class="fluent-select">
         <option value="all">Все этапы</option>
@@ -32,7 +24,7 @@
           {{ stage }}
         </option>
       </select>
-    </div>
+    </FilterBar>
 
     <div v-if="filteredWorkStatuses.length" class="status-grid">
       <WorkStatusCard
@@ -42,12 +34,14 @@
       />
     </div>
 
-    <div v-else class="empty-state">
-      <div class="empty-icon">📂</div>
-      <h3>Записи не найдены</h3>
-      <p>Попробуйте изменить параметры поиска или сбросить фильтры.</p>
-      <button class="fluent-link-btn" @click="resetFilters">Сбросить фильтры</button>
-    </div>
+    <EmptyState
+      v-else
+      icon="📂"
+      title="Записи не найдены"
+      description="Попробуйте изменить параметры поиска или сбросить фильтры."
+      buttonText="Сбросить фильтры"
+      @action="resetFilters"
+    />
   </div>
 </template>
 
@@ -55,6 +49,10 @@
 import { computed, ref } from 'vue'
 import WorkStatusCard from '~/components/cards/work_status_card.vue'
 import { useMockData } from '~/composables/useMockData'
+import PageToolbar from '~/components/common/page_toolbar.vue'
+import FilterBar from '~/components/common/filter_bar.vue'
+import EmptyState from '~/components/common/empty_state.vue'
+import SearchBar from '~/components/search_bar.vue'
 
 const { workStatuses } = useMockData()
 const search = ref('')
@@ -90,24 +88,6 @@ const resetFilters = () => {
   color: #242424;
 }
 
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  background: #ffffff;
-  padding: 16px 24px;
-  border-radius: 8px;
-  border: 1px solid #e1e3e8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.toolbar-actions {
-  display: flex;
-  gap: 12px;
-}
-
 .fluent-button {
   padding: 6px 18px;
   font-size: 13px;
@@ -130,25 +110,6 @@ const resetFilters = () => {
 .button-primary:hover {
   background: #106ebe;
   border-color: #106ebe;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.page-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.objects-count {
-  font-size: 12px;
-  color: #616161;
-  display: block;
-  margin-top: 4px;
 }
 
 .filter-bar {
