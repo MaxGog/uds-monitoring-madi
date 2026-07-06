@@ -1,47 +1,50 @@
 server:
-  Host: localhost
-  Port: 8000
-  Mode: Development
-  Cookie-name: refresh_token #refresh
-  SSL: false
-  CSRF: true
+  host: localhost
+  port: 8000
+  mode: Development
+  cookie-name: refresh_token #refresh
+  ssl: 
+    enabled: true
+    cert_file: "server.crt"
+    key_file: "server.pem"
+  csrf: true
 
 logger:
-  Development: true
-  DisableCaller: false
-  DisableStacktrace: false
-  Encoding: "console" #"json"
-  Level: "info" #"info/debug"
+  development: true
+  disableCaller: false
+  disableStacktrace: false
+  encoding: "console" #"json"
+  level: "info" #"info/debug"
   # aioredis_logging: false
   # uvicorn_logging: true
   # sqlalchemy_logging: false
   # protocol_logging: false
 
 postgres:
-  PostgresqlHost: localhost
-  PostgresqlPort: 5432
-  PostgresqlUser: admin
-  PostgresqlPassword: password
-  PostgresqlDbname: app_db
-  PostgresqlSslmode: false
-  PgDriver: postgresql+asyncpg
-  logging: false
+  pgHost: localhost
+  pgPort: 5432
+  pgUser: admin
+  pgPassword: password
+  pgDbName: app_db
+  pgSsl: false
+  pgDriver: postgresql+asyncpg
+  pgLogging: false
 
 redis:
-  RedisAddr: localhost:6379
-  RedisPassword: "password"
-  RedisDb: 0
-  RedisDefaultdb: 0
-  MinIdleConns: 200
-  PoolSize: 12000
-  PoolTimeout: 240
-  DB: 0
+  redisAddr: localhost:6379
+  redisPassword: "password"
+  redisDb: 0
+  redisDefaultdb: 0
+  minIdleConns: 200
+  poolSize: 12000
+  poolTimeout: 240
+  db: 0
 
 aws:
-  Endpoint: 127.0.0.1:9000
-  MinioAccessKey: minioadmin
-  MinioSecretKey: minioadminpassword
-  UseSSL: false
-  MinioEndpoint: http://127.0.0.1:9000
-  FileBucketName: files
+  endpoint: 127.0.0.1:9000
+  minioAccessKey: minioadmin
+  minioSecretKey: minioadminpassword
+  useSSL: false
+  minioEndpoint: http://127.0.0.1:9000
+  fileBucketName: files
 

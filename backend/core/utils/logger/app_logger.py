@@ -31,18 +31,18 @@ def setup_logger():
     """Настройка легкого логгера на основе переданного yml-конфига."""
     cfg = settings.logger
 
-    log_level = getattr(logging, cfg.LEVEL.upper(), logging.INFO)
+    log_level = cfg.level.upper() #getattr(logging, cfg.LEVEL.upper(), logging.INFO)
 
-    if cfg.DEVELOPMENT:
+    if cfg.development:
         console_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     else:
         console_format = "[%(levelname)s] %(message)s"
         
-    if not cfg.DISABLE_CALLER and cfg.ENCODING == "console":
+    if not cfg.disable_caller and cfg.encoding == "console":
         console_format = "%(asctime)s [%(levelname)s] %(name)s (%(filename)s:%(lineno)d): %(message)s"
 
-    if cfg.ENCODING == "json":
-        formatter = JsonFormatter(disable_caller=cfg.DISABLE_CALLER, disable_stacktrace=cfg.DISABLE_STACKTRACE)
+    if cfg.encoding == "json":
+        formatter = JsonFormatter(disable_caller=cfg.disable_caller, disable_stacktrace=cfg.disable_stacktrace)
     else:
         formatter = logging.Formatter(console_format, datefmt="%Y-%m-%d %H:%M:%S")
 
@@ -53,5 +53,5 @@ def setup_logger():
     root_logger.setLevel(log_level)
     root_logger.handlers = [handler]
 
-    if cfg.DISABLE_STACKTRACE and cfg.ENCODING == "console":
+    if cfg.disable_stacktrace and cfg.encoding == "console":
         logging.raiseExceptions = False

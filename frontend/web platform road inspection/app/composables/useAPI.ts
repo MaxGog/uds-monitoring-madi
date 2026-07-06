@@ -27,7 +27,7 @@ export const apiFetch = $fetch.create({
 
     if (
       response.status === 401 &&
-      !request.toString().includes("/auth/refresh")
+      !request.toString().includes(`${BACKEND_URL}/auth/refresh`)
     ) {
       console.log("Это 401, пробуем обновить...");
       if (!refreshPromise) {

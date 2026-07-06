@@ -8,7 +8,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   if (!accessToken.value) {
     try {
       const { access } = await $fetch<{ access: string }>(
-        "/auth/refresh",
+        `http://localhost:8000/auth/refresh`,
         {
             method: "POST"
         },

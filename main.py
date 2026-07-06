@@ -25,6 +25,7 @@ from backend.src.v1.filesystem.presentation.api import router as fs_router
 from backend.core.db.postgres.postgres_conn import db_engine, check_db_connection
 from backend.core.db.redis.redis_conn import redis_client
 from backend.core.db.aws.minio_conn import check_aws_connection
+from backend.config.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI):
 
     await db_engine.dispose()
 
-logger = logging.getLogger("backend")
+logger = logging.getLogger(__file__)
 
 app = FastAPI(lifespan=lifespan)
 
@@ -75,14 +76,22 @@ container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvide
 setup_dishka(container, app)
 
 if __name__ == "__main__":
+    run_args = {
+        "app": "main:app",
+        "host": settings.server.host,
+        "port": settings.server.port,
+    }
+    if settings.server.ssl.enabled:
+        run_args.update({
+            "ssl_keyfile": settings.server.ssl.key_file,
+            "ssl_certfile": settings.server.ssl.cert_file,
+        })
     logger.info('Start')
     uvicorn.run(
-        "main:app",
         reload=True,
         log_level="debug",
-        host = "0.0.0.0",
-        port = 8000,
         reload_excludes=["*.log", "app.log"],
+        **run_args
         #loop="asyncio"
         #log_config=None
     )
