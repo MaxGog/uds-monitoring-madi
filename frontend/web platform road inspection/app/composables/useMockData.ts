@@ -45,20 +45,6 @@ export interface MockWorkStatus {
     historyLog: Array<{ date: string; action: string; user: string }>
 }
 
-export interface MockRoadmapItem {
-    id: number
-    title: string
-    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
-    startDate: string
-    endDate: string
-    phase: 'Разработка проекта' | 'Подготовка ИД' | 'Проверка согласований' | 'Утверждено'
-    risk: 'Низкий' | 'Средний' | 'Высокий'
-    progressPercentage: number
-    area: number
-    cost: number
-    lastSource: 'Google Sheets' | 'Ручной ввод' | 'Интеграция API'
-}
-
 export interface MockTask {
     id: number
     title: string
@@ -99,6 +85,33 @@ export interface MockObject {
     hasActs: boolean
     connectedActsCount: number
     historyLog: Array<{ date: string; action: string; user: string }>
+}
+
+export interface MockRoadmapItem {
+    id: number
+    title: string
+    objectId: number
+    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
+    startDate: string
+    endDate: string
+    phase: 'Разработка проекта' | 'Подготовка ИД' | 'Проверка согласований' | 'Утверждено'
+    risk: 'Низкий' | 'Средний' | 'Высокий'
+    riskDescription: string
+    manager: string
+    budget: string
+    progressPercentage: number
+    area: number
+    cost: number
+    lastSource: 'Google Sheets' | 'Ручной ввод' | 'Интеграция API'
+    milestones: Array<{
+        id: number
+        name: string           
+        planDate: string
+        factDate: string | null
+        status: 'В графике' | 'Внимание' | 'Критический сдвиг' | 'Выполнено'
+    }>
+    responsibleManager: string
+    hasRiskAlert: boolean
 }
 
 
@@ -263,19 +276,66 @@ const mockWorkStatusesList: MockWorkStatus[] = [
     }
 ]
 
-const mockRoadmapItemsList: MockRoadmapItem[] = [
+export const mockRoadmapItemsList: MockRoadmapItem[] = [
     {
         id: 1,
-        title: 'ДК Ремонт дорожного полотна ул. Тверская',
+        title: 'Капитальный ремонт ул. Тверская (от Манежной пл. до Триумфальной пл.)',
         region: 'ЦАО',
-        startDate: '01.07.2026',
-        endDate: '15.07.2026',
-        phase: 'Проверка согласований',
+        startDate: '10.05.2026',
+        endDate: '25.08.2026',
+        phase: 'Разработка проекта',
+        risk: 'Высокий',
+        riskDescription: 'Обнаружено смещение подземных коммуникаций, не указанных на архивных планах Мосгоргеотреста.',
+        manager: 'Петров С. В.',
+        budget: '142 500 000 ₽',
+        objectId: 0,
+        progressPercentage: 0,
+        area: 0,
+        cost: 0,
+        lastSource: 'Ручной ввод',
+        milestones: [],
+        responsibleManager: '',
+        hasRiskAlert: false
+    },
+    {
+        id: 2,
+        title: 'Реконструкция развязки на пересечении Ленинградского шоссе и ул. Серегина',
+        region: 'САО',
+        startDate: '01.03.2026',
+        endDate: '15.11.2026',
+        phase: 'Подготовка ИД',
         risk: 'Средний',
-        progressPercentage: 65,
-        area: 14500.25,
-        cost: 12500000.0,
-        lastSource: 'Google Sheets'
+        riskDescription: 'Задержка согласования временной схемы организации дорожного движения (ОДД).',
+        manager: 'Иванов И. И.',
+        budget: '289 000 000 ₽',
+        progressPercentage: 20,
+        objectId: 0,
+        area: 0,
+        cost: 0,
+        lastSource: 'Ручной ввод',
+        milestones: [],
+        responsibleManager: '',
+        hasRiskAlert: false
+    },
+    {
+        id: 3,
+        title: 'Устройство велодорожек и благоустройство Нагатинской набережной',
+        region: 'ЮАО',
+        startDate: '01.06.2026',
+        endDate: '01.09.2026',
+        phase: 'Проверка согласований',
+        risk: 'Низкий',
+        riskDescription: 'Идут плановые работы, поставка малых архитектурных форм без задержек.',
+        manager: 'Сидоров К. А.',
+        budget: '64 200 000 ₽',
+        progressPercentage: 60,
+        objectId: 0,
+        area: 0,
+        cost: 0,
+        lastSource: 'Ручной ввод',
+        milestones: [],
+        responsibleManager: '',
+        hasRiskAlert: false
     }
 ]
 
@@ -330,6 +390,25 @@ const addObject = (newObj: Omit<MockObject, 'id' | 'hasActs' | 'connectedActsCou
         connectedActsCount: 0,
         historyLog: [{ date: new Date().toLocaleDateString('ru-RU'), action: 'Объект зарегистрирован в системе', user: 'Иванов Иван' }]
     })
+}
+
+const addRoadmapItem = (newItem: Omit<MockRoadmapItem, 'id' | 'progressPercentage' | 'hasRiskAlert'>) => {
+    const id = roadmapItems.value.length + 1
+    roadmapItems.value.push({
+        ...newItem,
+        id,
+        progressPercentage: 0,
+        hasRiskAlert: false
+    })
+
+    const targetObj = objects.value.find(o => o.id === newItem.objectId)
+    if (targetObj) {
+        targetObj.historyLog.unshift({
+            date: new Date().toLocaleDateString('ru-RU'),
+            action: `Сформирована новая дорожная карта (ДК-${id})`,
+            user: 'Текущий пользователь'
+        })
+    }
 }
 
 export function useMockData() {
