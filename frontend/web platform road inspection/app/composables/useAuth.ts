@@ -7,29 +7,52 @@ interface TokenResponse {
   user: { id: number; email: string; role: string }
 }
 
+interface UserInfo {
+  id: number
+  email: string
+  role: string
+  name?: string
+}
+
 export function useAuth() {
-
   const accessToken = useState<string | null>('access_token', () => null)
-
-  const user = useState('auth_user', () => null)
-  
+  const user = useState<UserInfo | null>('auth_user', () => null)
   const isLoading = ref(false)
   const authError = ref<string | null>(null)
-
   const config = useRuntimeConfig()
+  const mockAuthEnabled = config.public.mockAuthEnabled
   const redirectUri = 'http://localhost:4000/login/callback' // Редирект для коллбэка
 
-  // Шаг 1: Инициализация PKCE и редирект на форму авторизации
+  const accessCookie = useCookie('access_token')
+  const mockUserStorageKey = 'mock_auth_user'
+
+  const restoreMockUser = () => {
+    if (!process.client || !mockAuthEnabled) {
+      return
+    }
+
+    const saved = localStorage.getItem(mockUserStorageKey)
+    if (saved) {
+      try {
+        user.value = JSON.parse(saved)
+      } catch (e) {
+        console.warn('Не удалось восстановить mock-пользователя из localStorage', e)
+      }
+    }
+  }
+
+  if (process.client) {
+    restoreMockUser()
+  }
+
   const loginWithPKCE = async () => {
     isLoading.value = true
     try {
       const verifier = generateCodeVerifier()
       const challenge = await generateCodeChallenge(verifier)
 
-      // Сохраняем verifier локально в sessionStorage на время редиректа
       sessionStorage.setItem('pkce_code_verifier', verifier)
 
-      // URL для эндпоинта авторизации FastAPI
       const authUrl = new URL('http://localhost:8000/auth/authorize')
       authUrl.searchParams.append('response_type', 'code')
       authUrl.searchParams.append('client_id', 'web-platform-madi')
@@ -37,7 +60,6 @@ export function useAuth() {
       authUrl.searchParams.append('code_challenge', challenge)
       authUrl.searchParams.append('code_challenge_method', 'S256')
 
-      // Уходим на страницу авторизации бэкенда
       window.location.href = authUrl.toString()
     } catch (err) {
       authError.value = 'Ошибка инициализации PKCE'
@@ -45,7 +67,6 @@ export function useAuth() {
     }
   }
 
-  // Шаг 2: Обмен полученного Authorization Code + Verifier на токены
   const handleCallback = async (code: string) => {
     console.log('Handle Callback')
     isLoading.value = true
@@ -69,16 +90,18 @@ export function useAuth() {
 
       const response = await apiFetch<TokenResponse>('/auth/token', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded' 
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: formData.toString()
       })
-      console.log(response)
+
       accessToken.value = response.access_token
-      //user.value = response.user
+      user.value = response.user
+      accessCookie.value = response.access_token
       sessionStorage.removeItem('pkce_code_verifier')
-      
+      localStorage.removeItem(mockUserStorageKey)
+
       await navigateTo('/')
     } catch (err: any) {
       console.error('Ошибка при обмене токена:', err)
@@ -88,10 +111,36 @@ export function useAuth() {
     }
   }
 
+  const loginMockUser = () => {
+    if (!mockAuthEnabled) {
+      return
+    }
+
+    const mockToken = 'mock-developer-token'
+    const mockUser: UserInfo = {
+      id: 0,
+      email: 'dev@madi.ru',
+      role: 'Администратор',
+      name: 'Разработчик'
+    }
+
+    accessToken.value = mockToken
+    accessCookie.value = mockToken
+    user.value = mockUser
+
+    if (process.client) {
+      localStorage.setItem(mockUserStorageKey, JSON.stringify(mockUser))
+    }
+
+    navigateTo('/')
+  }
+
   return {
     isLoading,
     authError,
     loginWithPKCE,
-    handleCallback
+    handleCallback,
+    loginMockUser,
+    user
   }
 }
