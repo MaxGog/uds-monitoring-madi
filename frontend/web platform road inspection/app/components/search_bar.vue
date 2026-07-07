@@ -24,10 +24,19 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string
+  placeholder?: string
+  clearable?: boolean
+}>(), {
+  placeholder: 'Поиск...📍',
+  clearable: true
+})
+
+const emit = defineEmits<{
+  (event: 'update:modelValue', value: string): void
+  (event: 'search'): void
 }>()
-defineEmits(['update:modelValue', 'search'])
 </script>
 
 <style scoped>

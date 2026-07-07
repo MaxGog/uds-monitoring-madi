@@ -17,15 +17,21 @@
         {{ authError }}
       </div>
 
-      <div class="fluent-divider">Или войти как разработчик</div>
+      <div v-if="mockAuthEnabled">
+        <div class="fluent-divider">Или войти как разработчик</div>
 
-      <button 
-        class="btn-secondary dev-btn" 
-        @click="loginAsDeveloper"
-        type="button"
-      >
-        <span class="dev-icon">⚙️</span> Локальный вход (Bypass)
-      </button>
+        <button 
+          class="btn-secondary dev-btn" 
+          @click="loginAsDeveloper"
+          type="button"
+        >
+          <span class="dev-icon">⚙️</span> Локальный вход (Bypass)
+        </button>
+      </div>
+
+      <div v-else class="mock-disabled-note">
+        Локальный вход отключён. Включите `NUXT_PUBLIC_MOCK_AUTH=true` для тестирования без бэкенда.
+      </div>
     </div>
   </div>
 </template>
@@ -38,23 +44,22 @@ definePageMeta({
   layout: 'auth'
 })
 
-const { loginWithPKCE, isLoading, authError } = useAuth()
+const { loginWithPKCE, loginMockUser, isLoading, authError } = useAuth()
+const config = useRuntimeConfig()
+const mockAuthEnabled = config.public.mockAuthEnabled
 
 const handleLogin = async () => {
   await loginWithPKCE()
 }
 
-// Заглушка, если на этапе разработки нужно быстро пропустить авторизацию
-const loginAsDeveloper = () => {
-  const token = useCookie('access_token')
-  token.value = 'mock-developer-token'
-  
-  const userState = useState('auth_user')
-  userState.value = { id: 0, email: 'dev@madi.ru', role: 'Администратор' }
-  
-  navigateTo('/')
+const loginAsDeveloper = async () => {
+  if (!mockAuthEnabled) {
+    return
+  }
+  await loginMockUser()
 }
 </script>
+
 
 <style scoped>
 .auth-card {

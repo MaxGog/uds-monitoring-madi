@@ -1,27 +1,25 @@
 <template>
-  <div class="monitoring-page"> <div class="toolbar">
-      <div class="toolbar-left">
-        <h2 class="page-title">Управление задачами</h2>
-        <span class="objects-count">Активных: {{ activeTasksCount }}</span>
-      </div>
-      
-      <div class="toolbar-actions">
-        <div class="fluent-pivot">
-          <button 
-            v-for="filter in filters" 
-            :key="filter.value"
-            class="pivot-item"
-            :class="{ active: currentFilter === filter.value }"
-            @click="currentFilter = filter.value"
-          >
-            {{ filter.label }}
-          </button>
-        </div>
-        
-        <button class="btn-primary" @click="isModalOpen = true">
+  <div class="tasks-page">
+    <PageToolbar
+      title="Управление задачами"
+      :countText="`Активных: ${activeTasksCount}`"
+      :tabs="filters"
+      :activeTab="currentFilter"
+      @update:activeTab="value => currentFilter = value"
+    >
+      <template #actions>
+        <button
+          v-if="isAdmin"
+          class="btn-primary"
+          @click="isModalOpen = true"
+        >
           <span class="btn-icon">＋</span> Создать задачу
         </button>
-      </div>
+      </template>
+    </PageToolbar>
+
+    <div v-if="!isAdmin" class="admin-note">
+      Создание задач доступно только пользователям с ролью администратора.
     </div>
 
     <div class="tasks-container">
@@ -30,6 +28,7 @@
           v-for="task in filteredTasks"
           :key="task.id"
           :task="task"
+          :is-admin="isAdmin"
           @toggle="handleToggleTask"
           @delete="handleDeleteTask"
         />
@@ -48,26 +47,45 @@
           <h3>Новая задача</h3>
           <button class="close-modal-btn" @click="isModalOpen = false">✕</button>
         </div>
-        
+
         <form @submit.prevent="createTask" class="modal-form">
           <div class="form-group">
             <label>Название задачи *</label>
-            <input v-model="newTask.title" type="text" class="fluent-input" placeholder="Что нужно сделать..." required />
+            <input
+              v-model="newTask.title"
+              type="text"
+              class="fluent-input"
+              placeholder="Что нужно сделать..."
+              required
+            />
           </div>
 
           <div class="form-group">
             <label>Описание</label>
-            <textarea v-model="newTask.description" class="fluent-textarea" placeholder="Детали задачи..."></textarea>
+            <textarea
+              v-model="newTask.description"
+              class="fluent-textarea"
+              placeholder="Детали задачи..."
+            ></textarea>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label>Объект УДС</label>
-              <select v-model="newTask.objectTitle" class="fluent-select">
-                <option v-for="obj in mockObjects" :key="obj" :value="obj">{{ obj }}</option>
+              <select
+                v-model="newTask.objectTitle"
+                class="fluent-select"
+              >
+                <option
+                  v-for="obj in mockObjects"
+                  :key="obj"
+                  :value="obj"
+                >
+                  {{ obj }}
+                </option>
               </select>
             </div>
-            
+
             <div class="form-group">
               <label>Приоритет</label>
               <select v-model="newTask.priority" class="fluent-select">
@@ -80,10 +98,38 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label>Срок выполнения</label>
-              <input v-model="newTask.dueDate" type="date" class="fluent-input" />
+              <label>Тип задачи</label>
+              <select v-model="newTask.type" class="fluent-select">
+                <option v-for="type in taskTypes" :key="type" :value="type">
+                  {{ type }}
+                </option>
+              </select>
             </div>
-            
+
+            <div class="form-group">
+              <label>Ответственный</label>
+              <select v-model="newTask.responsibleName" class="fluent-select">
+                <option
+                  v-for="name in responsibleUsers"
+                  :key="name"
+                  :value="name"
+                >
+                  {{ name }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Срок выполнения</label>
+              <input
+                v-model="newTask.dueDate"
+                type="date"
+                class="fluent-input"
+              />
+            </div>
+
             <div class="form-group">
               <label>Тип видимости</label>
               <select v-model="newTask.scope" class="fluent-select">
@@ -94,7 +140,13 @@
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn-secondary" @click="isModalOpen = false">Отмена</button>
+            <button
+              type="button"
+              class="btn-secondary"
+              @click="isModalOpen = false"
+            >
+              Отмена
+            </button>
             <button type="submit" class="btn-primary">Создать</button>
           </div>
         </form>
@@ -106,6 +158,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import TaskCard from '~/components/cards/task_card.vue'
+import { useAuth } from '~/composables/useAuth'
+import PageToolbar from '~/components/common/page_toolbar.vue'
 
 interface Task {
   id: number
@@ -116,9 +170,17 @@ interface Task {
   objectTitle: string
   dueDate?: string
   assignee: string
+  responsibleNames: string[]
+  type: string
+  status: string
   scope: string
   completed: boolean
+  createdAt: string
+  authorName: string
 }
+
+const { user } = useAuth()
+const isAdmin = computed(() => user.value?.role === 'Администратор')
 
 const filters = [
   { label: 'Мои задачи', value: 'own' },
@@ -135,6 +197,15 @@ const mockObjects = [
   'Дублер Кутузовского проспекта'
 ]
 
+const taskTypes = ['Согласование', 'Контроль', 'Документы', 'Мониторинг']
+const responsibleUsers = [
+  'Иванов И.',
+  'Петров С.',
+  'Назарова Е.',
+  'Морозов А.',
+  'АО Мосинжпроект'
+]
+
 const mockTasks = ref<Task[]>([
   {
     id: 1,
@@ -144,9 +215,14 @@ const mockTasks = ref<Task[]>([
     priorityLabel: 'Высокий',
     objectTitle: 'ул. Тверская (Капитальный ремонт)',
     dueDate: '2026-07-02',
-    assignee: 'Иванов И. (Разработчик)',
+    assignee: 'Иванов И.',
+    responsibleNames: ['Иванов И.'],
+    type: 'Контроль',
+    status: 'Активна',
     scope: 'own',
-    completed: false
+    completed: false,
+    createdAt: '2026-06-28',
+    authorName: 'Петров С.'
   },
   {
     id: 2,
@@ -156,9 +232,14 @@ const mockTasks = ref<Task[]>([
     priorityLabel: 'Высокий',
     objectTitle: 'Путепровод Ленинградского шоссе',
     dueDate: '2026-07-10',
-    assignee: 'АО Мосинжпроект',
+    assignee: 'Назарова Е.',
+    responsibleNames: ['Назарова Е.'],
+    type: 'Согласование',
+    status: 'Скоро дедлайн',
     scope: 'all',
-    completed: false
+    completed: false,
+    createdAt: '2026-06-27',
+    authorName: 'Иванова А.'
   },
   {
     id: 3,
@@ -168,9 +249,14 @@ const mockTasks = ref<Task[]>([
     priorityLabel: 'Средний',
     objectTitle: 'Парк Нагатинская Пойма',
     dueDate: '2026-07-05',
-    assignee: 'Иванов И. (Разработчик)',
+    assignee: 'Морозов А.',
+    responsibleNames: ['Морозов А.'],
+    type: 'Документы',
+    status: 'Выполнена',
     scope: 'own',
-    completed: true
+    completed: true,
+    createdAt: '2026-06-24',
+    authorName: 'Иванов И.'
   }
 ])
 
@@ -189,13 +275,20 @@ const activeTasksCount = computed(() => {
 })
 
 const handleToggleTask = (id: number) => {
+  if (!isAdmin.value) {
+    return
+  }
   const task = mockTasks.value.find(t => t.id === id)
   if (task) {
     task.completed = !task.completed
+    task.status = task.completed ? 'Выполнена' : 'Активна'
   }
 }
 
 const handleDeleteTask = (id: number) => {
+  if (!isAdmin.value) {
+    return
+  }
   mockTasks.value = mockTasks.value.filter(t => t.id !== id)
 }
 
@@ -205,12 +298,14 @@ const newTask = ref({
   priority: 'medium',
   objectTitle: mockObjects[0],
   dueDate: '',
-  scope: 'own'
+  scope: 'own',
+  type: taskTypes[0],
+  responsibleName: responsibleUsers[0]
 })
 
 const createTask = () => {
   const priorityLabels: Record<string, string> = { low: 'Низкий', medium: 'Средний', high: 'Высокий' }
-  
+
   mockTasks.value.unshift({
     id: Date.now(),
     title: newTask.value.title,
@@ -219,9 +314,14 @@ const createTask = () => {
     priorityLabel: priorityLabels[newTask.value.priority] || '',
     objectTitle: newTask.value.objectTitle || '',
     dueDate: newTask.value.dueDate || '',
-    assignee: 'Иванов И. (Разработчик)',
+    assignee: newTask.value.responsibleName || '',
+    responsibleNames: String(newTask.value.responsibleName).split(',').map(s => s.trim()) || [''],
+    type: newTask.value.type || '',
+    status: 'Активна',
     scope: newTask.value.scope,
-    completed: false
+    completed: false,
+    createdAt: new Date().toISOString().slice(0, 10),
+    authorName: user.value?.name || 'Система'
   })
 
   newTask.value = {
@@ -230,92 +330,20 @@ const createTask = () => {
     priority: 'medium',
     objectTitle: mockObjects[0],
     dueDate: '',
-    scope: 'own'
+    scope: 'own',
+    type: taskTypes[0],
+    responsibleName: responsibleUsers[0]
   }
   isModalOpen.value = false
 }
 </script>
 
 <style scoped>
-.monitoring-page {
+.tasks-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
   font-family: var(--fluent-font, sans-serif);
-}
-
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #ffffff;
-  padding: 16px 24px;
-  border-radius: 8px;
-  border: 1px solid #e1e3e8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.toolbar-left {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #242424;
-  margin: 0;
-}
-
-.objects-count {
-  font-size: 13px;
-  color: #616161;
-}
-
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.fluent-pivot {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid #eaeaea;
-  padding-bottom: 4px;
-}
-
-.pivot-item {
-  background: transparent;
-  border: none;
-  padding: 6px 12px;
-  font-size: 14px;
-  color: #616161;
-  cursor: pointer;
-  border-radius: 4px;
-  position: relative;
-  transition: all 0.15s ease;
-}
-
-.pivot-item:hover {
-  background: #f3f3f3;
-  color: #242424;
-}
-
-.pivot-item.active {
-  color: #0078d4;
-  font-weight: 600;
-}
-
-.pivot-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: #0078d4;
 }
 
 .btn-primary {
@@ -332,7 +360,10 @@ const createTask = () => {
   align-items: center;
   gap: 6px;
 }
-.btn-primary:hover { background-color: #106ebe; }
+
+.btn-primary:hover {
+  background-color: #106ebe;
+}
 
 .btn-secondary {
   background: #ffffff;
@@ -344,7 +375,19 @@ const createTask = () => {
   border-radius: 4px;
   cursor: pointer;
 }
-.btn-secondary:hover { background: #f3f4f6; }
+
+.btn-secondary:hover {
+  background: #f3f4f6;
+}
+
+.admin-note {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: #fff7e6;
+  border: 1px solid #ffe5b4;
+  color: #8a5600;
+  font-size: 13px;
+}
 
 .tasks-container {
   background: #ffffff;
@@ -354,112 +397,108 @@ const createTask = () => {
   overflow: hidden;
 }
 
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+}
+
 .empty-state {
   text-align: center;
   padding: 40px;
   color: #616161;
 }
-.empty-icon { font-size: 28px; margin-bottom: 6px; }
-.empty-state h3 { margin: 0 0 4px 0; color: #242424; }
-.empty-state p { margin: 0; font-size: 12px; }
+
+.empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 50;
 }
 
 .modal-card {
   background: #ffffff;
-  border-radius: 8px;
-  border: 1px solid #e1e3e8;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
+  border-radius: 18px;
+  width: min(100%, 640px);
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.16);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 20px;
-  border-bottom: 1px solid #eaeaea;
+  margin-bottom: 20px;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 18px;
 }
 
 .close-modal-btn {
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: 18px;
   cursor: pointer;
-  color: #616161;
 }
 
 .modal-form {
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.form-group label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #242424;
-}
-
-.form-row {
-  display: flex;
+  display: grid;
   gap: 16px;
 }
 
-.fluent-input, .fluent-select, .fluent-textarea {
-  border: 1px solid #a1a1a1;
-  border-radius: 4px;
-  height: 32px;
-  padding: 0 10px;
+.form-group {
+  display: grid;
+  gap: 8px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+label {
   font-size: 13px;
-  box-sizing: border-box;
-  font-family: inherit;
+  font-weight: 700;
+  color: #242424;
+}
+
+.fluent-input,
+.fluent-textarea,
+.fluent-select {
+  width: 100%;
+  border: 1px solid #d6d9dc;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #242424;
+  background: #ffffff;
 }
 
 .fluent-textarea {
-  height: 64px;
-  padding: 6px 10px;
-  resize: none;
-}
-
-.fluent-input:focus, .fluent-select:focus, .fluent-textarea:focus {
-  outline: none;
-  border-color: #0078d4;
-  box-shadow: 0 0 0 1px #0078d4 inset;
+  min-height: 100px;
+  resize: vertical;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
