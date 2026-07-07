@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from typing import List
 
 from fastapi import HTTPException, status
 
-from backend.core.db.postgres.user_orm import RoleName
+from backend.core.db.postgres.data_orms.user_orm import RoleName
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IUserRepo, IUserUsecases
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
@@ -18,7 +19,7 @@ class UserUsecases(IUserUsecases):
         result = await self.user_repo.get_by_id(user_id)
         return result
 
-    async def get_users(self, user_id: str, limit: int = 20, offset: int = 0) -> UserResponseDTO:
+    async def get_users(self, user_id: str, limit: int = 20, offset: int = 0) -> List[UserResponseDTO]:
         role = await self.user_repo.get_role(user_id)
 
         if role not in (RoleName.VIEWER, RoleName.ADMIN):

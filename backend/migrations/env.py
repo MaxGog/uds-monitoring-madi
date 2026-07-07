@@ -7,6 +7,17 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from backend.config.config import settings
 from alembic import context
 
+from backend.core.db.postgres.base_orm import Base
+from backend.core.db.postgres.data_orms.user_orm import User
+from backend.core.db.postgres.data_orms.task_orm import Task
+from backend.core.db.postgres.data_orms.copmany_orm import Company
+from backend.core.db.postgres.data_orms.work_orm import Work
+from backend.core.db.postgres.data_orms.act_orm import WorkAct, WorkActItem
+from backend.core.db.postgres.data_orms.contract_orm import Contract, ContractItem
+from backend.core.db.postgres.data_orms.object_orm import Object
+from backend.core.db.postgres.data_orms.document_orm import Document
+from backend.core.db.postgres.data_orms.role_orm import Role, Permission
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -22,7 +33,6 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 
 # Наши очень важные ормки с базой
-from backend.core.db.postgres.base_orm import Base
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

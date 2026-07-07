@@ -1,33 +1,54 @@
+from datetime import date
+from enum import Enum
+from typing import List, Optional
 
-# from datetime import datetime
-# from typing import Optional
-# import uuid
-
-# from sqlalchemy import UUID, BigInteger, Date, DateTime, ForeignKey, PrimaryKeyConstraint, Text, UniqueConstraint, func
-# from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-# from backend.core.db.postgres.orm import Base
+from sqlalchemy import Date, ForeignKey, Null, Numeric, String, Enum as SqlEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
-# class Act(Base):
-#     __tablename__ = "acts"
+from backend.core.db.postgres.base_orm import Base
 
-#     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-#     object_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("road_objects.id", ondelete="SET NULL"))
-#     object_name_raw: Mapped[Optional[str]] = mapped_column(Text)
-#     repair_program_raw: Mapped[Optional[str]] = mapped_column(Text)
-#     geometry_status: Mapped[Optional[str]] = mapped_column(Text)
-#     act_presence: Mapped[Optional[str]] = mapped_column(Text)
-#     upload_status: Mapped[Optional[str]] = mapped_column(Text)
-#     card_status: Mapped[Optional[str]] = mapped_column(Text)
-#     contractor_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("contractors.id", ondelete="SET NULL"))
-#     executor_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("executors.id", ondelete="SET NULL"))
-#     district_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("districts.id", ondelete="SET NULL"))
-#     ais_update_status: Mapped[Optional[str]] = mapped_column(Text)
-#     cipher_code: Mapped[Optional[str]] = mapped_column(Text)
-#     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
-#     updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
-#     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-#     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+class WorkActStatus(str, Enum):
+    DRAFT = 'draft'
+    PENDING = 'pending'
+    APPROVED = 'approved'
+    COMPLETED = 'completed'
 
-#     object: Mapped[Optional[RoadObject]] = relationship()
-#     files: Mapped[list[ActFile]] = relationship(back_populates="act", cascade="all, delete-orphan")
+class ActType(str, Enum):
+    SUPERVISORY = "supervisory" # Для госорганов
+    CONTRACTOR = "contractor"   # Для субподрядчиков
+
+class WorkAct(Base):
+    __tablename__ = "work_acts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    number: Mapped[str] = mapped_column(String(50))
+    status: Mapped[WorkActStatus] = mapped_column(SqlEnum(WorkActStatus), default=WorkActStatus.DRAFT)
+    date_signed: Mapped[date] = mapped_column(Date)
+    type: Mapped[ActType] = mapped_column(SqlEnum(ActType), default=Null, nullable=True)
+    
+    # Ссылка на объект (для отчетности перед надзорным органом)
+    object_id: Mapped[Optional[int]] = mapped_column(ForeignKey("objects.id"), nullable=True)
+    # Ссылка на работу (для учета субподряда)
+    work_id: Mapped[Optional[int]] = mapped_column(ForeignKey("works.id"), nullable=True)
+    # Ссылка на контракт (для учета финансирования)
+    contract_id: Mapped[Optional[int]] = mapped_column(ForeignKey("contracts.id"), nullable=True)
+
+    object: Mapped[Optional["Object"]] = relationship("Object", back_populates="acts")
+    work: Mapped[Optional["Work"]] = relationship("Work", back_populates="acts")
+    contract: Mapped[Optional["Contract"]] = relationship("Contract", back_populates="acts")
+    
+    items: Mapped[List["WorkActItem"]] = relationship("WorkActItem", back_populates="act")
+
+class WorkActItem(Base):
+    __tablename__ = "work_act_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    act_id: Mapped[int] = mapped_column(ForeignKey("work_acts.id", ondelete="CASCADE"))
+    contract_item_id: Mapped[int] = mapped_column(ForeignKey("contract_items.id"))
+    
+    # Фактически выполненный объем в этом акте
+    completed_quantity: Mapped[float] = mapped_column(Numeric(15, 3))
+    
+    act: Mapped["WorkAct"] = relationship("WorkAct", back_populates="items")
+    contract_item: Mapped["ContractItem"] = relationship("ContractItem")

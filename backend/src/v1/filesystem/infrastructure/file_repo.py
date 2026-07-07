@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import insert, select
 import uuid6
 
-from backend.core.db.postgres.user_orm import Document
+from backend.core.db.postgres.data_orms.user_orm import Document
 from backend.src.v1.filesystem.domain.interfaces import IFileRepo
 from backend.config.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession
