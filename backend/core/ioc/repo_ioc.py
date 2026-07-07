@@ -6,8 +6,10 @@ from dishka import Provider, Scope, provide
 
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.auth.infrastructure.user_repo import PGUserRepo
-from backend.src.v1.data.domain.interfaces import IActRepo, IObjectRepo, IRoadmapRepo, ITaskRepo, IWorkRepo
+from backend.src.v1.data.domain.interfaces import IActRepo, ICompanyRepo, IContractRepo, IObjectRepo, IRoadmapRepo, ITaskRepo, IWorkRepo
 from backend.src.v1.data.infrastructure.acts_repo import PgActRepo
+from backend.src.v1.data.infrastructure.company_repo import PgCompanyRepo
+from backend.src.v1.data.infrastructure.contract_repo import PgContractRepo
 from backend.src.v1.data.infrastructure.objects_repo import PgObjectRepo
 from backend.src.v1.data.infrastructure.roadmap_repo import PgRoadmapRepo
 from backend.src.v1.data.infrastructure.tasks_repo import PgTaskRepo
@@ -43,3 +45,11 @@ class RepoProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def work_repo(self, session: AsyncSession) -> AsyncIterable[IWorkRepo]:
         yield PgWorkRepo(session)
+
+    @provide(scope=Scope.REQUEST)
+    async def company_repo(self, session: AsyncSession) -> AsyncIterable[ICompanyRepo]:
+        yield PgCompanyRepo(session)
+
+    @provide(scope=Scope.REQUEST)
+    async def contract_repo(self, session: AsyncSession) -> AsyncIterable[IContractRepo]:
+        yield PgContractRepo(session)

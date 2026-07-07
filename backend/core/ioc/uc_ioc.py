@@ -7,11 +7,13 @@ from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.application.user_uc import UserUsecases
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IUserRepo, IUserUsecases
 from backend.src.v1.data.application.acts_usecases import ActUsecases
+from backend.src.v1.data.application.company_usecases import CompanyUsecases
+from backend.src.v1.data.application.contract_usecases import ContractUsecases
 from backend.src.v1.data.application.objects_usecases import ObjectUsecases
 from backend.src.v1.data.application.roadmap_usecases import RoadmapUsecases
 from backend.src.v1.data.application.tasks_usecases import TaskUsecases
 from backend.src.v1.data.application.work_usecases import WorkUsecases
-from backend.src.v1.data.domain.interfaces import IActRepo, IActUsecases, IObjectRepo, IObjectUsecases, IRoadmapRepo, IRoadmapUsecases, ITaskRepo, ITaskUsecases, IWorkRepo, IWorkUsecases
+from backend.src.v1.data.domain.interfaces import IActRepo, IActUsecases, ICompanyRepo, ICompanyUsecases, IContractRepo, IContractUsecases, IObjectRepo, IObjectUsecases, IRoadmapRepo, IRoadmapUsecases, ITaskRepo, ITaskUsecases, IWorkRepo, IWorkUsecases
 from backend.src.v1.filesystem.application.file_permissions_usecases import FileAuthUsecases
 from backend.src.v1.filesystem.application.usecases import FsUsecases
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFileRepo, IFsUsecases
@@ -53,6 +55,14 @@ class UsecaseProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_work_uc(self, uow: IUnitOfWork, work_repo: IWorkRepo, user_repo: IUserRepo) -> IWorkUsecases:
         return WorkUsecases(uow = uow, work_repo=work_repo, user_repo=user_repo)
+    
+    @provide(scope=Scope.REQUEST)
+    async def get_company_uc(self, uow: IUnitOfWork, company_repo: ICompanyRepo, user_repo: IUserRepo) -> ICompanyUsecases:
+        return CompanyUsecases(uow = uow, company_repo = company_repo, user_repo=user_repo)
+    
+    @provide(scope=Scope.REQUEST)
+    async def get_contract_uc(self, uow: IUnitOfWork, contract_repo: IContractRepo, user_repo: IUserRepo) -> IContractUsecases:
+        return ContractUsecases(uow = uow, contract_repo = contract_repo, user_repo=user_repo)
     
 
 
