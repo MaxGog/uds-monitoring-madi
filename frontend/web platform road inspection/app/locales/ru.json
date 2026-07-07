@@ -1,0 +1,9 @@
+{
+  "task": {
+    "status": {
+      "pending": "В ожидании",
+      "in_progress": "В работе",
+      "completed": "Завершено"
+    }
+  }
+}

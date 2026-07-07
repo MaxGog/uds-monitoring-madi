@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from fastapi import HTTPException, status
 
-from backend.core.db.postgres.orm import RoleName
+from backend.core.db.postgres.user_orm import RoleName
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IUserRepo, IUserUsecases
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO

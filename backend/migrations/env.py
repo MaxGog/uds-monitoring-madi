@@ -22,7 +22,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 
 # Наши очень важные ормки с базой
-from backend.core.db.postgres.orm import Base
+from backend.core.db.postgres.base_orm import Base
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

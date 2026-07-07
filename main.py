@@ -22,6 +22,13 @@ from backend.core.utils.logger.app_logger import setup_logger
 from backend.src.v1.auth.presentation.api import router as auth_router
 from backend.src.v1.auth.presentation.api import user_router
 from backend.src.v1.filesystem.presentation.api import router as fs_router
+from backend.src.v1.data.presentation.tasks_api import router as task_router
+from backend.src.v1.data.presentation.acts_api import router as act_router
+from backend.src.v1.data.presentation.objects_monitoring_api import router as object_router
+from backend.src.v1.data.presentation.roadmap_api import router as roadmap_router
+from backend.src.v1.data.presentation.work_status_api import router as work_router
+
+
 from backend.core.db.postgres.postgres_conn import db_engine, check_db_connection
 from backend.core.db.redis.redis_conn import redis_client
 from backend.core.db.aws.minio_conn import check_aws_connection
@@ -71,6 +78,11 @@ app.add_middleware(
 app.include_router(router=auth_router, prefix="/auth", tags=['auth'])
 app.include_router(router=user_router, prefix='/users', tags=['user'])
 app.include_router(router=fs_router, prefix="/fs", tags=['fs'])
+app.include_router(router=task_router, prefix = "/task", tags = ['task'])
+app.include_router(router=object_router, prefix = "/object", tags = ['object'])
+app.include_router(router=roadmap_router, prefix = "/roadmap", tags = ['roadmap'])
+app.include_router(router=act_router, prefix = "/act", tags = ['act'])
+app.include_router(router=work_router, prefix = "/work", tags = ['work'])
 
 container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())
 setup_dishka(container, app)

@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Protocol
 
 
-from backend.core.db.postgres.orm import User
+from backend.core.db.postgres.user_orm import User
 from backend.src.v1.auth.domain.models import CodeData
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO

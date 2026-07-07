@@ -35,7 +35,7 @@ refresh_token_scheme = HTTPBearer(
     bearerFormat="JWT"
 )
 
-logger = logging.getLogger("auth_api")
+logger = logging.getLogger(__file__)
 
 class GrantTypes(str, Enum):
     AUTHORIZE = "authorize_code"

@@ -4,7 +4,7 @@ server:
   mode: Development
   cookie-name: refresh_token #refresh
   ssl: 
-    enabled: true
+    enabled: false
     cert_file: "server.crt"
     key_file: "server.pem"
   csrf: true

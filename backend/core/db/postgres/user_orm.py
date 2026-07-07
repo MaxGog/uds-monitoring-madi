@@ -1,15 +1,20 @@
+from datetime import datetime
 import enum
-from sqlalchemy import Column, Integer, String, ForeignKey, Table
+from typing import Optional
+from sqlalchemy import Column, DateTime, Enum, Integer, String, ForeignKey, Table, Text, func
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid6
 
-Base = declarative_base()
+from backend.core.db.postgres.base_orm import Base
+from backend.core.db.postgres.data_orms.task_orm import Task, task_performers
+from backend.src.v1.auth.domain.models import UserStatus
+
 
 class RoleName(str, enum.Enum):
     ADMIN = "admin"
     VIEWER = "viewer"
-    USER = "user"
+    USER = "user" # Custom, global meaning
 
 class FileAccessType(str, enum.Enum):
     READ = "read"
@@ -27,11 +32,27 @@ class User(Base):
     )
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     email = Column(String, unique=True, nullable=False)
+    full_name: Mapped[str] = mapped_column(Text, nullable=False)
+    position_name: Mapped[Optional[str]] = mapped_column(Text)
+    department: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[UserStatus] = mapped_column(Enum(UserStatus, name="user_status", native_enum=True), nullable=False, server_default="active")
     role_id = Column(Integer, ForeignKey("roles.id"))
     pwdhash: Mapped[str] = mapped_column(String, nullable=False)
-    
-    role = relationship("Role", lazy="joined")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
+    # Tasks
+    created_tasks: Mapped[list["Task"]] = relationship("Task", foreign_keys=[Task.author_id], back_populates="author")
+    assigned_tasks: Mapped[list["Task"]] = relationship(
+        "Task", 
+        secondary=task_performers, 
+        back_populates="performers"
+    )
+
+    # Roles
+    role = relationship("Role", lazy="joined")
+    
 # Промежуточная таблица для связи Ролей и Прав (Many-to-Many)
 # Используется модель RBAC и для гибкости через промежуточную таблицу, чтобы можно было всегда добавить/удалить права или роль
 role_permissions = Table(

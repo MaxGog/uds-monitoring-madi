@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy import String, cast, select
 
-from backend.core.db.postgres.orm import Role, User
+from backend.core.db.postgres.user_orm import Role, User
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from sqlalchemy.ext.asyncio import AsyncSession
 

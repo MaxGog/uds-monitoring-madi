@@ -20,7 +20,3 @@ export interface UserUpdate {
   username?: string;
   role?: string;
 }
-
-export interface ApiResponse<T> {
-  data: T;
-}

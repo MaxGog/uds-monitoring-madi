@@ -1,5 +1,6 @@
 import { ref } from "vue"
-import type { User, UserCreate, UserUpdate, ApiResponse } from "~/types/user"
+import type { User, UserCreate, UserUpdate } from "~/types/user"
+import type { ApiResponse } from "~/types/api"
 import { apiFetch } from "#imports"
 
 
