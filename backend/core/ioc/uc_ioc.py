@@ -4,8 +4,9 @@
 from dishka import Provider, Scope, provide
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
+from backend.src.v1.auth.application.role_uc import RoleUsecases
 from backend.src.v1.auth.application.user_uc import UserUsecases
-from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IUserRepo, IUserUsecases
+from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IRoleRepo, IRoleUsecases, IUserRepo, IUserUsecases
 from backend.src.v1.data.application.acts_usecases import ActUsecases
 from backend.src.v1.data.application.company_usecases import CompanyUsecases
 from backend.src.v1.data.application.contract_usecases import ContractUsecases
@@ -27,6 +28,10 @@ class UsecaseProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_user_uc(self, uow: IUnitOfWork, hasher: IPasswordHasher, user_repo: IUserRepo) -> IUserUsecases:
         return UserUsecases(uow = uow, hasher = hasher, user_repo = user_repo)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_role_uc(self, uow: IUnitOfWork,user_repo: IUserRepo, role_repo: IRoleRepo) -> IRoleUsecases:
+        return RoleUsecases(uow = uow, user_repo = user_repo, role_repo = role_repo)
 
     @provide(scope=Scope.REQUEST)
     async def get_fs_uc(self, aws_service: IAwsService, uow: IUnitOfWork, file_repo: IFileRepo, user_repo: IUserRepo) -> IFsUsecases:

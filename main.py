@@ -21,6 +21,7 @@ from backend.core.utils.csrf.csrf import CsrfSettings
 from backend.core.utils.logger.app_logger import setup_logger
 from backend.src.v1.auth.presentation.api import router as auth_router
 from backend.src.v1.auth.presentation.api import user_router
+from backend.src.v1.auth.presentation.role_api import router as role_router
 from backend.src.v1.filesystem.presentation.api import router as fs_router
 from backend.src.v1.data.presentation.tasks_api import router as task_router
 from backend.src.v1.data.presentation.acts_api import router as act_router
@@ -83,6 +84,7 @@ app.include_router(router=object_router, prefix = "/object", tags = ['object'])
 app.include_router(router=roadmap_router, prefix = "/roadmap", tags = ['roadmap'])
 app.include_router(router=act_router, prefix = "/act", tags = ['act'])
 app.include_router(router=work_router, prefix = "/work", tags = ['work'])
+app.include_router(router=role_router, prefix = "/role", tags = ['role'])
 
 container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())
 setup_dishka(container, app)

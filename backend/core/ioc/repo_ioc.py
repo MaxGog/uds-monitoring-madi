@@ -1,10 +1,9 @@
-
-
 from typing import AsyncIterable
 from sqlalchemy.ext.asyncio import AsyncSession
 from dishka import Provider, Scope, provide
 
-from backend.src.v1.auth.domain.interfaces import IUserRepo
+from backend.src.v1.auth.domain.interfaces import IRoleRepo, IUserRepo
+from backend.src.v1.auth.infrastructure.role_repo import PGRoleRepo
 from backend.src.v1.auth.infrastructure.user_repo import PGUserRepo
 from backend.src.v1.data.domain.interfaces import IActRepo, ICompanyRepo, IContractRepo, IObjectRepo, IRoadmapRepo, ITaskRepo, IWorkRepo
 from backend.src.v1.data.infrastructure.acts_repo import PgActRepo
@@ -21,6 +20,10 @@ class RepoProvider(Provider):
     @provide(scope = Scope.REQUEST)
     async def user_repo(self, session: AsyncSession) -> AsyncIterable[IUserRepo]:
         yield PGUserRepo(session)
+
+    @provide(scope = Scope.REQUEST)
+    async def role_repo(self, session: AsyncSession) -> AsyncIterable[IRoleRepo]:
+        yield PGRoleRepo(session)
 
     @provide(scope=Scope.REQUEST)
     async def file_repo(self, session: AsyncSession) -> AsyncIterable[IFileRepo]:

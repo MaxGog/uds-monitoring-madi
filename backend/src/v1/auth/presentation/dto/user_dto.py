@@ -15,20 +15,22 @@ class UserCreateDTO(BaseModel):
     username: str
     email: EmailStr
     password: str
+    full_name: str
     role: str | None
     position: str | None
-    company: str | None
+    company_id: int | None
 
 
 
 class UserResponseDTO(BaseModel):
     id: str #uuid.UUID конвертация происходит на уровне БД пока что
-    username: str = 'test user'
-    email: EmailStr = 'test@mail.ru'
-    role: str = 'viewer'
-    company: str = 'Some company'
-    position: str = 'Some position'
-    status: str = 'Some status'
+    username: str
+    email: EmailStr
+    role: str
+    full_name: str
+    company: str
+    position: str
+    status: str = 'active'
 
     class Config:
         from_attributes = True

@@ -16,7 +16,6 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_csrf_protect import CsrfProtect
 
-from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.core.utils.jwt_service.jwt_service import TokenData
 from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider, IUserUsecases
 from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateDTO, UserResponseDTO, UsersListResponse
@@ -189,7 +188,7 @@ async def refresh_tokens(
 @router.post("/register")
 @inject
 async def register(
-    data: UserCreateDTO,
+    data: BaseRequest[UserCreateDTO],
     uc: FromDishka[IAuthUsecases]
 ):
     result = await uc.register_new_user(data)
@@ -304,3 +303,4 @@ async def delete_user(
     ):
     #TODO реализовать эндпоинт для удаления пользователя по id, который будет требовать аутентификацию и проверку прав доступа.
     pass
+

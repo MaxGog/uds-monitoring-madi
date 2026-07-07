@@ -54,6 +54,9 @@ class IUserRepo(Protocol):
         pass
     ...
 
+class IRoleRepo(Protocol):
+    ...
+
 class IUserUsecases(Protocol):
     @abstractmethod
     async def get_me(self, user_id: str) -> UserResponseDTO:
@@ -66,6 +69,9 @@ class IUserUsecases(Protocol):
     @abstractmethod
     async def create_user(self, creator_id: str, data: UserCreateDTO, ) -> UserResponseDTO:
         pass
+    ...
+
+class IRoleUsecases(Protocol):
     ...
 
 class ITokenProvider(Protocol):
