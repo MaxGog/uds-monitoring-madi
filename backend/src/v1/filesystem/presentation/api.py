@@ -4,7 +4,8 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from dishka.integrations.fastapi import FromDishka, inject
 from types_aiobotocore_s3 import S3Client
 import uuid6
-from backend.core.db.postgres.data_orms.user_orm import FileAccessType
+
+from backend.core.db.postgres.data_orms.role_orm import FileAccessType
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.presentation.api import CurrentUserPayload
 import httpx

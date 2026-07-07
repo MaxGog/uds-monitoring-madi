@@ -24,7 +24,7 @@ class CompanyUsecases(ICompanyUsecases):
 
         return await self.company_repo.get_companies()
 
-    async def get_company(self, user_id: str, data: dict) -> CompanysResponse:
+    async def get_company(self, user_id: str, data: dict) -> CompaniesResponse:
         role = await self.user_repo.get_role(user_id)
 
         if role not in (RoleName.VIEWER, RoleName.ADMIN):

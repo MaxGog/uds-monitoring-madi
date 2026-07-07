@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import HTTPException, status
 
-from backend.core.db.postgres.data_orms.user_orm import Document, FileAccessType, RoleName
+from backend.core.db.postgres.data_orms.role_orm import FileAccessType, RoleName
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFileRepo

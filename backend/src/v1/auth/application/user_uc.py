@@ -3,7 +3,7 @@ from typing import List
 
 from fastapi import HTTPException, status
 
-from backend.core.db.postgres.data_orms.user_orm import RoleName
+from backend.core.db.postgres.data_orms.role_orm import RoleName
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IUserRepo, IUserUsecases
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO

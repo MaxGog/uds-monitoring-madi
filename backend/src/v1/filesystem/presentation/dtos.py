@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 class FileCreateResponse(BaseModel):
     id: uuid.UUID
-    owner_id: uuid.UUID
+    owner_id: int
     name: str
     s3_key: str
     content_type: str
