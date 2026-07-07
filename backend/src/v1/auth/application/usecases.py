@@ -10,7 +10,7 @@ from fastapi import HTTPException, status
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
-from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateDTO, UserResponseDTO
+from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateRequest, UserResponse
 
 logger = logging.getLogger(__file__)
 
@@ -26,7 +26,7 @@ class AuthUsecases:
     token_provider: ITokenProvider
     hasher: IPasswordHasher
 
-    async def register_new_user(self, dto: BaseRequest[UserCreateDTO]) -> BaseResponse[UserResponseDTO]:
+    async def register_new_user(self, dto: BaseRequest[UserCreateRequest]) -> BaseResponse[UserResponse]:
         """Юзкейс 1: Регистрация"""
         async with self.uow as uow:
             existing_user = await uow.users.get_by_email(dto.data.email)
@@ -50,7 +50,7 @@ class AuthUsecases:
             raise HTTPException(status_code=403, detail='Invalid data')
         return auth_code
 
-    async def _validate_user_credentials(self, email: str, password: str) -> Optional[UserResponseDTO]:
+    async def _validate_user_credentials(self, email: str, password: str) -> Optional[UserResponse]:
         async with self.uow:
             user = await self.uow.users.get_by_email(email)
         if not user:

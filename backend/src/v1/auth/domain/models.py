@@ -10,12 +10,12 @@ class UserModel:
     email: str
 
 class UserRole(StrEnum):
-    admin = "admin"
-    viewer = "viewer"
+    ADMIN = "admin"
+    VIEWER = "viewer"
 
 class UserStatus(StrEnum):
-    active = "active"
-    blocked = "blocked"
+    ACTIVE = "active"
+    BLOCKED = "blocked"
 
 @dataclass
 class CodeData:

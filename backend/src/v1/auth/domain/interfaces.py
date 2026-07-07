@@ -7,7 +7,7 @@ from typing import Protocol
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.src.v1.auth.domain.models import CodeData
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
-from backend.src.v1.auth.presentation.dto.user_dto import UserCreateDTO, UserResponseDTO
+from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest, UserResponse
 
 class TokenType(str, Enum):
     ACCESS = "access"
@@ -22,7 +22,7 @@ class TokenData():
 
 class IUserRepo(Protocol):
     @abstractmethod
-    async def get_by_email(self, email: str) -> UserResponseDTO | None:
+    async def get_by_email(self, email: str) -> UserResponse | None:
         pass
 
     @abstractmethod
@@ -38,7 +38,7 @@ class IUserRepo(Protocol):
         pass
 
     @abstractmethod
-    async def create_user(self, user: UserCreateDTO) -> UserResponseDTO:
+    async def create_user(self, user: UserCreateRequest) -> UserResponse:
         pass
 
     @abstractmethod
@@ -59,15 +59,15 @@ class IRoleRepo(Protocol):
 
 class IUserUsecases(Protocol):
     @abstractmethod
-    async def get_me(self, user_id: str) -> UserResponseDTO:
+    async def get_me(self, user_id: str) -> UserResponse:
         pass
 
     @abstractmethod
-    async def get_users(self, user_id: str, limit: int = 20, offset: int = 0) -> UserResponseDTO:
+    async def get_users(self, user_id: str, limit: int = 20, offset: int = 0) -> UserResponse:
         pass
 
     @abstractmethod
-    async def create_user(self, creator_id: str, data: UserCreateDTO, ) -> UserResponseDTO:
+    async def create_user(self, creator_id: str, data: UserCreateRequest, ) -> UserResponse:
         pass
     ...
 
@@ -151,7 +151,7 @@ class ITokenAuth(Protocol):
 
 class IAuthUsecases(Protocol):
     @abstractmethod
-    async def register_new_user(self, dto: UserCreateDTO) -> UserResponseDTO:
+    async def register_new_user(self, dto: UserCreateRequest) -> UserResponse:
         pass
 
     @abstractmethod

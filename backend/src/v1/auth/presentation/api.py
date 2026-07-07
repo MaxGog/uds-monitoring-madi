@@ -18,7 +18,7 @@ from fastapi_csrf_protect import CsrfProtect
 
 from backend.core.utils.jwt_service.jwt_service import TokenData
 from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider, IUserUsecases
-from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateDTO, UserResponseDTO, UsersListResponse
+from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateRequest, UserResponse, UsersResponse
 from backend.config.config import settings
 
 router = APIRouter()
@@ -188,7 +188,7 @@ async def refresh_tokens(
 @router.post("/register")
 @inject
 async def register(
-    data: BaseRequest[UserCreateDTO],
+    data: BaseRequest[UserCreateRequest],
     uc: FromDishka[IAuthUsecases]
 ):
     result = await uc.register_new_user(data)
@@ -230,11 +230,11 @@ async def get_test_token(
 # ... CRUD для пользователя
 
 # Эндпоинт админа, который создаёт юзеров сам, передавая токены
-@user_router.post("/", response_model=BaseResponse[UserResponseDTO])
+@user_router.post("/", response_model=BaseResponse[UserResponse])
 @inject
 async def create_user(
     current_user: CurrentUserPayload,
-    payload: BaseRequest[UserCreateDTO],
+    payload: BaseRequest[UserCreateRequest],
     uc: FromDishka[IUserUsecases],
 ):
     user_id = str(current_user.get('sub'))
@@ -250,7 +250,7 @@ async def create_user(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Couldn't create new user")
 
 
-@user_router.get("/me", response_model=UserResponseDTO)
+@user_router.get("/me", response_model=UserResponse)
 @inject
 async def get_current_user_profile(
     current_user: CurrentUserPayload,
@@ -267,7 +267,7 @@ async def get_current_user_profile(
         logger.error(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@user_router.get('/', response_model=BaseResponse[List[UserResponseDTO]])
+@user_router.get('/', response_model=BaseResponse[List[UserResponse]])
 @inject
 async def get_users(
     current_user: CurrentUserPayload,
@@ -282,21 +282,21 @@ async def get_users(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error getting users")
 
 # TODO реализовать нижестоящие эндпоинты
-@user_router.get('/{user_id}', response_model=BaseResponse[UserResponseDTO])
+@user_router.get('/{user_id}', response_model=BaseResponse[UserResponse])
 @inject
 async def get_user(
     current_user: CurrentUserPayload,
 ):
     pass
 
-@user_router.patch("/{user_id}", response_model=BaseResponse[UserResponseDTO])
+@user_router.patch("/{user_id}", response_model=BaseResponse[UserResponse])
 async def update_user(
     current_user: CurrentUserPayload
 ):
     #TODO реализовать эндпоинт для обновления данных пользователя (кроме пароля)
     pass
 
-@user_router.delete("/{user_id}", response_model=BaseResponse[UserResponseDTO])
+@user_router.delete("/{user_id}", response_model=BaseResponse[UserResponse])
 async def delete_user(
     current_user: CurrentUserPayload,
     user_id: str
