@@ -43,6 +43,13 @@ class User(Base):
         secondary=task_performers, 
         back_populates="performers"
     )
-
     # Roles
     role = relationship("Role", lazy="joined")
+
+    @property
+    def role_name(self) -> str | None:
+        return self.role.name if self.role else None
+
+    @property
+    def company_name(self) -> str | None:
+        return self.company.name if self.company else None

@@ -12,13 +12,13 @@ class BaseRequest(BaseModel, Generic[T]):
    data: T
 
 class UserCreateDTO(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
-    full_name: str
-    role: str | None
-    position: str | None
-    company_id: int | None
+    username: str = 'Pavel'
+    email: EmailStr ='admin@madi.ru'
+    password: str = 'secret'
+    full_name: str | None = 'Pavel Pavlov Pavlovich'
+    role: str | None = 'admin'
+    position: str | None = 'Developer'
+    company_id: int | None = None
 
 
 
@@ -26,10 +26,10 @@ class UserResponseDTO(BaseModel):
     id: str #uuid.UUID конвертация происходит на уровне БД пока что
     username: str
     email: EmailStr
-    role: str
-    full_name: str
-    company: str
-    position: str
+    role: str | None
+    full_name: str | None
+    company: str | None
+    position: str | None
     status: str = 'active'
 
     class Config:

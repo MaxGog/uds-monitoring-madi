@@ -56,14 +56,14 @@ class PGUserRepo(IUserRepo):
 
 
     async def create_user(self, data: BaseRequest[UserCreateDTO]) -> BaseResponse[UserResponseDTO]:
-        """Создает пользователя из UserCreate DTO и возвращает UserModel"""
+        """Создает пользователя из UserCreate DTO и возвращает UserResponseDTO"""
         try :
             logger.info(f"Creating user: email={data.data.email}, username={data.data.username}")
             role_id = None
             print(data.data.role)
             logger.info(data.data.role)
             if data.data.role:
-                role_id = await self.get_role_by_name(data.data.role)
+                role_id = await self.get_role_id_by_name(data.data.role)
             if role_id is None:
                 logger.warning("Роль не найдена, пользователь будет без прав")
             user_orm = User(
@@ -84,9 +84,13 @@ class PGUserRepo(IUserRepo):
 
             result = UserResponseDTO(
                 id=str(user_orm.id),
-                email=user_orm.email,  # type: ignore
-                username=user_orm.username,
-                
+                email = user_orm.email,  # type: ignore
+                username = user_orm.username,
+                role = user_orm.role_name,
+                full_name = user_orm.full_name,
+                company = user_orm.company_name,
+                position = user_orm.position,
+                status = user_orm.status,
             )
             await self.session.commit()
             logger.info(f"User created successfully: id={result.id}, email={result.email}, role = {result.role}")
