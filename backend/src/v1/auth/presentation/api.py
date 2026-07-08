@@ -1,28 +1,25 @@
-import base64
 from enum import Enum
-import hashlib
 import logging
 from pathlib import Path
-import secrets
-import time
-from typing import Annotated, List
+from typing import Annotated
 
 from dishka import FromDishka
 from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Header, Query, Request, Response, status
 from fastapi.templating import Jinja2Templates
 
 from dishka.integrations.fastapi import FromDishka, inject
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_csrf_protect import CsrfProtect
 
 from backend.core.utils.jwt_service.jwt_service import TokenData
-from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider, IUserUsecases
-from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse, UserCreateRequest, UserResponse, UsersResponse
+from backend.src.v1.auth.domain.interfaces import IAuthUsecases, ITokenAuth, ITokenProvider, IUserRepo
+from backend.src.v1.auth.domain.role_models import ActionType, EntityType, ScopeType
+from backend.src.v1.auth.infrastructure.access_service import AccessManager
+from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, UserCreateRequest
 from backend.config.config import settings
 
 router = APIRouter()
-user_router = APIRouter()
 
 security_bearer = HTTPBearer()
 
@@ -71,6 +68,42 @@ async def get_current_user_payload(
 
 # Алиас для удобства
 CurrentUserPayload = Annotated[dict, Depends(get_current_user_payload)]
+
+
+class RequireAccess:
+    def __init__(self, entity: EntityType, action: ActionType):
+        self.entity = entity
+        self.action = action
+
+    @inject
+    async def __call__(
+        self, 
+        user: CurrentUserPayload,
+        user_repo: FromDishka[IUserRepo]
+    ) -> ScopeType:
+        try:
+            user_id = user.get('sub')
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, 
+                    detail="Invalid token payload"
+                )
+            manager = AccessManager(user_repo)
+            scope = await manager.get_allowed_scope(user_id, self.entity, self.action)
+            
+            if not scope:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Not enough permissions for {self.action} on {self.entity}"
+                )
+                
+            return scope
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Error proving access"
+                )
 
 # Авторизация по OAuth 2.1, при запросе открывается страница на любом устройстве и предоставляет форму для ввода данных.
 # Происходит генерация и обмен кодами для дополнительной безопасности HTTPS протокола и т.д.
@@ -191,7 +224,7 @@ async def register(
     data: BaseRequest[UserCreateRequest],
     uc: FromDishka[IAuthUsecases]
 ):
-    result = await uc.register_new_user(data)
+    result = await uc.register_new_user(data.data)
     return result
 
 # Эндпоинт выхода конкретного юзера
@@ -215,92 +248,18 @@ async def logout_all(
 ):
     pass
 
-@router.post('/test-token', response_model=TokenData, tags=["dev-tools"])
+@router.post('/test-token', response_model=TokenData | None, tags=["dev-tools"])
 @inject
 async def get_test_token(
     auth_provider: FromDishka[ITokenAuth],
     role: str = Query(default = 'admin'),
 ):
     if role == 'admin':
-        result = await auth_provider.set_tokens(user_id = '019f17ea-a900-7fe9-b66f-43d82725afca') # беру напрямую из бд
+        result = await auth_provider.set_tokens(user_id = '019f41c2-3004-7d8a-a088-515502c0d4ba') # беру напрямую из бд
     elif role == 'viewer':
-        result = await auth_provider.set_tokens(user_id = '019f17eb-219a-7f4d-a5ad-124044d79754')
+        result = await auth_provider.set_tokens(user_id = '019f41c2-a6f7-75cd-8124-86d8fc724a0d')
+    elif role == 'string':
+        result = await auth_provider.set_tokens(user_id = '019f41da-c7c8-73fb-a534-af67ffc13e02')
+    else:
+        result = None
     return result
-
-# ... CRUD для пользователя
-
-# Эндпоинт админа, который создаёт юзеров сам, передавая токены
-@user_router.post("/", response_model=BaseResponse[UserResponse])
-@inject
-async def create_user(
-    current_user: CurrentUserPayload,
-    payload: BaseRequest[UserCreateRequest],
-    uc: FromDishka[IUserUsecases],
-):
-    user_id = str(current_user.get('sub'))
-    data = payload.data
-    try:
-        result = await uc.create_user(creator_id = user_id, data = data)
-        return {"data": result}
-    except HTTPException as e:
-        logger.error(e)
-        raise e
-    except Exception as e:
-        logger.error(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Couldn't create new user")
-
-
-@user_router.get("/me", response_model=UserResponse)
-@inject
-async def get_current_user_profile(
-    current_user: CurrentUserPayload,
-    uc: FromDishka[IUserUsecases],
-):
-    user_id = str(current_user.get('sub'))
-    try:
-        result = await uc.get_me(user_id)
-        return result
-    except HTTPException as e:
-        logger.error(e)
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    except Exception as e:
-        logger.error(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-
-@user_router.get('/', response_model=BaseResponse[List[UserResponse]])
-@inject
-async def get_users(
-    current_user: CurrentUserPayload,
-    uc: FromDishka[IUserUsecases]
-):
-    user_id = str(current_user.get('sub'))
-    try:
-        result = await uc.get_users(user_id = user_id)
-        return { "data": result }
-    except Exception as e:
-        logger.error(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error getting users")
-
-# TODO реализовать нижестоящие эндпоинты
-@user_router.get('/{user_id}', response_model=BaseResponse[UserResponse])
-@inject
-async def get_user(
-    current_user: CurrentUserPayload,
-):
-    pass
-
-@user_router.patch("/{user_id}", response_model=BaseResponse[UserResponse])
-async def update_user(
-    current_user: CurrentUserPayload
-):
-    #TODO реализовать эндпоинт для обновления данных пользователя (кроме пароля)
-    pass
-
-@user_router.delete("/{user_id}", response_model=BaseResponse[UserResponse])
-async def delete_user(
-    current_user: CurrentUserPayload,
-    user_id: str
-    ):
-    #TODO реализовать эндпоинт для удаления пользователя по id, который будет требовать аутентификацию и проверку прав доступа.
-    pass
-

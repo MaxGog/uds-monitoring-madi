@@ -7,9 +7,9 @@ import uuid6
 
 
 from backend.core.db.postgres.data_orms.document_orm import Document
-from backend.core.db.postgres.data_orms.role_orm import FileAccessType, RoleName
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
+from backend.src.v1.auth.domain.role_models import ActionType, RoleName
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 from backend.config.config import settings
 from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest, UploadLinkResponse
@@ -93,7 +93,7 @@ class FsUsecases(IFsUsecases):
     async def get_files(
             self,
             user_id: uuid.UUID,
-            required_action: FileAccessType,
+            required_action: ActionType,
             limit: int = 100,
             offset: int = 0,
             ) -> list[Document]:

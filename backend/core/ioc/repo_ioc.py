@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dishka import Provider, Scope, provide
 
 from backend.src.v1.auth.domain.interfaces import IRoleRepo, IUserRepo
-from backend.src.v1.auth.infrastructure.role_repo import PGRoleRepo
-from backend.src.v1.auth.infrastructure.user_repo import PGUserRepo
+from backend.src.v1.auth.infrastructure.role_repo import PgRoleRepo
+from backend.src.v1.auth.infrastructure.user_repo import PgUserRepo
 from backend.src.v1.data.domain.interfaces import IActRepo, ICompanyRepo, IContractRepo, IObjectRepo, IRoadmapRepo, ITaskRepo, IWorkRepo
 from backend.src.v1.data.infrastructure.acts_repo import PgActRepo
 from backend.src.v1.data.infrastructure.company_repo import PgCompanyRepo
@@ -19,11 +19,11 @@ from backend.src.v1.filesystem.infrastructure.file_repo import PgFileRepo
 class RepoProvider(Provider):
     @provide(scope = Scope.REQUEST)
     async def user_repo(self, session: AsyncSession) -> AsyncIterable[IUserRepo]:
-        yield PGUserRepo(session)
+        yield PgUserRepo(session)
 
     @provide(scope = Scope.REQUEST)
     async def role_repo(self, session: AsyncSession) -> AsyncIterable[IRoleRepo]:
-        yield PGRoleRepo(session)
+        yield PgRoleRepo(session)
 
     @provide(scope=Scope.REQUEST)
     async def file_repo(self, session: AsyncSession) -> AsyncIterable[IFileRepo]:

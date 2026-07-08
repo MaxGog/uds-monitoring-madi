@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 from fastapi import HTTPException, status
 
-from backend.core.db.postgres.data_orms.role_orm import RoleName
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
+from backend.src.v1.auth.domain.role_models import RoleName
 from backend.src.v1.data.domain.interfaces import ITaskRepo, ITaskUsecases
 from backend.src.v1.data.presentation.dtos.task_dto import TaskCreateResponse, TaskDeleteResponse, TaskResponse, TaskUpdateResponse, TasksResponse
 

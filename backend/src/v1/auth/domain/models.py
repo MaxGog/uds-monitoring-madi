@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
+from enum import StrEnum, Enum
 import json
 
 @dataclass
@@ -8,10 +8,6 @@ class UserModel:
     id: int
     username: str
     email: str
-
-class UserRole(StrEnum):
-    ADMIN = "admin"
-    VIEWER = "viewer"
 
 class UserStatus(StrEnum):
     ACTIVE = "active"

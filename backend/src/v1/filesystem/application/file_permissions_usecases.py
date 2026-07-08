@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import HTTPException, status
 
-from backend.core.db.postgres.data_orms.role_orm import FileAccessType, RoleName
+from backend.src.v1.auth.domain.role_models import ActionType, RoleName
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFileRepo
@@ -19,14 +19,14 @@ class FileAuthUsecases(IFileAuthUsecases):
             self,
             user_id: uuid.UUID,
             file_id: uuid.UUID,
-            required_action: FileAccessType,
+            required_action: ActionType,
     ) -> bool:
         role = await self.user_repo.get_role(user_id)
         # Валидация для глобальных ролей, предполагается, что будут две глобальные роли - Admin, Viewer
         # Если будет что то другое - то будет отрабатывать сценарий пофайлового Access List
         if role == RoleName.ADMIN:
             return True
-        if role == RoleName.VIEWER and required_action == FileAccessType.READ:
+        if role == RoleName.VIEWER and required_action == ActionType.READ:
             return True
         
         file_exists = await self.file_repo.get_by_id(id = file_id)

@@ -1,7 +1,7 @@
 from datetime import datetime
 import enum
 from typing import Optional
-from sqlalchemy import Column, DateTime, Enum, Integer, String, ForeignKey, Table, Text, func
+from sqlalchemy import DateTime, Enum, String, ForeignKey, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid6
@@ -26,7 +26,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(Text, nullable=True)
     position: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
-    status: Mapped[UserStatus] = mapped_column(Enum(UserStatus, name="user_status", native_enum=True), nullable=False, server_default="active")
+    status: Mapped[UserStatus] = mapped_column(Enum(UserStatus, name="user_status", native_enum=True, values_callable=lambda obj: [e.value for e in obj]), nullable=False, server_default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

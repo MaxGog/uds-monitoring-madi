@@ -22,6 +22,10 @@ class TokenData():
 
 class IUserRepo(Protocol):
     @abstractmethod
+    async def flush(self) -> None:
+        pass
+
+    @abstractmethod
     async def get_by_email(self, email: str) -> UserResponse | None:
         pass
 

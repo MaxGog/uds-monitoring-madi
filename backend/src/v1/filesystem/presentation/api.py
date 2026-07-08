@@ -5,7 +5,7 @@ from dishka.integrations.fastapi import FromDishka, inject
 from types_aiobotocore_s3 import S3Client
 import uuid6
 
-from backend.core.db.postgres.data_orms.role_orm import FileAccessType
+from backend.core.db.postgres.data_orms.role_orm import ActionType
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.presentation.api import CurrentUserPayload
 import httpx
@@ -28,7 +28,7 @@ async def get_files(
 ):
     user_id = payload.get('sub')
     try:
-        result = await uc.get_files(user_id = user_id, required_action = FileAccessType.READ)
+        result = await uc.get_files(user_id = user_id, required_action = ActionType.READ)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

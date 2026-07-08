@@ -3,7 +3,15 @@ from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.v1.auth.infrastructure.user_repo import PGUserRepo
+from backend.src.v1.auth.infrastructure.role_repo import PgRoleRepo
+from backend.src.v1.auth.infrastructure.user_repo import PgUserRepo
+from backend.src.v1.data.infrastructure.acts_repo import PgActRepo
+from backend.src.v1.data.infrastructure.company_repo import PgCompanyRepo
+from backend.src.v1.data.infrastructure.contract_repo import PgContractRepo
+from backend.src.v1.data.infrastructure.objects_repo import PgObjectRepo
+from backend.src.v1.data.infrastructure.roadmap_repo import PgRoadmapRepo
+from backend.src.v1.data.infrastructure.tasks_repo import PgTaskRepo
+from backend.src.v1.data.infrastructure.works_repo import PgWorkRepo
 from backend.src.v1.filesystem.infrastructure.file_repo import PgFileRepo
 
 
@@ -23,10 +31,21 @@ class IUnitOfWork(Protocol):
     async def __aexit__(self, *args): ...
 
 class SQLAlchemyUnitOfWork(IUnitOfWork):
+    '''
+    Внутрь паттерна передаются репозитории. Другие варианты были испробованы, но они оказались несильно лучше.
+    '''
     def __init__(self, session: AsyncSession):
         self.session = session
-        self.users = PGUserRepo(session)
+        self.users = PgUserRepo(session)
         self.file_repo = PgFileRepo(session)
+        self.role_repo = PgRoleRepo(session)
+        self.act_repo = PgActRepo(session)
+        self.company_repo = PgCompanyRepo(session)
+        self.contract_repo = PgContractRepo(session)
+        self.object_repo = PgObjectRepo(session)
+        self.roadmap_repo = PgRoadmapRepo(session)
+        self.task_repo = PgTaskRepo(session)
+        self.work_repo = PgWorkRepo(session)
         
     async def __aenter__(self):
         return self

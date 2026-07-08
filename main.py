@@ -20,7 +20,7 @@ from backend.core.ioc.uc_ioc import UsecaseProvider
 from backend.core.utils.csrf.csrf import CsrfSettings
 from backend.core.utils.logger.app_logger import setup_logger
 from backend.src.v1.auth.presentation.api import router as auth_router
-from backend.src.v1.auth.presentation.api import user_router
+from backend.src.v1.auth.presentation.user_api import router as user_router
 from backend.src.v1.auth.presentation.role_api import router as role_router
 from backend.src.v1.filesystem.presentation.api import router as fs_router
 from backend.src.v1.data.presentation.tasks_api import router as task_router

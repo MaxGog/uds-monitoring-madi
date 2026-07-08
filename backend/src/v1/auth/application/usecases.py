@@ -26,14 +26,14 @@ class AuthUsecases:
     token_provider: ITokenProvider
     hasher: IPasswordHasher
 
-    async def register_new_user(self, dto: BaseRequest[UserCreateRequest]) -> BaseResponse[UserResponse]:
+    async def register_new_user(self, dto: UserCreateRequest) -> UserResponse:
         """Юзкейс 1: Регистрация"""
         async with self.uow as uow:
-            existing_user = await uow.users.get_by_email(dto.data.email)
+            existing_user = await uow.users.get_by_email(dto.email)
             if existing_user:
                 raise HTTPException(status_code=409, detail='username or email already exists')
-            password_hash_str = self.hasher.hash_password(dto.data.password)
-            dto.data.password = password_hash_str
+            password_hash_str = self.hasher.hash_password(dto.password)
+            dto.password = password_hash_str
             user = await uow.users.create_user(dto)
         return user
 
