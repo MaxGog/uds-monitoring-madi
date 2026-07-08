@@ -46,6 +46,10 @@ async def get_current_user_payload(
     auth_service: FromDishka[ITokenAuth],
     auth_header: Annotated[HTTPAuthorizationCredentials, Depends(access_token_scheme)],
 ):
+    '''
+    Процесс аутентификации по выданным токенам.
+    Может просрочиться токен, отсутствовать сессия, несоответствовать поля и пр.
+    '''
     try:
         # validate_token выбросит HTTPException(401), если токен отозван
         token = auth_header.credentials
@@ -71,6 +75,11 @@ CurrentUserPayload = Annotated[dict, Depends(get_current_user_payload)]
 
 
 class RequireAccess:
+    '''
+    Имеются глобальные и локальные скоупы.
+    При локальном скоупе БД надофильтровать так, чтобы выдавало данные, относящиеся как-либо к юзеру, а не все данные.
+    Также происходит сразу авторизация.
+    '''
     def __init__(self, entity: EntityType, action: ActionType):
         self.entity = entity
         self.action = action

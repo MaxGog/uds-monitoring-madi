@@ -1,6 +1,9 @@
 import logging
+from typing import List, Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from backend.core.db.postgres.data_orms.role_orm import Permission, Role
 from backend.src.v1.auth.domain.interfaces import IRoleRepo
@@ -14,70 +17,38 @@ class PgRoleRepo(IRoleRepo):
         super().__init__()
         self.session = session
 
-    async def get_roles(self,) -> list[Role] | None:
-        try:
-            pass
-        except Exception as e:
-            logger.error(e)
+    async def get_by_id(self, role_id: int) -> Optional[Role]:
+        return await self.session.get(Role, role_id)
 
-    async def get_role(self, data) -> Role | None:
-        try:
-            pass
-        except Exception as e:
-            logger.error(e)
+    async def get_by_id_with_permissions(self, role_id: int) -> Optional[Role]:
+        stmt = (
+            select(Role)
+            .where(Role.id == role_id)
+            .options(selectinload(Role.permissions))
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
-    async def create_role(self, data: RoleCreateRequest) -> RoleCreateResponse:
-        try:
-            new_role = Role(
-                name=data.name,
-                scope=data.scope,
-                permissions=[
-                    Permission(entity=p.entity, action=p.action) 
-                    for p in data.permissions
-                ]
-            )
+    async def get_by_name(self, name: str) -> Optional[Role]:
+        stmt = (
+            select(Role)
+            .where(Role.name == name)
+            .options(selectinload(Role.permissions))
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
-            self.session.add(new_role)
-            await self.session.flush()
-            await self.session.refresh(new_role)
-            return RoleCreateResponse(
-                id=new_role.id,
-                name=new_role.name,
-                scope=new_role.scope,
-                permissions=[
-                    PermissionCreate(entity=p.entity, action=p.action) 
-                    for p in new_role.permissions
-                ]
-            )
-        except Exception as e:
-            logger.error(e)
+    async def get_all(self) -> List[Role]:
+        stmt = (
+            select(Role)
+            .options(selectinload(Role.permissions))
+            .order_by(Role.name)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
-    async def update_role(self, data) -> Role:
-        try:
-            pass
-        except Exception as e:
-            logger.error(e)
+    async def add(self, role: Role) -> None:
+        self.session.add(role)
 
-    async def delete_role(self, data) -> bool:
-        try:
-            pass
-        except Exception as e:
-            logger.error(e)
-
-    async def create_permission(self, data) -> Permission:
-        try:
-            pass
-        except Exception as e:
-            logger.error(e)
-
-    async def delete_permission(self, data) -> bool:
-        try:
-            pass
-        except Exception as e:
-            logger.error(e)
-
-    async def get_role_permissions(self, data):
-        try:
-            pass
-        except Exception as e:
-            logger.error(e)
+    async def delete(self, role: Role) -> None:
+        await self.session.delete(role)

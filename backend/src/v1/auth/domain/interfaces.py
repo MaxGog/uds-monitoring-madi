@@ -1,9 +1,10 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import List, Optional, Protocol
 
 
+from backend.core.db.postgres.data_orms.role_orm import Role
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.src.v1.auth.domain.models import CodeData
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
@@ -59,8 +60,22 @@ class IUserRepo(Protocol):
     ...
 
 class IRoleRepo(Protocol):
-    ...
+    @abstractmethod
+    async def get_by_id(self, role_id: int) -> Optional[Role]: pass
 
+    @abstractmethod
+    async def get_by_name(self, name: str) -> Optional[Role]: pass
+
+    @abstractmethod
+    async def get_all(self) -> List[Role]: pass
+
+    @abstractmethod
+    async def add(self, role: Role) -> Role: pass
+
+    @abstractmethod
+    async def delete(self, role: Role) -> None: pass
+
+    
 class IUserUsecases(Protocol):
     @abstractmethod
     async def get_me(self, user_id: str) -> UserResponse:
