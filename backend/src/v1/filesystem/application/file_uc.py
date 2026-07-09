@@ -7,7 +7,7 @@ import uuid
 from fastapi import HTTPException, status
 import uuid6
 
-from backend.core.db.postgres.data_orms.document_orm import DocumentOwnerType
+from backend.core.db.postgres.data_orms.document_orm import Document, DocumentOwnerType
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
@@ -25,13 +25,13 @@ class FsUsecases(IFsUsecases):
     user_repo: IUserRepo
 
     # --- ШАГ 1: ГЕНЕРАЦИЯ ССЫЛКИ ДЛЯ PUT-ЗАПРОСА ---
-    async def initiate_upload(self, data: GetUploadUrlRequest) -> dict:
+    async def initiate_upload(self, uploader_id: uuid.UUID, data: GetUploadUrlRequest) -> dict:
         try:
             # Генерируем уникальный s3_key на базе UUIDv7, сохраняя оригинальное расширение
             file_ext = data.name.split(".")[-1] if "." in data.name else "bin"
             unique_key = f"{data.owner_type or 'common'}/{uuid6.uuid7()}.{file_ext}"
             
-            upload_url = await self.aws_service.generate_upload_url(content_type = data.content_type, s3_key = unique_key)
+            upload_url = await self.aws_service.generate_upload_url(content_type = data.content_type, s3_key = unique_key, uploader_id = uploader_id, owner_type=data.owner_type, owner_id = data.owner_id)
             
             return {
                 "upload_url": upload_url,
@@ -91,6 +91,55 @@ class FsUsecases(IFsUsecases):
             
             docs = await uow.file_repo.get_all(owner_type=type_str, owner_id=owner_id)
             return [DocumentResponse.model_validate(d) for d in docs]
-        
-    async def minio_webhook(self):
-        pass
+
+
+    # Ужасный тестовый метод    
+    async def register_uploaded_file(
+        self,
+        document_id: uuid.UUID,
+        name: str,
+        size_bytes: int,
+        checksum_sha256: str,
+        file_type: str,
+        s3_bucket: str,
+        s3_key: str,
+        content_type: str,
+        uploader_id: uuid.UUID | None,
+        owner_type_str: str | None,
+        owner_id: int | None
+    ) -> None:
+        try:
+            async with self.uow as uow:
+                owner_type_enum = None
+                if owner_type_str:
+                    try:
+                        # Приводим к верхнему регистру на случай расхождений
+                        owner_type_enum = DocumentOwnerType(owner_type_str.upper())
+                    except ValueError:
+                        logger.warning(f"Получен неизвестный тип владельца: {owner_type_str}. Будет записан NULL.")
+                        owner_type_enum = None
+
+                # Создаем модель SQLAlchemy (замените на название вашего класса модели)
+                new_document = Document(
+                    id=document_id,
+                    name=name,
+                    size_bytes=size_bytes,
+                    checksum_sha256=checksum_sha256,
+                    file_type=file_type,
+                    s3_bucket=s3_bucket,
+                    s3_key=s3_key,
+                    content_type=content_type,
+                    uploader_id=uploader_id,
+                    owner_type=owner_type_enum,  # Сюда уходит Либо Член Enum, либо чистый Python None
+                    owner_id=owner_id            # Сюда уходит Либо int, либо чистый Python None
+                )
+
+                # Сохраняем в базу данных через вашу сессию
+                await uow.file_repo.add(new_document)
+                await uow.commit()
+                logger.info(f"Документ {document_id} успешно зарегистрирован в БД через вебхук")
+
+        except Exception as e:
+            await uow.rollback()
+            logger.error(f"Не удалось сохранить документ в базу данных: {e}")
+            raise

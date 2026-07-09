@@ -38,7 +38,7 @@ class Document(Base):
     uploader: Mapped["User"] = relationship("User")
 
     owner_type: Mapped[DocumentOwnerType] = mapped_column(SqlEnum(DocumentOwnerType), default=Null, nullable=True)
-    owner_id: Mapped[int] = mapped_column(Integer) # ID сущности (Contract, Act, и т.д.)
+    owner_id: Mapped[int] = mapped_column(Integer, nullable=True) # ID сущности (Contract, Act, и т.д.)
     # Результаты парсинга (структурированные данные, пока не уверен как это будет реализовано на самом деле)
     #status: Mapped[str] = mapped_column(String(50), default="pending")
     #parsed_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)

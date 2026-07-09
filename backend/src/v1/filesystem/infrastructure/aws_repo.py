@@ -1,9 +1,13 @@
 from datetime import timedelta
+import logging
+from uuid import UUID
 
 from types_aiobotocore_s3 import S3Client
 from uuid6 import uuid7
 from backend.config.config import settings
 from backend.src.v1.filesystem.domain.interfaces import IAwsService
+
+logger = logging.getLogger(__file__)
 
 class MinioFileService(IAwsService):
     def __init__(self, client: S3Client):
@@ -17,27 +21,34 @@ class MinioFileService(IAwsService):
         )
         return presigned_url
     
-    async def generate_upload_url(self, s3_key: str, content_type: str, uploader_id: str, owner_type: str, owner_id: int) -> str:
+    async def generate_upload_url(self, s3_key: str, content_type: str, uploader_id: UUID, owner_type: str | None, owner_id: int | None) -> str:
         """
         Генерирует ссылку, заставляя MinIO ожидать метаданные файла.
         """
-        return await self.client.generate_presigned_url(
-            ClientMethod="put_object",
-            Params={
-                "Bucket": settings.minio.FILE_BUCKET_NAME,
-                "Key": s3_key,
-                "ContentType": content_type,
-                # Boto3 автоматически превратит ключи в заголовки x-amz-meta-*
-                "Metadata": {
-                    "uploader-id": str(uploader_id),
-                    "owner-type": str(owner_type),
-                    "owner-id": str(owner_id)
-                }
-            },
-            ExpiresIn=15 * 60,
-            HttpMethod="PUT"
-        )
-        
+        try:
+            metadata = {"uploader-id": str(uploader_id)}
+
+            if owner_type:
+                metadata["owner-type"] = owner_type.value if hasattr(owner_type, 'value') else str(owner_type)
+                
+            if owner_id is not None:
+                metadata["owner-id"] = str(owner_id)
+                
+            return await self.client.generate_presigned_url(
+                ClientMethod="put_object",
+                Params={
+                    "Bucket": settings.minio.FILE_BUCKET_NAME,
+                    "Key": s3_key,
+                    "ContentType": content_type,
+                    # Boto3 автоматически превратит ключи в заголовки x-amz-meta-*
+                    "Metadata": metadata
+                },
+                ExpiresIn=15 * 60,
+                HttpMethod="PUT"
+            )
+        except Exception as e:
+            logger.error(e)
+
     # async def generate_upload_url(self, s3_key: str, content_type: str, expires_minutes: int = 15) -> str:
     #     """
     #     Генерирует presigned URL для загрузки файла методом PUT.

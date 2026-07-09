@@ -89,6 +89,9 @@ app.include_router(router=role_router, prefix = "/role", tags = ['role'])
 app.include_router(router=contract_router, prefix = "/contract", tags = ['contract'])
 app.include_router(router=company_router, prefix = "/company", tags = ['company'])
 
+from backend.src.v1.filesystem.presentation.api import public_fs_router
+app.include_router(router = public_fs_router)
+
 container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())
 setup_dishka(container, app)
 

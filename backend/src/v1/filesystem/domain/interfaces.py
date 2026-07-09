@@ -12,8 +12,12 @@ class IAwsService(Protocol):
         pass
 
     @abstractmethod
-    async def generate_upload_url(self, s3_key: str, content_type: str, expires_minutes: int = 15) -> str:
+    async def generate_upload_url(self, s3_key: str, content_type: str, uploader_id: str, owner_type: str | None, owner_id: int | None) -> str:
         pass
+
+    # @abstractmethod
+    # async def generate_upload_url(self, s3_key: str, content_type: str, expires_minutes: int = 15) -> str:
+    #     pass
 
     @abstractmethod
     async def generate_download_url(self, bucket: str, s3_key: str, expires_minutes: int = 60) -> str:
@@ -42,7 +46,7 @@ class IFileRepo(Protocol):
 
 class IFsUsecases(Protocol):
     @abstractmethod
-    async def initiate_upload(self, data: GetUploadUrlRequest) -> dict:
+    async def initiate_upload(self, uploader_id: UUID, data: GetUploadUrlRequest) -> dict:
         pass
     
     @abstractmethod

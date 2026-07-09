@@ -1,11 +1,14 @@
 import logging
 from pathlib import Path
 from typing import List, Optional
+from urllib.parse import unquote
 from uuid import UUID
+import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from types_aiobotocore_s3 import S3Client
 import uuid6
 
@@ -31,11 +34,13 @@ router = APIRouter()
 async def request_upload_url(
     data: BaseRequest[GetUploadUrlRequest],
     uc: FromDishka[IFsUsecases],
+    user: CurrentUserPayload
     #scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.CREATE)),
 ):
     """Шаг 1: Запрос presigned-ссылки для прямой загрузки файла в MinIO клиентом"""
     try:
-        result = await uc.initiate_upload(data.data)
+        user_id = user.get('sub')
+        result = await uc.initiate_upload(uploader_id = user_id, data = data.data)
         return BaseResponse(data=result)
     except Exception as e:
         logger.error(e)
@@ -131,64 +136,120 @@ async def get_document_by_id(
     result = await uc.get_file_by_id(file_id)
     return BaseResponse(data=result)
 
+# Ужасный тестовый эндпоинт
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 @inject
 async def minio_webhook(
-    payload: dict,
+    event_data: dict,
     uow: FromDishka[IUnitOfWork],
+    uc: FromDishka[IFsUsecases]
 ):
     """
-    Эндпоинт, который MinIO вызывает САМ сразу после успешного сохранения файла
+    Эндпоинт, который MinIO вызывает сам сразу после успешного сохранения файла
     """
-    records = payload.get("Records", [])
-    if not records:
-        return {"status": "skipped"}
+    try:
+        records = event_data.get("Records", [])
+        if not records:
+            logger.warning("Получен пустой вебхук от MinIO")
+            return {"status": "ignored", "message": "No records found"}
+
+        record = records[0]
+        s3_data = record.get("s3", {})
         
-    event = records[0]
-    # Фильтруем системные тестовые события MinIO (s3:TestEvent)
-    if "ObjectCreated" not in event.get("eventName", ""):
-        return {"status": "skipped"}
+        # 1. Извлекаем базовую информацию о бакете и ключе
+        s3_bucket = s3_data.get("bucket", {}).get("name")
+        raw_s3_key = s3_data.get("object", {}).get("key")
+        # Декодируем из URL-формата (common%2Fimage.png -> common/image.png)
+        s3_key = unquote(raw_s3_key) if raw_s3_key else None
+        
+        size_bytes = s3_data.get("object", {}).get("size")
+        content_type = s3_data.get("object", {}).get("contentType")
+        # MinIO присылает ETag (MD5 хэш) в двойных кавычках, убираем их
+        etag = s3_data.get("object", {}).get("eTag", "").replace('"', '')
 
-    s3_data = event["s3"]
-    s3_object = s3_data["object"]
-    user_meta = s3_object.get("userMetadata", {})
+        # 2. Извлекаем пользовательские метаданные (User Metadata)
+        raw_metadata = s3_data.get("object", {}).get("userMetadata", {})
+        
+        # Нормализуем ключи в нижний регистр, чтобы избежать проблем с регистром
+        user_metadata = {k.lower(): v for k, v in raw_metadata.items()}
 
-    # Извлекаем данные, которые мы зашили на этапе генерации Presigned URL
-    uploader_id = user_meta.get("X-Amz-Meta-Uploader-Id")
-    owner_type = user_meta.get("X-Amz-Meta-Owner-Type")
-    owner_id = user_meta.get("X-Amz-Meta-Owner-Id")
-    
-    s3_key = s3_object["key"]
-    file_name = s3_key.split("/")[-1]
-    file_ext = file_name.split(".")[-1] if "." in file_name else None
+        # Функция для безопасной очистки строк от "NULL"/"None"
+        def clean_meta_value(key: str) -> str | None:
+            val = user_metadata.get(key)
+            if val is None:
+                return None
+            val_str = str(val).strip()
+            if val_str.upper() in ("NULL", "NONE", ""):
+                return None
+            return val_str
 
-    async with uow:
-        new_doc = Document(
-            id=uuid6.uuid7(),
-            name=file_name,
-            size_bytes=s3_object.get("size"),
-            checksum_sha256=s3_object.get("eTag", "").strip('"'),
-            file_type=file_ext,
-            s3_bucket=s3_data["bucket"]["name"],
+        # Вытаскиваем очищенные строки метаданных
+        raw_uploader_id = clean_meta_value("x-amz-meta-uploader-id")
+        raw_owner_type = clean_meta_value("x-amz-meta-owner-type")
+        raw_owner_id = clean_meta_value("x-amz-meta-owner-id")
+
+        # 3. Валидация и парсинг типов данных
+        uploader_id = uuid.UUID(raw_uploader_id) if raw_uploader_id else None
+        owner_id = int(raw_owner_id) if raw_owner_id else None
+        
+        # Вычисляем расширение файла для file_type
+        file_type = s3_key.split(".")[-1].lower() if s3_key and "." in s3_key else "bin"
+
+        # Пытаемся вытащить UUID документа из имени файла (S3-ключа)
+        # Если в ключе 'common/019f4862-...', то имя файла — '019f4862-...'
+        filename = s3_key.split("/")[-1] if s3_key else "unknown"
+        try:
+            # Извлекаем UUID (первые 36 символов имени без расширения)
+            possible_uuid = filename.split(".")[0]
+            document_id = uuid.UUID(possible_uuid)
+        except (ValueError, IndexError):
+            document_id = uuid.uuid4()  # Фолбэк, если имя файла не UUID
+
+        # 4. Передаем структурированные данные в Сервисный слой (Usecase)
+        await uc.register_uploaded_file(
+            document_id=document_id,
+            name=filename,
+            size_bytes=size_bytes,
+            checksum_sha256=etag,  # Маппим MD5/Etag в поле хэша
+            file_type=file_type,
+            s3_bucket=s3_bucket,
             s3_key=s3_key,
-            content_type=s3_object.get("contentType"),
-            uploader_id=uuid6.UUID(uploader_id) if uploader_id else None,
-            owner_type=owner_type,
-            owner_id=int(owner_id) if owner_id else None
+            content_type=content_type,
+            uploader_id=uploader_id,
+            owner_type_str=raw_owner_type,  # Передаем чистую строку (или None)
+            owner_id=owner_id
         )
-        await uow.file_repo.add(new_doc)
-        await uow.commit()
 
-    return {"status": "success", "document_id": str(new_doc.id)}
+        return {"status": "success", "document_id": str(document_id)}
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке вебхука MinIO: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Internal webhook processing error"
+        )
+
+public_fs_router = APIRouter(prefix="/fss", tags=["Public Testing"])
 
 
-@router.get("/test-upload-ui", response_class=HTMLResponse)
-async def test_upload_ui():
+@public_fs_router.get("/test-upload-ui", response_class=HTMLResponse)
+async def test_upload_ui(
+    request: Request
+):
     try:
         BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
         TEMPLATES_DIR = BASE_DIR / "templates"
+        templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+        print(templates)
         html_content =  TEMPLATES_DIR / "test_file_upload_ui.html"
-        return FileResponse(html_content)
+        return templates.TemplateResponse(
+        request=request,
+        name="test_file_upload_ui.html",
+        context={
+            "request": request,
+            # сюда можно передать дополнительные переменные, если пригодятся в HTML
+        }
+    )
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
