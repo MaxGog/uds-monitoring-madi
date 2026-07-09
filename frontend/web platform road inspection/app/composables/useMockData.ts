@@ -1,121 +1,13 @@
 import { computed, ref } from 'vue'
-export interface ActVolumeRow {
-    name: string
-    plan: number
-    fact: number
-    unit: string
-}
 
-export interface MockAct {
-    id: number
-    number: string
-    objectName: string
-    type: string
-    date: string
-    contractor: string
-    status: 'На утверждении' | 'Ожидает подписи' | 'Подписан'
-    amount: string
-    signedBy: string
-    notes: string
-    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
-    contractNumber: string
-    planAmount: string
-    vatAmount: string
-    docUrl: string
-    pdfUrl: string
-    signDate: string
-    volumes: ActVolumeRow[]
-}
+import type { Act } from '~/types/act'
+import type { Object as ObjectItem } from '~/types/object'
+import type { Roadmap } from '~/types/roadmap'
+import { type Task, TaskStatus, TaskType } from '~/types/task'
+import type { User } from '~/types/user'
+import type { Work } from '~/types/work'
 
-export interface MockWorkStatus {
-    id: number
-    objectName: string
-    region: string
-    stage: 'Проверка объемов' | 'Анализ отклонений' | 'Приемка работ' | 'Завершено'
-    progress: string
-    manager: string
-    updatedAt: string
-    nextAction: string
-    hasDeviationAlert: boolean
-    budgetAllocation: {
-        total: string
-        spent: string
-        remaining: string
-    }
-    historyLog: Array<{ date: string; action: string; user: string }>
-}
-
-export interface MockTask {
-    id: number
-    title: string
-    description: string
-    completed: boolean
-    status: 'Активная' | 'Внимание' | 'Критическая' | 'Выполнена'
-    type: 'Проверка СМР' | 'Выгрузка актов' | 'Сверка реестра'
-    objectTitle: string
-    dueDate: string
-    responsibleNames: string[]
-    hasReminderTrigger: boolean
-}
-
-export interface MockUser {
-    id: number
-    fullName: string
-    email: string
-    role: 'Администратор' | 'Инспектор ОДХ' | 'Представитель подрядчика'
-    regionAccess: string[]
-    signatureId: string
-}
-
-export interface MockObject {
-    id: number
-    title: string
-    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
-    status: 'Активный' | 'На проверке' | 'Планирование' | 'Завершено'
-    contractor: string
-    executor: string
-    progressSMR: number
-    source: string
-    sourceLabel: string
-    contractNumber: string
-    contractDate: string
-    contractAmount: string
-    spentAmount: string
-    remainingAmount: string
-    hasActs: boolean
-    connectedActsCount: number
-    historyLog: Array<{ date: string; action: string; user: string }>
-}
-
-export interface MockRoadmapItem {
-    id: number
-    title: string
-    objectId: number
-    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
-    startDate: string
-    endDate: string
-    phase: 'Разработка проекта' | 'Подготовка ИД' | 'Проверка согласований' | 'Утверждено'
-    risk: 'Низкий' | 'Средний' | 'Высокий'
-    riskDescription: string
-    manager: string
-    budget: string
-    progressPercentage: number
-    area: number
-    cost: number
-    lastSource: 'Google Sheets' | 'Ручной ввод' | 'Интеграция API'
-    milestones: Array<{
-        id: number
-        name: string           
-        planDate: string
-        factDate: string | null
-        status: 'В графике' | 'Внимание' | 'Критический сдвиг' | 'Выполнено'
-    }>
-    responsibleManager: string
-    hasRiskAlert: boolean
-}
-
-
-const mockActsList: MockAct[] = [
+const mockActsList: Act[] = [
     {
         id: 1,
         number: 'АКТ-2026-001',
@@ -168,7 +60,7 @@ const mockActsList: MockAct[] = [
     }
 ]
 
-const mockObjectsList = ref<MockObject[]>([
+const mockObjectsList = ref<ObjectItem[]>([
     {
         id: 1,
         title: 'Капитальный ремонт ул. Тверская (от Манежной пл. до Настасьинского пер.)',
@@ -257,7 +149,7 @@ const mockObjectsList = ref<MockObject[]>([
     }
 ])
 
-const mockWorkStatusesList: MockWorkStatus[] = [
+const mockWorkStatusesList: Work[] = [
     {
         id: 1,
         objectName: 'Улица Тверская (Курс ремонта)',
@@ -276,7 +168,7 @@ const mockWorkStatusesList: MockWorkStatus[] = [
     }
 ]
 
-export const mockRoadmapItemsList: MockRoadmapItem[] = [
+export const mockRoadmapItemsList: Roadmap[] = [
     {
         id: 1,
         title: 'Капитальный ремонт ул. Тверская (от Манежной пл. до Триумфальной пл.)',
@@ -288,14 +180,14 @@ export const mockRoadmapItemsList: MockRoadmapItem[] = [
         riskDescription: 'Обнаружено смещение подземных коммуникаций, не указанных на архивных планах Мосгоргеотреста.',
         manager: 'Петров С. В.',
         budget: '142 500 000 ₽',
-        objectId: 0,
+        objectId: 1,
         progressPercentage: 0,
         area: 0,
         cost: 0,
         lastSource: 'Ручной ввод',
         milestones: [],
-        responsibleManager: '',
-        hasRiskAlert: false
+        responsibleManager: 'Петров С. В.',
+        hasRiskAlert: true
     },
     {
         id: 2,
@@ -309,12 +201,12 @@ export const mockRoadmapItemsList: MockRoadmapItem[] = [
         manager: 'Иванов И. И.',
         budget: '289 000 000 ₽',
         progressPercentage: 20,
-        objectId: 0,
+        objectId: 2,
         area: 0,
         cost: 0,
         lastSource: 'Ручной ввод',
         milestones: [],
-        responsibleManager: '',
+        responsibleManager: 'Иванов И. И.',
         hasRiskAlert: false
     },
     {
@@ -329,24 +221,24 @@ export const mockRoadmapItemsList: MockRoadmapItem[] = [
         manager: 'Сидоров К. А.',
         budget: '64 200 000 ₽',
         progressPercentage: 60,
-        objectId: 0,
+        objectId: 3,
         area: 0,
         cost: 0,
         lastSource: 'Ручной ввод',
         milestones: [],
-        responsibleManager: '',
+        responsibleManager: 'Сидоров К. А.',
         hasRiskAlert: false
     }
 ]
 
-const mockTasksList: MockTask[] = [
+const mockTasksList: Task[] = [
     {
         id: 1,
         title: 'Устранить расхождения по фрезерованию на Тверской',
         description: 'Объем фрезерования в акте №1 не бьется с геодезической съемкой.',
         completed: false,
-        status: 'Внимание',
-        type: 'Проверка СМР',
+        status: TaskStatus.IN_PROGRESS,
+        type: TaskType.CMR_CHECK,
         objectTitle: 'ул. Тверская',
         dueDate: '08.07.2026',
         responsibleNames: ['Петров С. В.'],
@@ -354,34 +246,36 @@ const mockTasksList: MockTask[] = [
     }
 ]
 
-const mockUsersList: MockUser[] = [
+const mockUsersList: User[] = [
     {
-        id: 1,
-        fullName: 'Иванов Иван Иванович',
+        id: '1',
+        username: 'ivanov',
         email: 'ivanov@odh.mos.ru',
         role: 'Администратор',
-        regionAccess: ['ЦАО', 'САО', 'ЮАО', 'ЗАО', 'ВАО'],
-        signatureId: 'E-SIG-77-9921A'
+        company: 'ГБУ Автомобильные дороги',
+        position: 'Руководитель проекта',
+        status: 'Активный'
     },
     {
-        id: 2,
-        fullName: 'Петров Сергей Владимирович',
+        id: '2',
+        username: 'petrov_sv',
         email: 'petrov.sv@odh.mos.ru',
         role: 'Инспектор ОДХ',
-        regionAccess: ['ЦАО'],
-        signatureId: 'E-SIG-77-1044B'
+        company: 'ОДХ ЦАО',
+        position: 'Инспектор',
+        status: 'Активный'
     }
 ]
 
-const acts = ref<MockAct[]>(mockActsList)
-const workStatuses = ref<MockWorkStatus[]>(mockWorkStatusesList)
-const roadmapItems = ref<MockRoadmapItem[]>(mockRoadmapItemsList)
-const tasks = ref<MockTask[]>(mockTasksList)
-const users = ref<MockUser[]>(mockUsersList)
+const acts = ref<Act[]>(mockActsList)
+const workStatuses = ref<Work[]>(mockWorkStatusesList)
+const roadmapItems = ref<Roadmap[]>(mockRoadmapItemsList)
+const tasks = ref<Task[]>(mockTasksList)
+const users = ref<User[]>(mockUsersList)
 
 const objects = mockObjectsList
 
-const addObject = (newObj: Omit<MockObject, 'id' | 'hasActs' | 'connectedActsCount' | 'historyLog'>) => {
+const addObject = (newObj: Omit<ObjectItem, 'id' | 'hasActs' | 'connectedActsCount' | 'historyLog'>) => {
     const id = mockObjectsList.value.length + 1
     mockObjectsList.value.push({
         ...newObj,
@@ -392,7 +286,7 @@ const addObject = (newObj: Omit<MockObject, 'id' | 'hasActs' | 'connectedActsCou
     })
 }
 
-const addRoadmapItem = (newItem: Omit<MockRoadmapItem, 'id' | 'progressPercentage' | 'hasRiskAlert'>) => {
+const addRoadmapItem = (newItem: Omit<Roadmap, 'id' | 'progressPercentage' | 'hasRiskAlert'>) => {
     const id = roadmapItems.value.length + 1
     roadmapItems.value.push({
         ...newItem,
@@ -412,7 +306,6 @@ const addRoadmapItem = (newItem: Omit<MockRoadmapItem, 'id' | 'progressPercentag
 }
 
 export function useMockData() {
-    
     return {
         acts,
         workStatuses,
@@ -422,6 +315,7 @@ export function useMockData() {
         types: computed(() => Array.from(new Set(acts.value.map(a => a.type)))),
         regions: computed(() => Array.from(new Set(acts.value.map(a => a.region)))),
         objects,
-        addObject
+        addObject,
+        addRoadmapItem
     }
 }
