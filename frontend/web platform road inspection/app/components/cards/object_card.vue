@@ -64,6 +64,9 @@
         <div class="modal-pivot">
           <button class="pivot-item" :class="{ active: activeTab === 'main' }" @click="activeTab = 'main'">Основное</button>
           <button class="pivot-item" :class="{ active: activeTab === 'finance' }" @click="activeTab = 'finance'">Финансы и Контракт</button>
+          <button class="pivot-item" :class="{ active: activeTab === 'acts' }" @click="activeTab = 'acts'">
+            Акты ({{ obj.connectedActsCount }})
+          </button>
           <button class="pivot-item" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">История изменений</button>
         </div>
 
@@ -72,21 +75,46 @@
             <label>Полное наименование ОДХ</label>
             <div class="field-value text-wrap">{{ obj.title }}</div>
           </div>
+          <div class="detail-field full" v-if="obj.address">
+            <label>Адрес / Границы объекта</label>
+            <div class="field-value">📍 {{ obj.address }}</div>
+          </div>
           <div class="detail-field">
             <label>Административный округ</label>
             <div class="field-value">{{ obj.region }}</div>
           </div>
           <div class="detail-field">
-            <label>Прогресс строительно-монтажных работ</label>
-            <div class="field-value">{{ obj.progressSMR }} %</div>
+            <label>Прогресс СМР</label>
+            <div class="field-value font-semibold">{{ obj.progressSMR }} %</div>
+          </div>
+          <div class="detail-field">
+            <label>Сроки проведения работ</label>
+            <div class="field-value">
+              📅 {{ obj.startDate || '—' }} — {{ obj.endDate || '—' }}
+              <span v-if="obj.isOverdue" class="badge-danger">Просрочка</span>
+            </div>
           </div>
           <div class="detail-field">
             <label>Генеральный подрядчик</label>
             <div class="field-value">{{ obj.contractor }}</div>
           </div>
-          <div class="detail-field">
-            <label>Орган исполнительной власти / Технадзор</label>
-            <div class="field-value">{{ obj.executor }}</div>
+        </div>
+
+        <div v-if="activeTab === 'acts'" class="tab-content">
+          <div v-if="obj.actsList && obj.actsList.length" class="acts-list">
+            <div v-for="act in obj.actsList" :key="act.id" class="act-item-row">
+              <div class="act-info">
+                <span class="act-number">Акт № {{ act.number }}</span>
+                <span class="act-date">от {{ act.date }}</span>
+              </div>
+              <div class="act-meta">
+                <span class="act-amount">{{ act.amount }}</span>
+                <span class="act-status-tag">{{ act.status }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            К данному объекту пока не привязано ни одного закрывающего акта СМР.
           </div>
         </div>
 
@@ -137,13 +165,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { MockObject } from '~/composables/useMockData'
+import type { Object } from '~/composables/useObjects'
 import CommonModal from '~/components/common/common_modal.vue'
 
 const props = defineProps<{ obj: MockObject }>()
 
 const isModalOpen = ref(false)
-const activeTab = ref<'main' | 'finance' | 'history'>('main')
+const activeTab = ref<'main' | 'finance' | 'acts' | 'history'>('main')
 
 const statusSlug = computed(() => {
   switch (props.obj.status) {

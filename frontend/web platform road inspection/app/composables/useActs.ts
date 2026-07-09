@@ -1,5 +1,5 @@
 import type { ApiResponse } from "~/types/api";
-import type { Act, ActCreate, ActUpdate } from "~/types/act";
+import type { export export Act, ActCreate, ActUpdate } from "~/types/act";
 
 export function useAct() {
   const acts = ref<Act[]>([]);
