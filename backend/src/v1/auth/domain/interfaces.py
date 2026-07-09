@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Protocol
-
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db.postgres.data_orms.role_orm import Role
 from backend.core.db.postgres.data_orms.user_orm import User

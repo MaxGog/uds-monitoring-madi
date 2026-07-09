@@ -3,8 +3,10 @@ from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.src.v1.auth.domain.interfaces import IRoleRepo, IUserRepo
 from backend.src.v1.auth.infrastructure.role_repo import PgRoleRepo
 from backend.src.v1.auth.infrastructure.user_repo import PgUserRepo
+from backend.src.v1.data.domain.interfaces import IActRepo, ICompanyRepo, IContractRepo, IObjectRepo, IRoadmapRepo, ITaskRepo, IWorkRepo
 from backend.src.v1.data.infrastructure.acts_repo import PgActRepo
 from backend.src.v1.data.infrastructure.company_repo import PgCompanyRepo
 from backend.src.v1.data.infrastructure.contract_repo import PgContractRepo
@@ -12,12 +14,25 @@ from backend.src.v1.data.infrastructure.objects_repo import PgObjectRepo
 from backend.src.v1.data.infrastructure.roadmap_repo import PgRoadmapRepo
 from backend.src.v1.data.infrastructure.tasks_repo import PgTaskRepo
 from backend.src.v1.data.infrastructure.works_repo import PgWorkRepo
+from backend.src.v1.filesystem.domain.interfaces import IFileRepo
 from backend.src.v1.filesystem.infrastructure.file_repo import PgFileRepo
 
 
 # Автоматический хелпер для работы с асинхронными транзакциями через контекстный менеджер. Сразу через интерфейс.
 
 class IUnitOfWork(Protocol):
+    users: IUserRepo
+    file_repo: IFileRepo
+    role_repo: IRoleRepo
+    act_repo: IActRepo
+    company_repo: ICompanyRepo
+    contract_repo: IContractRepo
+    object_repo: IObjectRepo
+    roadmap_repo: IRoadmapRepo
+    task_repo: ITaskRepo
+    work_repo: IWorkRepo
+
+
     @abstractmethod
     async def commit(self): ...
 

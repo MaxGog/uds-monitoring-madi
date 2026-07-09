@@ -49,7 +49,7 @@ class TaskUsecases(ITaskUsecases):
             # Если переданы исполнители
             if data.performer_ids:
                 for user_id in data.performer_ids:
-                    performer = await self.uow.users.get_by_id(user_id)
+                    performer = await uow.users.get_by_id(user_id)
                     if not performer:
                         raise HTTPException(status_code=400, detail=f"Performer with id {user_id} not found")
                     new_task.performers.append(performer)
