@@ -10,7 +10,7 @@ from alembic import context
 from backend.core.db.postgres.base_orm import Base
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.core.db.postgres.data_orms.task_orm import Task
-from backend.core.db.postgres.data_orms.copmany_orm import Company
+from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.data_orms.work_orm import Work
 from backend.core.db.postgres.data_orms.act_orm import WorkAct, WorkActItem
 from backend.core.db.postgres.data_orms.contract_orm import Contract, ContractItem

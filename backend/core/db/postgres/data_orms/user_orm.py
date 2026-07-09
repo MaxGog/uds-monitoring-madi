@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import uuid6
 
 from backend.core.db.postgres.base_orm import Base
-from backend.core.db.postgres.data_orms.copmany_orm import Company
+from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.data_orms.task_orm import Task, task_performers
 from backend.src.v1.auth.domain.models import UserStatus
 

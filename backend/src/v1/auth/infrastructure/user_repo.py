@@ -3,7 +3,7 @@ import logging
 from fastapi import HTTPException, status
 from sqlalchemy import Null, String, cast, func, select, update
 
-from backend.core.db.postgres.data_orms.copmany_orm import Company
+from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.data_orms.role_orm import Role
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.src.v1.auth.domain.interfaces import IUserRepo

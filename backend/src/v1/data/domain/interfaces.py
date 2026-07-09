@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import List, Optional, Protocol
 
+from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.task_orm import Task
 from backend.core.db.postgres.data_orms.work_orm import Work
@@ -88,7 +89,20 @@ class IRoadmapRepo(Protocol):
     ...
 
 class ICompanyRepo(Protocol):
-    ...
+    @abstractmethod
+    async def get_by_id(self, company_id: int) -> Optional[Company]: pass
+    
+    @abstractmethod
+    async def get_by_inn(self, inn: str) -> Optional[Company]: pass
+    
+    @abstractmethod
+    async def get_all(self) -> List[Company]: pass
+    
+    @abstractmethod
+    async def add(self, company: Company) -> None: pass
+    
+    @abstractmethod
+    async def delete(self, company: Company) -> None: pass
 
 class IContractRepo(Protocol):
     ...
