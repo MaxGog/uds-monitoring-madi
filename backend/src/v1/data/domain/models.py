@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
+import enum
 
 
 '''
@@ -15,26 +16,26 @@ class Task:
     status: str
     category: str
 
+class TaskStatus(str, enum.Enum):
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    IN_PROGRESS = 'in_progress'
+    COMPLETED = 'completed'
+    PAUSED = 'paused'
+    CANCELLED = 'cancelled'
+    EXPIRED = 'expired'
+    FAILED = 'failed'
+    
+class TaskPriority(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 class RepairProgram(StrEnum):
     kbu = "kbu"
     tekrem = "tekrem"
     other = "other"
-
-
-class TaskStatus(StrEnum):
-    active = "active"
-    soon_deadline = "soon_deadline"
-    overdue = "overdue"
-    done = "done"
-    cancelled = "cancelled"
-
-
-class TaskPriority(StrEnum):
-    low = "low"
-    normal = "normal"
-    high = "high"
-    critical = "critical"
 
 
 class FileStorageProvider(StrEnum):

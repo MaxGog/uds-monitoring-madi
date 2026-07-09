@@ -8,20 +8,7 @@ from backend.core.db.postgres.base_orm import Base
 import enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-class TaskStatus(str, enum.Enum):
-    PENDING = 'pending'
-    STARTED = 'started'
-    IN_PROGRESS = 'in_progress'
-    COMPLETED = 'completed'
-    PAUSED = 'paused'
-    CANCELLED = 'cancelled'
-    EXPIRED = 'expired'
-    FAILED = 'failed'
-    
-class TaskPriority(str, enum.Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+from backend.src.v1.data.domain.models import TaskPriority, TaskStatus
 
 task_performers = Table(
     "task_performers",
