@@ -21,7 +21,7 @@ export function useObject() {
       });
       objects.value = response.data;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при загрузке пользователей";
+      error.value = err.data?.detail || "Ошибка при загрузке объектов";
     } finally {
       isLoading.value = false;
     }
@@ -36,8 +36,7 @@ export function useObject() {
       });
       currentObject.value = response.data;
     } catch (err: any) {
-      error.value =
-        err.data?.detail || "Ошибка при загрузке данных о своём пользователе";
+      error.value = err.data?.detail || "Ошибка при загрузке объекта";
     } finally {
       isLoading.value = false;
     }
@@ -49,16 +48,14 @@ export function useObject() {
     try {
       const response = await apiFetch<ApiResponse<Object>>("/Object", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: { data: payload },
       });
-      const newUser = response.data;
-      objects.value.push(newUser);
-      return newUser;
+      const newObj = response.data;
+      objects.value.push(newObj);
+      return newObj;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при создании пользователя";
+      error.value = err.data?.detail || "Ошибка при создании объекта";
       return null;
     } finally {
       isLoading.value = false;
@@ -67,28 +64,27 @@ export function useObject() {
 
   const updateObject = async (
     id: number,
-    payload: ObjectUpdate,
+    payload: ObjectUpdate
   ): Promise<Object | null> => {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/users/${id}`, {
+      const response = await apiFetch<ApiResponse<Object>>(`/Object/${id}`, {
         method: "PATCH",
         body: payload,
       });
-      const updatedUser = response.data;
-      // Локально обновляем массив, чтобы избежать лишнего запроса к БД
+      const updatedObj = response.data;
       const index = objects.value.findIndex((u) => u.id === id);
       if (index !== -1) {
-        objects.value[index] = { ...objects.value[index], ...updatedUser };
+        objects.value[index] = { ...objects.value[index], ...updatedObj };
       }
       if (currentObject.value?.id === id) {
-        currentObject.value = { ...currentObject.value, ...updatedUser };
+        currentObject.value = { ...currentObject.value, ...updatedObj };
       }
 
-      return updatedUser;
+      return updatedObj;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при обновлении пользователя";
+      error.value = err.data?.detail || "Ошибка при обновлении объекта";
       return null;
     } finally {
       isLoading.value = false;
@@ -97,19 +93,18 @@ export function useObject() {
 
   const deleteObject = async (id: number): Promise<boolean> => {
     isLoading.value = true;
-    clearError();
+    cleanError();
     try {
       await apiFetch(`/Object/${id}`, {
         method: "DELETE",
       });
-      // Локально удаляем из стейта
       objects.value = objects.value.filter((u) => u.id !== id);
       if (currentObject.value?.id === id) {
         currentObject.value = null;
       }
       return true;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при удалении";
+      error.value = err.data?.detail || "Ошибка при удалении объекта";
       return false;
     } finally {
       isLoading.value = false;
@@ -118,6 +113,7 @@ export function useObject() {
 
   return {
     objects,
+    currentObject,
     isLoading,
     error,
     cleanError,
