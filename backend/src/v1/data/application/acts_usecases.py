@@ -14,9 +14,10 @@ from backend.src.v1.data.presentation.dtos.act_dto import WorkActCreateRequest, 
 logger = logging.getLogger(__file__)
 
 class ActUsecases(IActUsecases):
-    uow: IUnitOfWork
-    act_repo: IActRepo
-    user_repo: IUserRepo
+    def __init__(self, uow: IUnitOfWork, act_repo: IActRepo, user_repo: IUserRepo):
+        self.uow = uow
+        self.act_repo = act_repo
+        self.user_repo = user_repo
 
     # --- READ (SINGLE) ---
     async def get_act_by_id(self, item_id: int) -> WorkActResponse:

@@ -13,9 +13,10 @@ from backend.src.v1.data.presentation.dtos.company_dto import CompanyCreateReque
 logger = logging.getLogger(__name__)
 
 class CompanyUsecases(ICompanyUsecases):
-    uow: IUnitOfWork
-    company_repo: ICompanyRepo
-    user_repo: IUserRepo
+    def __init__(self, uow: IUnitOfWork, company_repo: ICompanyRepo, user_repo: IUserRepo) -> None:   
+        self.uow = uow
+        self.company_repo = company_repo
+        self.user_repo = user_repo
 
     # --- CREATE ---
     async def create_company(self, data: CompanyCreateRequest) -> CompanyResponse:

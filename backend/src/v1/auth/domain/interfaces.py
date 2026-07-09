@@ -2,13 +2,15 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Protocol
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.db.postgres.data_orms.role_orm import Role
+from backend.core.db.postgres.data_orms.role_orm import Permission, Role
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.src.v1.auth.domain.models import CodeData
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
-from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest, UserResponse
+from backend.src.v1.auth.presentation.dto.role_dto import RoleCreateRequest, RoleResponse, RoleUpdateRequest
+from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest, UserResponse, UserUpdateRequest
 
 class TokenType(str, Enum):
     ACCESS = "access"
@@ -23,41 +25,25 @@ class TokenData():
 
 class IUserRepo(Protocol):
     @abstractmethod
-    async def flush(self) -> None:
-        pass
+    async def get_by_id(self, user_id: UUID) -> Optional[User]: pass
+    
+    @abstractmethod
+    async def get_by_username(self, username: str) -> Optional[User]: pass
+    
+    @abstractmethod
+    async def get_by_email(self, email: str) -> Optional[User]: pass
+    
+    @abstractmethod
+    async def get_all(self) -> List[User]: pass
+    
+    @abstractmethod
+    async def count_by_company(self, item_id: int) -> int: pass
+    
+    @abstractmethod
+    async def count_by_role(self, item_id: int) -> int: pass
 
     @abstractmethod
-    async def get_by_email(self, email: str) -> UserResponse | None:
-        pass
-
-    @abstractmethod
-    async def get_by_username(self, username: str) -> User:
-        pass
-
-    @abstractmethod
-    async def get_by_id(self, user_id: str) -> User | None:
-        pass
-
-    @abstractmethod
-    async def get_all(self, limit: int, offset: int) -> list[User] | None:
-        pass
-
-    @abstractmethod
-    async def create_user(self, user: UserCreateRequest) -> UserResponse:
-        pass
-
-    @abstractmethod
-    async def get_role(self, user_id: str):
-        pass
-
-    @abstractmethod
-    async def update_user_by_id(self, user_id: str) -> User:
-        pass
-
-    @abstractmethod
-    async def delete_user_by_id(self, user_id: str) -> None:
-        pass
-    ...
+    async def add(self, user: User) -> None: pass
 
 class IRoleRepo(Protocol):
     @abstractmethod
@@ -75,23 +61,56 @@ class IRoleRepo(Protocol):
     @abstractmethod
     async def delete(self, role: Role) -> None: pass
 
-    
 class IUserUsecases(Protocol):
     @abstractmethod
     async def get_me(self, user_id: str) -> UserResponse:
         pass
 
     @abstractmethod
-    async def get_users(self, user_id: str, limit: int = 20, offset: int = 0) -> UserResponse:
+    async def get_user_by_id(self, user_id: UUID) -> UserResponse:
         pass
 
     @abstractmethod
-    async def create_user(self, creator_id: str, data: UserCreateRequest, ) -> UserResponse:
+    async def get_all_users(self) -> List[UserResponse]:
         pass
-    ...
+    
+    @abstractmethod
+    async def create_user(self, data: UserCreateRequest) -> UserResponse:
+        pass
+
+    @abstractmethod
+    async def update_user(self, user_id: UUID, data: UserUpdateRequest) -> UserResponse:
+        pass
+    
+    @abstractmethod
+    async def delete_user(self, user_id: UUID) -> None:
+        pass
+
+class IPermissionRepo(Protocol):
+    @abstractmethod
+    async def get_by_ids(self, ids: List[int]) -> List[Permission]: pass
+
 
 class IRoleUsecases(Protocol):
-    ...
+    @abstractmethod
+    async def create_role(self, data: RoleCreateRequest) -> RoleResponse:
+        pass
+
+    @abstractmethod
+    async def get_role_by_id(self, item_id: int) -> RoleResponse:
+        pass
+
+    @abstractmethod
+    async def get_all_roles(self) -> List[RoleResponse]:
+        pass
+
+    @abstractmethod
+    async def update_role(self, item_id: int, data: RoleUpdateRequest) -> RoleResponse:
+        pass
+
+    @abstractmethod
+    async def delete_role(self, item_id: int) -> None:
+        pass
 
 class ITokenProvider(Protocol):
     @abstractmethod

@@ -3,7 +3,8 @@ from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.v1.auth.domain.interfaces import IRoleRepo, IUserRepo
+from backend.src.v1.auth.domain.interfaces import IPermissionRepo, IRoleRepo, IUserRepo
+from backend.src.v1.auth.infrastructure.permission_repo import PgPermissionRepo
 from backend.src.v1.auth.infrastructure.role_repo import PgRoleRepo
 from backend.src.v1.auth.infrastructure.user_repo import PgUserRepo
 from backend.src.v1.data.domain.interfaces import IActRepo, ICompanyRepo, IContractRepo, IObjectRepo, IRoadmapRepo, ITaskRepo, IWorkRepo
@@ -21,8 +22,9 @@ from backend.src.v1.filesystem.infrastructure.file_repo import PgFileRepo
 # Автоматический хелпер для работы с асинхронными транзакциями через контекстный менеджер. Сразу через интерфейс.
 
 class IUnitOfWork(Protocol):
-    users: IUserRepo
+    user_repo: IUserRepo
     file_repo: IFileRepo
+    permission_repo: IPermissionRepo
     role_repo: IRoleRepo
     act_repo: IActRepo
     company_repo: ICompanyRepo
@@ -51,8 +53,9 @@ class SQLAlchemyUnitOfWork(IUnitOfWork):
     '''
     def __init__(self, session: AsyncSession):
         self.session = session
-        self.users = PgUserRepo(session)
+        self.user_repo = PgUserRepo(session)
         self.file_repo = PgFileRepo(session)
+        self.permission_repo = PgPermissionRepo(session)
         self.role_repo = PgRoleRepo(session)
         self.act_repo = PgActRepo(session)
         self.company_repo = PgCompanyRepo(session)

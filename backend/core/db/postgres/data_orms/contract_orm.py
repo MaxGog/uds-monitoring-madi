@@ -46,6 +46,7 @@ class Contract(Base):
     )
     object: Mapped[Optional["Object"]] = relationship("Object", back_populates="contracts")
     work: Mapped[Optional["Work"]] = relationship("Work", back_populates="contracts")
+    acts: Mapped[List["WorkAct"]] = relationship("WorkAct", back_populates="contract")
 
 class ContractItem(Base):
     '''

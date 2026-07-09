@@ -24,6 +24,7 @@ class Object(Base):
     contracts: Mapped[List["Contract"]] = relationship("Contract", back_populates="object")
     works: Mapped[List["Work"]] = relationship("Work", back_populates="object")
 
+    acts: Mapped[List["WorkAct"]] = relationship("WorkAct", back_populates="object")
     # Сумма по всем актам, которые привязаны к объекту напрямую или через работы
     # Опасный кусок кода, т.к. при огромных объёмах данных может просто сдохнуть БД из-за нехватки ОЗУ. Решение - ограничить кол-во данных и выбрать конкретные поля.
     # Также можно сделать парсер и CRON операцию по анализу данных через Pandas и в отдельные поля/таблицы вносить итоги.

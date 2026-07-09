@@ -15,9 +15,10 @@ logger = logging.getLogger(__file__)
 
 
 class TaskUsecases(ITaskUsecases):
-    uow: IUnitOfWork
-    task_repo: ITaskRepo
-    user_repo: IUserRepo
+    def __init__(self, uow: IUnitOfWork, task_repo: ITaskRepo, user_repo: IUserRepo):
+        self.uow = uow
+        self.task_repo = task_repo
+        self.user_repo = user_repo
 
     async def get_tasks(self) -> List[TaskResponse]:
         tasks = await self.task_repo.get_all()

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.src.v1.auth.domain.interfaces import IRoleUsecases
 from backend.src.v1.auth.domain.role_models import ActionType, EntityType, ScopeType
 from backend.src.v1.auth.presentation.api import CurrentUserPayload, RequireAccess
-from backend.src.v1.auth.presentation.dto.role_dto import RoleCreateRequest, RoleCreateResponse, RoleResponse, RoleUpdateRequest
+from backend.src.v1.auth.presentation.dto.role_dto import RoleCreateRequest, RoleResponse, RoleUpdateRequest
 from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest, BaseResponse
 from fastapi import APIRouter, status
 from dishka.integrations.fastapi import FromDishka, inject
@@ -47,16 +47,16 @@ async def get_role(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@router.post('/', response_model=BaseResponse[RoleCreateResponse], status_code=status.HTTP_201_CREATED)
+@router.post('/', response_model=BaseResponse[RoleResponse], status_code=status.HTTP_201_CREATED)
 @inject
 async def create_role(
-    payload: BaseRequest[RoleCreateRequest],
+    data: BaseRequest[RoleCreateRequest],
     uc: FromDishka[IRoleUsecases],
     user: CurrentUserPayload,
     scope: ScopeType = Depends(RequireAccess(EntityType.ROLE, ActionType.CREATE)),
 ):
     try:
-        result = await uc.create_role(payload.data)
+        result = await uc.create_role(data.data)
         return BaseResponse(data = result)
     except Exception as e:
         logger.error(e)
@@ -66,7 +66,7 @@ async def create_role(
 @inject
 async def update_role(
     role_id: int,
-    payload: BaseRequest[RoleUpdateRequest],
+    data: BaseRequest[RoleUpdateRequest],
     uc: FromDishka[IRoleUsecases],
     user: CurrentUserPayload,
     scope: ScopeType = Depends(RequireAccess(EntityType.ROLE, ActionType.UPDATE))
@@ -77,7 +77,7 @@ async def update_role(
     Если стереть поле из Swagger — оно проигнорируется.
     """
     try:
-        result = await uc.update_role(payload.data)
+        result = await uc.update_role(item_id = role_id, data = data.data)
         return BaseResponse(data = result)
     except Exception as e:
         logger.error(e)
@@ -100,7 +100,7 @@ async def delete_role(
         logger.error(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@router.post('/test', tags=['dev-tools'], response_model=BaseResponse[RoleCreateResponse])
+@router.post('/test', tags=['dev-tools'], response_model=BaseResponse[RoleResponse])
 @inject
 async def create_role_dev(
     uc: FromDishka[IRoleUsecases],

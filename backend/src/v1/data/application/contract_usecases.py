@@ -12,9 +12,10 @@ from backend.src.v1.data.presentation.dtos.contract_dto import ContractCreateReq
 logger = logging.getLogger(__name__)
 
 class ContractUsecases(IContractUsecases):
-    uow: IUnitOfWork
-    contract_repo: IContractRepo
-    user_repo: IUserRepo
+    def __init__(self, uow: IUnitOfWork, contract_repo: IContractRepo, user_repo: IUserRepo) -> None:
+        self.uow = uow
+        self.contract_repo = contract_repo
+        self.user_repo = user_repo
 
     # --- READ (SINGLE) ---
     async def get_contract_by_id(self, item_id: int) -> ContractResponse:

@@ -17,10 +17,7 @@ class DocumentOwnerType(str, PyEnum):
 # Таблица метаданных файлов и результатов парсинга
 class Document(Base):
     __tablename__ = "documents"
-    
-    # Использование uuid позволит в случае чего разделить на несколько серверов данные.
-    # 7 версия имеет полезный функционал в виде генерации временной метки в начале идентификатора
-    # и в дальнейшем делить эффективнее данные через индекс
+
     id: Mapped[uuid6.UUID] = mapped_column(
         UUID(as_uuid=True), 
         primary_key=True, 

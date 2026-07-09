@@ -4,6 +4,9 @@ from typing import List
 from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.core.db.postgres.base_orm import Base
+from backend.core.db.postgres.data_orms.act_orm import WorkAct
+from backend.core.db.postgres.data_orms.company_orm import Company
+from backend.core.db.postgres.data_orms.contract_orm import Contract
 from backend.core.db.postgres.data_orms.object_orm import Object
 
 
@@ -30,3 +33,4 @@ class Work(Base):
     contractor: Mapped["Company"] = relationship("Company")
 
     contracts: Mapped[List["Contract"]] = relationship("Contract", back_populates="work")
+    acts: Mapped[List["WorkAct"]] = relationship("WorkAct", back_populates="work")

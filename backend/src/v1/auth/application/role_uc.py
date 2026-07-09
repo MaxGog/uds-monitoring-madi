@@ -4,7 +4,7 @@ from typing import List
 
 from fastapi import HTTPException, status
 
-from backend.core.db.postgres.data_orms.role_orm import Permission, Role
+from backend.core.db.postgres.data_orms.role_orm import Role
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IRoleRepo, IRoleUsecases, IUserRepo
 from backend.src.v1.auth.presentation.dto.role_dto import RoleCreateRequest, RoleResponse, RoleUpdateRequest
@@ -17,56 +17,60 @@ class RoleUsecases(IRoleUsecases):
     user_repo: IUserRepo
     role_repo: IRoleRepo
 
-    async def get_role_by_id(self, role_id: int) -> RoleResponse:
-        role = await self.role_repo.get_by_id(role_id)
-        if not role:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Role not found"
-            )
-        return RoleResponse.model_validate(role)
-
-    async def get_all_roles(self) -> List[RoleResponse]:
-        roles = await self.role_repo.get_all()
-        return [RoleResponse.model_validate(r) for r in roles]
-
     async def create_role(self, data: RoleCreateRequest) -> RoleResponse:
+        logger.info(f"Creating system role: {data.name}")
+        
         async with self.uow as uow:
-            existing_role = await uow.role_repo.get_by_name(data.name.upper())
+            # 1. Проверяем уникальность имени
+            existing_role = await uow.role_repo.get_by_name(data.name)
             if existing_role:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Role '{data.name}' already exists"
+                    status_code=status.HTTP_400_BAD_REQUEST, 
+                    detail=f"Role with name '{data.name}' already exists"
                 )
 
-            orm_permissions = [
-                Permission(entity=p.entity, action=p.action) 
-                for p in data.permissions
-            ]
+            # 2. Вытягиваем сущности прав из БД для M2M связывания
+            permissions_to_bind = []
+            if data.permission_ids:
+                permissions_to_bind = await uow.permission_repo.get_by_ids(data.permission_ids)
+                if len(permissions_to_bind) != len(set(data.permission_ids)):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="One or more permission IDs are invalid"
+                    )
 
+            # 3. Сохраняем роль
             new_role = Role(
-                name=data.name.upper(),
+                name=data.name,
                 scope=data.scope,
-                permissions=orm_permissions
+                permissions=permissions_to_bind
             )
             
             await uow.role_repo.add(new_role)
             await uow.commit()
             
-            return RoleResponse.model_validate(new_role)
+            # Обновляем состояние объекта из базы данных
+            role = await uow.role_repo.get_by_id(new_role.id)
+            return RoleResponse.model_validate(role)
 
-    async def create_permission(self, data):
-        async with self.uow as uow:
-            result = await uow.role_repo.create_permission(data)
-            if not result:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-            return result
+    # --- READ (SINGLE) ---
+    async def get_role_by_id(self, item_id: int) -> RoleResponse:
+        role = await self.role_repo.get_by_id(item_id)
+        if not role:
+            raise HTTPException(status_code=404, detail="Role not found")
+        return RoleResponse.model_validate(role)
 
-    async def update_role(self, role_id: int, data: RoleUpdateRequest) -> RoleResponse:
-        logger.info(f"Patching role_id: {role_id}")
+    # --- READ (LIST) ---
+    async def get_all_roles(self) -> List[RoleResponse]:
+        roles = await self.role_repo.get_all()
+        return [RoleResponse.model_validate(r) for r in roles]
+
+    # --- UPDATE (PATCH) ---
+    async def update_role(self, item_id: int, data: RoleUpdateRequest) -> RoleResponse:
+        logger.info(f"Patching role ID: {item_id}")
         
         async with self.uow as uow:
-            role = await uow.role_repo.get_by_id_with_permissions(role_id)
+            role = await uow.role_repo.get_by_id(item_id)
             if not role:
                 raise HTTPException(status_code=404, detail="Role not found")
 
@@ -74,48 +78,50 @@ class RoleUsecases(IRoleUsecases):
             if not update_data:
                 return RoleResponse.model_validate(role)
 
-            if "name" in update_data:
-                new_name = update_data["name"].upper()
-                if new_name != role.name:
-                    existing_role = await uow.role_repo.get_by_name(new_name)
-                    if existing_role:
-                        raise HTTPException(
-                            status_code=400, 
-                            detail=f"Role '{new_name}' already exists"
-                        )
-                update_data["name"] = new_name
+            # Проверяем уникальность имени, если оно меняется
+            if "name" in update_data and update_data["name"] != role.name:
+                existing = await uow.role_repo.get_by_name(update_data["name"])
+                if existing:
+                    raise HTTPException(status_code=400, detail="Role name must be unique")
 
-            if "permissions" in update_data:
-                # Полная перезапись всех прав. [] = нет прав
-                new_perms = update_data.pop("permissions")
-                role.permissions = [
-                    Permission(entity=p.entity, action=p.action) 
-                    for p in new_perms
-                ]
+            # Перезапись Many-to-Many связей (прав доступа)
+            if "permission_ids" in update_data:
+                new_perm_ids = update_data.pop("permission_ids")
+                if new_perm_ids is not None:
+                    db_permissions = await uow.permission_repo.get_by_ids(new_perm_ids)
+                    if len(db_permissions) != len(set(new_perm_ids)):
+                        raise HTTPException(status_code=400, detail="Invalid permission IDs detected")
+                    
+                    # Прямая мутация списка перезапишет записи в ассоциативной таблице role_permissions
+                    role.permissions = db_permissions
 
+            # Обновление остальных полей (name, scope)
             for key, value in update_data.items():
                 setattr(role, key, value)
 
             await uow.commit()
-
-            role = await uow.role_repo.get_by_id_with_permissions(role_id)
+            
+            # Перечитываем актуальный стейт
+            role = await uow.role_repo.get_by_id(item_id)
             return RoleResponse.model_validate(role)
 
-    async def delete_role(self, role_id: int) -> None:
-        logger.info(f"Deleting role_id: {role_id}")
-        
+    # --- DELETE ---
+    async def delete_role(self, item_id: int) -> None:
+        logger.info(f"Deleting role ID: {item_id}")
         async with self.uow as uow:
-            role = await uow.role_repo.get_by_id(role_id)
+            role = await uow.role_repo.get_by_id(item_id)
             if not role:
                 raise HTTPException(status_code=404, detail="Role not found")
-                
-            # Защита: проверяем, нет ли пользователей с этой ролью перед удалением
-            user_count = await uow.users.count_by_role(role_id)
-            if user_count > 0:
+
+            # Предохранитель: проверяем, не привязана ли роль к живым пользователям
+            users_with_role = await uow.user_repo.count_by_role(item_id)
+            if users_with_role > 0:
                 raise HTTPException(
-                    status_code=400, 
-                    detail="Cannot delete role: it is assigned to existing users"
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot delete role. It is currently assigned to {users_with_role} users."
                 )
 
+            # Благодаря ondelete="CASCADE" в таблице линковки,
+            # записи из role_permissions удалятся автоматически на уровне БД.
             await uow.role_repo.delete(role)
             await uow.commit()

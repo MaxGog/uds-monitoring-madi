@@ -2,7 +2,8 @@ from typing import AsyncIterable
 from sqlalchemy.ext.asyncio import AsyncSession
 from dishka import Provider, Scope, provide
 
-from backend.src.v1.auth.domain.interfaces import IRoleRepo, IUserRepo
+from backend.src.v1.auth.domain.interfaces import IPermissionRepo, IRoleRepo, IUserRepo
+from backend.src.v1.auth.infrastructure.permission_repo import PgPermissionRepo
 from backend.src.v1.auth.infrastructure.role_repo import PgRoleRepo
 from backend.src.v1.auth.infrastructure.user_repo import PgUserRepo
 from backend.src.v1.data.domain.interfaces import IActRepo, ICompanyRepo, IContractRepo, IObjectRepo, IRoadmapRepo, ITaskRepo, IWorkRepo
@@ -20,6 +21,10 @@ class RepoProvider(Provider):
     @provide(scope = Scope.REQUEST)
     async def user_repo(self, session: AsyncSession) -> AsyncIterable[IUserRepo]:
         yield PgUserRepo(session)
+
+    @provide(scope = Scope.REQUEST)
+    async def permission_repo(self, session: AsyncSession) -> AsyncIterable[IPermissionRepo]:
+        yield PgPermissionRepo(session)
 
     @provide(scope = Scope.REQUEST)
     async def role_repo(self, session: AsyncSession) -> AsyncIterable[IRoleRepo]:

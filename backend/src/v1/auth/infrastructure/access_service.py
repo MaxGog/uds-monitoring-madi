@@ -37,7 +37,7 @@ class AccessManager:
                 return None
                 
             role = user.role
-            
+
             for perm in role.permissions:
                 entity_match = (perm.entity == EntityType.ALL or perm.entity == required_entity)
                 action_match = (perm.action == ActionType.MANAGE or perm.action == required_action)

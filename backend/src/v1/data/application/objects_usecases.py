@@ -13,9 +13,10 @@ from backend.src.v1.data.presentation.dtos.object_dto import ObjectCreateRequest
 logger = logging.getLogger(__file__)
 
 class ObjectUsecases(IObjectUsecases):
-    uow: IUnitOfWork
-    object_repo: IObjectRepo
-    user_repo: IUserRepo
+    def __init__(self, uow: IUnitOfWork, object_repo: IObjectRepo, user_repo: IUserRepo) -> None:
+        self.uod = uow
+        self.object_repo = object_repo
+        self.user_repo = user_repo
 
     async def get_objects(self) -> List[ObjectResponse]:
         objects = await self.object_repo.get_all()   

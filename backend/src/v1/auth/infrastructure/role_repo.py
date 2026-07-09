@@ -18,30 +18,13 @@ class PgRoleRepo(IRoleRepo):
     async def get_by_id(self, role_id: int) -> Optional[Role]:
         return await self.session.get(Role, role_id)
 
-    async def get_by_id_with_permissions(self, role_id: int) -> Optional[Role]:
-        stmt = (
-            select(Role)
-            .where(Role.id == role_id)
-            .options(selectinload(Role.permissions))
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def get_by_name(self, name: str) -> Optional[Role]:
-        stmt = (
-            select(Role)
-            .where(Role.name == name)
-            .options(selectinload(Role.permissions))
-        )
+        stmt = select(Role).where(Role.name == name)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_all(self) -> List[Role]:
-        stmt = (
-            select(Role)
-            .options(selectinload(Role.permissions))
-            .order_by(Role.name)
-        )
+        stmt = select(Role).order_by(Role.name.asc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
