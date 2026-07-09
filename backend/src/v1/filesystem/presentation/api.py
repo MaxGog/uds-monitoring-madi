@@ -1,80 +1,184 @@
 import logging
+from typing import List, Optional
+from uuid import UUID
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from dishka.integrations.fastapi import FromDishka, inject
 from types_aiobotocore_s3 import S3Client
 import uuid6
 
+from backend.core.db.postgres.data_orms.document_orm import Document, DocumentOwnerType
 from backend.core.db.postgres.data_orms.role_orm import ActionType
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
-from backend.src.v1.auth.presentation.api import CurrentUserPayload
+from backend.src.v1.auth.domain.role_models import EntityType, ScopeType
+from backend.src.v1.auth.presentation.api import CurrentUserPayload, RequireAccess
+from backend.src.v1.data.presentation.dtos.data_dto import BaseRequest, BaseResponse
+from backend.src.v1.filesystem.application.file_uc import FsUsecases
 import httpx
 
-from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFsUsecases
-from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest
+from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFsUsecases
+from backend.src.v1.filesystem.presentation.dtos import ConfirmUploadRequest, DocumentResponse, GetUploadUrlRequest, PresignedUrlResponse
 from backend.config.config import settings
 
 logger = logging.getLogger(__file__)
 
 router = APIRouter()
 
-@router.get('/files')
+@router.post("/request-upload", response_model=BaseResponse[PresignedUrlResponse])
 @inject
-async def get_files(
-    payload: CurrentUserPayload,
+async def request_upload_url(
+    data: BaseRequest[GetUploadUrlRequest],
     uc: FromDishka[IFsUsecases],
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.CREATE)),
 ):
-    user_id = payload.get('sub')
+    """Шаг 1: Запрос presigned-ссылки для прямой загрузки файла в MinIO клиентом"""
     try:
-        result = await uc.get_files(user_id = user_id, required_action = ActionType.READ)
+        result = await uc.initiate_upload(data.data)
+        return BaseResponse(data=result)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get files: {e}"
-        )
-    return result
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@router.get('/{file_id}')
+# @router.post("/confirm-upload", status_code=status.HTTP_202_ACCEPTED)
+# @inject
+# async def confirm_upload(
+#     data: BaseRequest[ConfirmUploadRequest],
+#     uc: FromDishka[IFsUsecases],
+#     user: CurrentUserPayload,
+# ):
+#     """Шаг 2: Сигнал о том, что клиент залил файл. Ставит задачу в Celery для внесения в БД"""
+#     try:
+#         uploader_id: UUID = user.get('sub')
+#         result = await uc.confirm_upload(data.data, uploader_id)
+#         return BaseResponse(data=result)
+#     except Exception as e:
+#         logger.error(e)
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@router.get("/{file_id}/download-url", response_model=BaseResponse[str])
 @inject
-async def generate_download_url(
-    file_id: str,
-    payload: CurrentUserPayload,
-    auth_uc: FromDishka[IFileAuthUsecases],
+async def get_download_url(
+    file_id: UUID,
     uc: FromDishka[IFsUsecases],
+    user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
 ):
-    user_id = payload.get('sub')
+    """Получение временной ссылки на скачивание/просмотр файла"""
     try:
-        result = await uc.get_file(user_id, file_id = file_id)
+        url = await uc.get_document_download_link(file_id)
+        return BaseResponse(data=url)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get files: {e}"
-        )
-    return result
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@router.post("/generate-upload-url")
+@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 @inject
-async def get_upload_url(
-    body: UploadLinkRequest,
-    payload: CurrentUserPayload,
-    uc: FromDishka[IFsUsecases]
+async def delete_document(
+    file_id: UUID,
+    uc: FromDishka[IFsUsecases],
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.DELETE)),
+):
+    """Удаление файла из MinIO и чистка метаданных из БД"""
+    try:
+        await uc.delete_document(file_id)
+        return
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.get("/", response_model=BaseResponse[List[DocumentResponse]])
+@inject
+async def get_documents(
+    uc: FromDishka[IFsUsecases],
+    user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
+    owner_type: Optional[DocumentOwnerType] = Query(
+        None, 
+        description="Фильтр по типу владельца файла (contract, act, object, work)"
+    ),
+    owner_id: Optional[int] = Query(
+        None, 
+        description="Идентификатор связанной сущности (например, ID договора)"
+    ),
 ):
     """
-    Генерирует временную PUT-ссылку для загрузки файла в MinIO.
+    Получение списка метаданных всех файлов из PostgreSQL.
+    
+    Примеры использования:
+    - GET /documents -> все файлы в системе
+    - GET /documents?owner_type=contract&owner_id=12 -> все файлы договора с OWNER ID 12
+    - GET /documents?owner_type=object&owner_id=5 -> все файлы строительного объекта с OWNER ID 5
     """
-    user_id = payload.get('sub')
-    try:
-        result = await uc.generate_upload_url(user_id = user_id, body = body)
-    except Exception as e:
-        print(e)
-        logger.error(f'Error generating presigned URL for UPLOAD: {e}')
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate upload URL"
+    result = await uc.get_files(owner_type=owner_type, owner_id=owner_id)
+    return BaseResponse(data=result)
+
+
+@router.get("/{file_id}", response_model=BaseResponse[DocumentResponse])
+@inject
+async def get_document_by_id(
+    file_id: UUID,
+    uc: FromDishka[IFsUsecases],
+    user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
+):
+    """
+    Получение метаданных конкретного файла по его UUID из PostgreSQL
+    (размер, контрольная сумма, тип контента, дата загрузки и т.д.)
+    """
+    result = await uc.get_file_by_id(file_id)
+    return BaseResponse(data=result)
+
+@router.post("/webhook", status_code=status.HTTP_200_OK)
+@inject
+async def minio_webhook(
+    payload: dict,
+    uow: FromDishka[IUnitOfWork],
+):
+    """
+    Эндпоинт, который MinIO вызывает САМ сразу после успешного сохранения файла
+    """
+    records = payload.get("Records", [])
+    if not records:
+        return {"status": "skipped"}
+        
+    event = records[0]
+    # Фильтруем системные тестовые события MinIO (s3:TestEvent)
+    if "ObjectCreated" not in event.get("eventName", ""):
+        return {"status": "skipped"}
+
+    s3_data = event["s3"]
+    s3_object = s3_data["object"]
+    user_meta = s3_object.get("userMetadata", {})
+
+    # Извлекаем данные, которые мы зашили на этапе генерации Presigned URL
+    uploader_id = user_meta.get("X-Amz-Meta-Uploader-Id")
+    owner_type = user_meta.get("X-Amz-Meta-Owner-Type")
+    owner_id = user_meta.get("X-Amz-Meta-Owner-Id")
+    
+    s3_key = s3_object["key"]
+    file_name = s3_key.split("/")[-1]
+    file_ext = file_name.split(".")[-1] if "." in file_name else None
+
+    async with uow:
+        new_doc = Document(
+            id=uuid6.uuid7(),
+            name=file_name,
+            size_bytes=s3_object.get("size"),
+            checksum_sha256=s3_object.get("eTag", "").strip('"'),
+            file_type=file_ext,
+            s3_bucket=s3_data["bucket"]["name"],
+            s3_key=s3_key,
+            content_type=s3_object.get("contentType"),
+            uploader_id=uuid6.UUID(uploader_id) if uploader_id else None,
+            owner_type=owner_type,
+            owner_id=int(owner_id) if owner_id else None
         )
-    return result
+        await uow.file_repo.add(new_doc)
+        await uow.commit()
+
+    return {"status": "success", "document_id": str(new_doc.id)}
+
 
 @router.post("/test-direct-upload-to-minio", tags=["dev-tools"])
 @inject

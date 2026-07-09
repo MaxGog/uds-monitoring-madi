@@ -1,22 +1,47 @@
-import uuid
-
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
 from pydantic import BaseModel, Field
 
-class FileCreateResponse(BaseModel):
-    id: uuid.UUID
-    owner_id: int
+from backend.core.db.postgres.data_orms.document_orm import DocumentOwnerType
+
+
+# --- ЗАПРОС НА ПОЛУЧЕНИЕ ССЫЛКИ ДЛЯ ЗАГРУЗКИ ---
+class GetUploadUrlRequest(BaseModel):
+    name: str = Field(..., max_length=255, description="Имя файла с расширением (image.png)")
+    content_type: str = Field(..., max_length=100, description="MIME-тип (application/pdf)")
+    owner_type: Optional[DocumentOwnerType] = Field(None)
+    owner_id: Optional[int] = Field(None)
+
+# --- ОТВЕТ С ССЫЛКОЙ ДЛЯ КЛИЕНТА ---
+class PresignedUrlResponse(BaseModel):
+    upload_url: str = Field(..., description="Прямая ссылка для PUT-запроса в MinIO")
+    s3_bucket: str
+    s3_key: str
+
+# --- СИГНАЛ ОБ УСПЕШНОЙ ЗАГРУЗКЕ (ДЛЯ ТРИГГЕРА CELERY) ---
+class ConfirmUploadRequest(BaseModel):
     name: str
+    s3_bucket: str
     s3_key: str
     content_type: str
-    
+    owner_type: Optional[DocumentOwnerType] = None
+    owner_id: Optional[int] = None
 
-class UploadLinkRequest(BaseModel):
-    filename: str = Field(..., description="Оригинальное имя файла с расширением")
-    content_type: str = Field(..., description="MIME-тип файла, например, 'application/pdf'")
+# --- ОТВЕТ С МЕТАДАННЫМИ ИЗ БД ---
+class DocumentResponse(BaseModel):
+    id: UUID
+    name: str
+    size_bytes: Optional[int]
+    checksum_sha256: Optional[str]
+    file_type: Optional[str]
+    s3_bucket: str
+    s3_key: str
+    content_type: str
+    uploader_id: UUID
+    owner_type: Optional[DocumentOwnerType]
+    owner_id: Optional[int]
+    created_at: datetime
 
-class UploadLinkResponse(BaseModel):
-    file_id: str = Field(..., description="UUID файла, созданный в нашей системе")
-    upload_url: str = Field(..., description="Временная PUT-ссылка для загрузки файла напрямую в MinIO")
-
-class DownloadLinkResponse(BaseModel):
-    download_url: str = Field(..., description="Временная GET-ссылка для скачивания файла")
+    class Config:
+        from_attributes = True

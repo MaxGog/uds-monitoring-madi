@@ -8,8 +8,7 @@ from backend.config.config import settings
 from backend.core.db.aws.minio_conn import MinioClientFactory
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
-from backend.src.v1.filesystem.application.file_permissions_usecases import FileAuthUsecases
-from backend.src.v1.filesystem.application.usecases import FsUsecases
+from backend.src.v1.filesystem.application.file_uc import FsUsecases
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFileRepo, IFsUsecases
 from backend.src.v1.filesystem.infrastructure.aws_repo import MinioFileService
 

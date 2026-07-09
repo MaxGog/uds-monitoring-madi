@@ -15,8 +15,7 @@ from backend.src.v1.data.application.roadmap_usecases import RoadmapUsecases
 from backend.src.v1.data.application.tasks_usecases import TaskUsecases
 from backend.src.v1.data.application.work_usecases import WorkUsecases
 from backend.src.v1.data.domain.interfaces import IActRepo, IActUsecases, ICompanyRepo, ICompanyUsecases, IContractRepo, IContractUsecases, IObjectRepo, IObjectUsecases, IRoadmapRepo, IRoadmapUsecases, ITaskRepo, ITaskUsecases, IWorkRepo, IWorkUsecases
-from backend.src.v1.filesystem.application.file_permissions_usecases import FileAuthUsecases
-from backend.src.v1.filesystem.application.usecases import FsUsecases
+from backend.src.v1.filesystem.application.file_uc import FsUsecases
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFileRepo, IFsUsecases
 
     # @provide(scope=Scope.REQUEST)
@@ -36,10 +35,6 @@ class UsecaseProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_fs_uc(self, aws_service: IAwsService, uow: IUnitOfWork, file_repo: IFileRepo, user_repo: IUserRepo) -> IFsUsecases:
         return FsUsecases(aws_service = aws_service, uow = uow, file_repo = file_repo, user_repo = user_repo)
-    
-    @provide(scope = Scope.REQUEST)
-    async def get_file_auth_uc(self, uow: IUnitOfWork, aws_service: IAwsService, file_repo: IFileRepo, user_repo: IUserRepo) -> IFileAuthUsecases:
-        return FileAuthUsecases(uow = uow, aws_service = aws_service, file_repo = file_repo, user_repo = user_repo)
 
     @provide(scope=Scope.REQUEST)
     async def get_task_uc(self, uow: IUnitOfWork, task_repo: ITaskRepo, user_repo: IUserRepo) -> ITaskUsecases:

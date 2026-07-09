@@ -49,6 +49,17 @@ class DbSettings(BaseModel):
         ).render_as_string(hide_password=False)
     
     @property
+    def DB_SYNC_URL(self) -> str:
+        return URL.create(
+            drivername = 'postgresql',
+            database=self.DB_NAME,
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            username=self.DB_USER,
+            password=self.DB_PASS,
+        ).render_as_string(hide_password=False)
+
+    @property
     def ECHO(self) -> bool: return self.LOGGING
     @property
     def ECHO_POOL(self) -> bool: return self.LOGGING
@@ -72,6 +83,7 @@ class RedisSettings(BaseModel):
         return f"redis://:{self.REDIS_PASS}@{self.REDIS_ADDR}/{self.REDIS_DB}"
 
 class MinIOSettings(BaseModel):
+    ENDPOINT: str = Field(alias = 'endpoint')
     MINIO_ENDPOINT: str = Field(alias = "minioEndpoint")
     MINIO_ADMIN: str = Field(alias = "minioAccessKey")
     MINIO_PASS: str = Field(alias = "minioSecretKey")
