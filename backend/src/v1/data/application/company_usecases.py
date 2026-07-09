@@ -7,7 +7,6 @@ from fastapi import HTTPException, status
 from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
-from backend.src.v1.auth.domain.role_models import RoleName
 from backend.src.v1.data.domain.interfaces import ICompanyRepo, ICompanyUsecases
 from backend.src.v1.data.presentation.dtos.company_dto import CompanyCreateRequest, CompanyResponse, CompanyUpdateRequest
 

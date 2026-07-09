@@ -10,21 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SqlEnum
 
 from backend.core.db.postgres.base_orm import Base
-
-
-class ContractType(str, Enum):
-    '''
-    Для различия того, кто выполняет работу
-    '''
-    GENERAL = "general"
-    WORK = "work"
-    ADDITIONAL_AGREEMENT = "additional"
-
-class ContractStatus(str, Enum):
-    DRAFT = "draft"
-    ACTIVE = "active"
-    COMPLETED = "completed"
-    TERMINATED = "terminated"
+from backend.src.v1.data.domain.models import ContractStatus, ContractType
 
 class Contract(Base):
     '''

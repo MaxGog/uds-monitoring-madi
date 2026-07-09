@@ -9,7 +9,7 @@ import uuid6
 from backend.core.db.postgres.data_orms.document_orm import Document
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
-from backend.src.v1.auth.domain.role_models import ActionType, RoleName
+from backend.src.v1.auth.domain.role_models import ActionType
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 from backend.config.config import settings
 from backend.src.v1.filesystem.presentation.dtos import UploadLinkRequest, UploadLinkResponse
@@ -22,15 +22,6 @@ class FsUsecases(IFsUsecases):
     user_repo: IUserRepo
 
     async def generate_upload_url(self, user_id: str, body: UploadLinkRequest) -> UploadLinkResponse:
-        role = await self.user_repo.get_role(user_id)
-    
-        if role == RoleName.VIEWER:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-        
-        if role != RoleName.ADMIN:
-            # Выполнить проверку прав доступа для кастомной роли по ACL
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-        
         file_id = str(uuid6.uuid7())
         extension = body.filename.split(".")[-1] if "." in body.filename else ""
         s3_object_key = f"{file_id}.{extension}" if extension else file_id
@@ -54,30 +45,6 @@ class FsUsecases(IFsUsecases):
         return UploadLinkResponse(file_id=file_id, upload_url=upload_url)  
 
     async def get_file(self, user_id: uuid.UUID, file_id: uuid.UUID):
-        role = await self.user_repo.get_role(user_id)
-    
-        if role not in (RoleName.ADMIN, RoleName.VIEWER):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-            # Для других ролей проверка прав доступа ACL по файлам        
-            # file_meta = await self.uow.files.get_by_id(file_id)
-            # if not file_meta:
-            #     raise NotFoundException("Файл не найден")
-
-            # # Проверка А: Является ли пользователь создателем/владельцем файла
-            # if file_meta.owner_id == user_id:
-            #     return await self.aws_service.generate_url(file_id)
-
-            # # Проверка Б: Проверяем таблицу кастомных прав (ACL / ReBAC)
-            # # Ищем запись, где разрешено действие 'read' для этого user_id и file_id
-            # has_acl_access = await self.uow.permissions.check_file_access(
-            #     user_id=user_id,
-            #     file_id=file_id,
-            #     action="read"
-            # )
-            
-            # if has_acl_access:
-            #     return await self.aws_service.generate_url(file_id)
-
         download_url = await self.aws_service.generate_url(
             ClientMethod='get_object',
             Params = {
@@ -97,12 +64,6 @@ class FsUsecases(IFsUsecases):
             limit: int = 100,
             offset: int = 0,
             ) -> list[Document]:
-        role = await self.user_repo.get_role(user_id)
-
-        if role in (RoleName.ADMIN, RoleName.VIEWER):
-            result = await self.file_repo.get_files()
-            return result
-
         # Для кастомной роли будут проверяться полноценно права доступа, драфтовый код:
 
         # has_acl_permission = exists().where(

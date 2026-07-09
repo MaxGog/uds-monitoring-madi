@@ -52,6 +52,19 @@ class ActType(str, Enum):
     SUPERVISORY = "supervisory" # Для госорганов
     CONTRACTOR = "contractor"   # Для субподрядчиков
 
+class ContractType(str, Enum):
+    '''
+    Для различия того, кто выполняет работу
+    '''
+    GENERAL = "general"
+    WORK = "work"
+    ADDITIONAL_AGREEMENT = "additional"
+
+class ContractStatus(str, Enum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    TERMINATED = "terminated"
 
 class FileStorageProvider(StrEnum):
     minio = "minio"

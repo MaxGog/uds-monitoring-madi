@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import HTTPException, status
 
-from backend.src.v1.auth.domain.role_models import ActionType, RoleName
+from backend.src.v1.auth.domain.role_models import ActionType
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFileRepo
@@ -20,15 +20,7 @@ class FileAuthUsecases(IFileAuthUsecases):
             user_id: uuid.UUID,
             file_id: uuid.UUID,
             required_action: ActionType,
-    ) -> bool:
-        role = await self.user_repo.get_role(user_id)
-        # Валидация для глобальных ролей, предполагается, что будут две глобальные роли - Admin, Viewer
-        # Если будет что то другое - то будет отрабатывать сценарий пофайлового Access List
-        if role == RoleName.ADMIN:
-            return True
-        if role == RoleName.VIEWER and required_action == ActionType.READ:
-            return True
-        
+    ) -> bool:       
         file_exists = await self.file_repo.get_by_id(id = file_id)
         if not file_exists:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Файл не найден")

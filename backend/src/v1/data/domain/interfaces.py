@@ -3,9 +3,11 @@ from typing import List, Optional, Protocol
 
 from backend.core.db.postgres.data_orms.act_orm import WorkAct
 from backend.core.db.postgres.data_orms.company_orm import Company
+from backend.core.db.postgres.data_orms.contract_orm import Contract
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.task_orm import Task
 from backend.core.db.postgres.data_orms.work_orm import Work
+from backend.src.v1.data.presentation.dtos.contract_dto import ContractCreateRequest, ContractResponse, ContractUpdateRequest
 
 class ITaskUsecases(Protocol):
     ...
@@ -26,7 +28,20 @@ class ICompanyUsecases(Protocol):
     ...
 
 class IContractUsecases(Protocol):
-    ...
+    @abstractmethod
+    async def get_contract_by_id(self, item_id: int) -> ContractResponse: pass
+
+    @abstractmethod
+    async def get_all_contracts(self) -> List[ContractResponse]: pass
+
+    @abstractmethod
+    async def create_contract(self, data: ContractCreateRequest) -> ContractResponse: pass
+
+    @abstractmethod
+    async def update_contract(self, item_id: int, data: ContractUpdateRequest) -> ContractResponse: pass
+
+    @abstractmethod
+    async def delete_contract(self, item_id: int) -> None: pass
 
 
 class ITaskRepo(Protocol):
@@ -119,4 +134,17 @@ class ICompanyRepo(Protocol):
     async def delete(self, company: Company) -> None: pass
 
 class IContractRepo(Protocol):
-    ...
+    @abstractmethod
+    async def get_by_id(self, item_id: int) -> Optional[Contract]: pass
+    
+    @abstractmethod
+    async def get_by_id_with_relations(self, item_id: int) -> Optional[Contract]: pass
+    
+    @abstractmethod
+    async def get_all(self) -> List[Contract]: pass
+    
+    @abstractmethod
+    async def add(self, contract: Contract) -> None: pass
+    
+    @abstractmethod
+    async def delete(self, contract: Contract) -> None: pass

@@ -7,7 +7,6 @@ from fastapi import HTTPException, status
 
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IUserRepo, IUserUsecases
-from backend.src.v1.auth.domain.role_models import RoleName
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest, UserDeleteRequest, UserResponse, UserUpdateRequest
 
 logger = logging.getLogger(__file__)

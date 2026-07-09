@@ -32,9 +32,3 @@ class ActionType(StrEnum):
     UPDATE = "update"
     DELETE = "delete"
     MANAGE = 'manage' # Даёт все права над сущностью
-
-
-class RoleName(str, enum.Enum):
-    ADMIN = "admin"
-    VIEWER = "viewer"
-    USER = "user" # Custom, global meaning
