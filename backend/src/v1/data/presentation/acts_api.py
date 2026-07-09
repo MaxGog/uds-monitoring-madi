@@ -25,7 +25,7 @@ async def get_acts(
     scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.READ))
 ):
     try:
-        result = await uc.get_acts()
+        result = await uc.get_all_acts()
         return BaseResponse(data = result)
     except HTTPException as e:
         raise e

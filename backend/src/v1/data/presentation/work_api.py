@@ -24,7 +24,7 @@ async def get_works(
     scope: ScopeType = Depends(RequireAccess(EntityType.WORK, ActionType.READ))
 ):
     try:
-        result = await uc.get_works()
+        result = await uc.get_all_works()
         return BaseResponse(data = result)
     except HTTPException as e:
         raise e
@@ -40,7 +40,7 @@ async def get_work(
     scope: ScopeType = Depends(RequireAccess(EntityType.WORK, ActionType.READ))
 ):
     try:
-        result = await uc.get_work(item_id = work_id)
+        result = await uc.get_work_by_id(item_id = work_id)
         return BaseResponse(data = result)
     except HTTPException as e:
         raise e

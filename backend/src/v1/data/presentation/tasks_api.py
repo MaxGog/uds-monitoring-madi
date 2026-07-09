@@ -43,7 +43,7 @@ async def get_task(
     scope: ScopeType = Depends(RequireAccess(EntityType.TASK, ActionType.READ))
 ):
     try:
-        result = await uc.get_task(item_id = task_id)
+        result = await uc.get_task_by_id(item_id = task_id)
         return BaseResponse(data = result)
     except HTTPException as e:
         logger.error(e)

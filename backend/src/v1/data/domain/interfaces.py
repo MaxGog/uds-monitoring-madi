@@ -7,25 +7,95 @@ from backend.core.db.postgres.data_orms.contract_orm import Contract
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.task_orm import Task
 from backend.core.db.postgres.data_orms.work_orm import Work
+from backend.src.v1.data.presentation.dtos.act_dto import WorkActCreateRequest, WorkActResponse, WorkActUpdateRequest
+from backend.src.v1.data.presentation.dtos.company_dto import CompanyCreateRequest, CompanyResponse, CompanyUpdateRequest
 from backend.src.v1.data.presentation.dtos.contract_dto import ContractCreateRequest, ContractResponse, ContractUpdateRequest
+from backend.src.v1.data.presentation.dtos.object_dto import ObjectCreateRequest, ObjectResponse, ObjectUpdateRequest
+from backend.src.v1.data.presentation.dtos.task_dto import TaskCreateRequest, TaskResponse, TaskUpdateRequest
+from backend.src.v1.data.presentation.dtos.work_dto import WorkCreateRequest, WorkResponse, WorkUpdateRequest
 
 class ITaskUsecases(Protocol):
-    ...
+    @abstractmethod
+    async def get_tasks(self) -> List[TaskResponse]: pass
+
+    @abstractmethod
+    async def get_task_by_id(self, item_id: int) -> TaskResponse: pass
+
+    @abstractmethod
+    async def create_task(self, author_id: str, data: TaskCreateRequest) -> TaskResponse: pass
+
+    @abstractmethod
+    async def update_task(self, item_id: int, data: TaskUpdateRequest) -> TaskResponse: pass
+
+    @abstractmethod
+    async def delete_task(self, item_id: int) -> None: pass
 
 class IObjectUsecases(Protocol):
-    ...
+    @abstractmethod
+    async def get_objects(self) -> List[ObjectResponse]: pass
+
+    @abstractmethod
+    async def get_object_by_id(self, item_id: int) -> ObjectResponse: pass
+
+    @abstractmethod
+    async def create_object(self, data: ObjectCreateRequest) -> ObjectResponse: pass
+
+    @abstractmethod
+    async def update_object(self, item_id: int, data: ObjectUpdateRequest) -> ObjectResponse: pass
+
+    @abstractmethod
+    async def delete_object(self, item_id: int) -> None: pass
 
 class IWorkUsecases(Protocol):
-    ...
+    @abstractmethod
+    async def get_work_by_id(self, item_id: int) -> WorkResponse: pass
+
+    @abstractmethod
+    async def get_all_works(self) -> List[WorkResponse]: pass
+
+    @abstractmethod
+    async def create_work(self, data: WorkCreateRequest) -> WorkResponse: pass
+
+    @abstractmethod
+    async def update_work(self, item_id: int, data: WorkUpdateRequest) -> WorkResponse: pass
+
+    @abstractmethod
+    async def delete_work(self, item_id: int) -> None: pass
 
 class IActUsecases(Protocol):
-    ...
+    @abstractmethod
+    async def get_act_by_id(self, item_id: int) -> WorkActResponse: pass
+
+    @abstractmethod
+    async def get_all_acts(self) -> List[WorkActResponse]: pass
+
+    @abstractmethod
+    async def create_act(self, data: WorkActCreateRequest) -> WorkActResponse: pass
+
+    @abstractmethod
+    async def update_act(self, item_id: int, data: WorkActUpdateRequest) -> WorkActResponse: pass
+
+    @abstractmethod
+    async def delete_act(self, item_id: int) -> None: pass
 
 class IRoadmapUsecases(Protocol):
     ...
 
 class ICompanyUsecases(Protocol):
-    ...
+    @abstractmethod
+    async def create_company(self, data: CompanyCreateRequest) -> CompanyResponse: pass
+
+    @abstractmethod
+    async def get_company_by_id(self, item_id: int) -> CompanyResponse: pass
+
+    @abstractmethod
+    async def get_all_companies(self) -> List[CompanyResponse]: pass
+
+    @abstractmethod
+    async def update_company(self, item_id: int, data: CompanyUpdateRequest) -> CompanyResponse: pass
+
+    @abstractmethod
+    async def delete_company(self, item_id: int) -> None: pass
 
 class IContractUsecases(Protocol):
     @abstractmethod

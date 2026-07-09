@@ -25,7 +25,7 @@ async def get_companies(
     scope: ScopeType = Depends(RequireAccess(EntityType.COMPANY, ActionType.READ))
 ):
     try:
-        result = await uc.get_companies()
+        result = await uc.get_all_companies()
         return BaseResponse(data = result)
     except HTTPException as e:
         raise e
@@ -41,7 +41,7 @@ async def get_company(
     scope: ScopeType = Depends(RequireAccess(EntityType.COMPANY, ActionType.READ))
 ):
     try:
-        result = await uc.get_company(item_id = company_id)
+        result = await uc.get_company_by_id(item_id = company_id)
         return BaseResponse(data = result)
     except HTTPException as e:
         raise e
