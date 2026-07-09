@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import List, Optional, Protocol
 
+from backend.core.db.postgres.data_orms.act_orm import WorkAct
 from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.task_orm import Task
@@ -83,7 +84,20 @@ class IWorkRepo(Protocol):
     async def delete(self, work: Work) -> None: pass
 
 class IActRepo(Protocol):
-    ...
+    @abstractmethod
+    async def get_by_id(self, item_id: int) -> Optional[WorkAct]: pass
+    
+    @abstractmethod
+    async def get_by_id_with_relations(self, item_id: int) -> Optional[WorkAct]: pass
+    
+    @abstractmethod
+    async def get_all(self) -> List[WorkAct]: pass
+    
+    @abstractmethod
+    async def add(self, act: WorkAct) -> None: pass
+    
+    @abstractmethod
+    async def delete(self, act: WorkAct) -> None: pass
 
 class IRoadmapRepo(Protocol):
     ...

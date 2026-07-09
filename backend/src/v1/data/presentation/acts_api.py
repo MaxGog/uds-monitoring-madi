@@ -1,82 +1,97 @@
+from typing import List
+
 from dishka.integrations.fastapi import FromDishka, inject
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from backend.src.v1.auth.domain.role_models import ActionType, EntityType, ScopeType
+from backend.src.v1.auth.presentation.api import CurrentUserPayload, RequireAccess
 from backend.src.v1.data.domain.interfaces import IActUsecases
-from backend.src.v1.data.presentation.dtos.act_dto import ActCreateResponse, ActDeleteResponse, ActResponse, ActUpdateResponse, ActsResponse
-from backend.src.v1.data.presentation.dtos.data_dto import BaseResponse
+from backend.src.v1.data.presentation.dtos.act_dto import WorkActCreateRequest, WorkActResponse, WorkActUpdateRequest
+from backend.src.v1.data.presentation.dtos.data_dto import BaseRequest, BaseResponse
 
 
 logger = logging.getLogger(__file__)
 
 router = APIRouter()
 
-@router.get('/', response_model=BaseResponse[ActsResponse])
+@router.get('/', response_model=BaseResponse[List[WorkActResponse]])
 @inject
 async def get_acts(
     uc: FromDishka[IActUsecases],
+    current_user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.READ))
 ):
     try:
         result = await uc.get_acts()
-        return result
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error gettings acts")
 
-@router.get('/{act_id}', response_model=BaseResponse[ActResponse])
+@router.get('/{act_id}', response_model=BaseResponse[WorkActResponse])
 @inject
 async def get_act(
+    act_id: int,
     uc: FromDishka[IActUsecases],
-    data: dict,
+    current_user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.READ))
 ):
     try:
-        result = await uc.get_act(data = data)
-        return result
+        result = await uc.get_act_by_id(item_id = act_id)
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error gettings act")
 
-@router.post('/', response_model=BaseResponse[ActCreateResponse])
+@router.post('/', response_model=BaseResponse[WorkActResponse], status_code=status.HTTP_201_CREATED)
 @inject
 async def create_act(
     uc: FromDishka[IActUsecases],
-    data: dict, 
+    data: BaseRequest[WorkActCreateRequest],
+    current_user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.CREATE))
 ):
     try:
-        result = await uc.create_act(data = data)
-        return result
+        result = await uc.create_act(data = data.data)
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error creating act")
 
-@router.patch('/{act_id}', response_model=BaseResponse[ActUpdateResponse])
+@router.patch('/{act_id}', response_model=BaseResponse[WorkActResponse])
 @inject
 async def update_act(
+    act_id: int,
+    data: BaseRequest[WorkActUpdateRequest],
     uc: FromDishka[IActUsecases],
-    data: dict, 
+    current_user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.UPDATE))
 ):
     try:
-        result = await uc.update_act(data = data)
-        return result
+        result = await uc.update_act(item_id = act_id, data = data.data)
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating act")
 
-@router.delete('/{act_id}', response_model=BaseResponse[ActDeleteResponse])
+@router.delete('/{act_id}', status_code=status.HTTP_204_NO_CONTENT)
 @inject
 async def delete_act(
+    act_id: int,
     uc: FromDishka[IActUsecases],
-    data: dict, 
+    current_user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.DELETE))
 ):
     try:
-        result = await uc.delete_act(data = data)
-        return result
+        await uc.delete_act(item_id = act_id)
+        return
     except HTTPException as e:
         raise e
     except Exception as e:

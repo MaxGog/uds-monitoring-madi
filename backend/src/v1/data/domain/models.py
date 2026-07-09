@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum, StrEnum
 import enum
 
 
@@ -42,10 +42,15 @@ class ObjectStatus(str, enum.Enum):
     EXPIRED = 'expired'
     FAILED = 'failed'
 
-class RepairProgram(StrEnum):
-    kbu = "kbu"
-    tekrem = "tekrem"
-    other = "other"
+class WorkActStatus(str, Enum):
+    DRAFT = 'draft'
+    PENDING = 'pending'
+    APPROVED = 'approved'
+    COMPLETED = 'completed'
+
+class ActType(str, Enum):
+    SUPERVISORY = "supervisory" # Для госорганов
+    CONTRACTOR = "contractor"   # Для субподрядчиков
 
 
 class FileStorageProvider(StrEnum):

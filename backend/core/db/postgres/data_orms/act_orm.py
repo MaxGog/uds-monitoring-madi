@@ -7,16 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 from backend.core.db.postgres.base_orm import Base
-
-class WorkActStatus(str, Enum):
-    DRAFT = 'draft'
-    PENDING = 'pending'
-    APPROVED = 'approved'
-    COMPLETED = 'completed'
-
-class ActType(str, Enum):
-    SUPERVISORY = "supervisory" # Для госорганов
-    CONTRACTOR = "contractor"   # Для субподрядчиков
+from backend.src.v1.data.domain.models import ActType, WorkActStatus
 
 class WorkAct(Base):
     __tablename__ = "work_acts"
