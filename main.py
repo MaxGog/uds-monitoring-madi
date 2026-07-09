@@ -27,8 +27,9 @@ from backend.src.v1.data.presentation.tasks_api import router as task_router
 from backend.src.v1.data.presentation.acts_api import router as act_router
 from backend.src.v1.data.presentation.objects_monitoring_api import router as object_router
 from backend.src.v1.data.presentation.roadmap_api import router as roadmap_router
-from backend.src.v1.data.presentation.work_status_api import router as work_router
-
+from backend.src.v1.data.presentation.work_api import router as work_router
+from backend.src.v1.data.presentation.contract_api import router as contract_router
+from backend.src.v1.data.presentation.company_api import router as company_router
 
 from backend.core.db.postgres.postgres_conn import db_engine, check_db_connection
 from backend.core.db.redis.redis_conn import redis_client
@@ -85,6 +86,8 @@ app.include_router(router=roadmap_router, prefix = "/roadmap", tags = ['roadmap'
 app.include_router(router=act_router, prefix = "/act", tags = ['act'])
 app.include_router(router=work_router, prefix = "/work", tags = ['work'])
 app.include_router(router=role_router, prefix = "/role", tags = ['role'])
+app.include_router(router=contract_router, prefix = "/contract", tags = ['contract'])
+app.include_router(router=company_router, prefix = "/company", tags = ['company'])
 
 container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())
 setup_dishka(container, app)

@@ -1,3 +1,5 @@
+from typing import List
+
 from dishka.integrations.fastapi import FromDishka, inject
 
 import logging
@@ -5,22 +7,21 @@ import logging
 from fastapi import APIRouter, HTTPException, status
 
 from backend.src.v1.data.domain.interfaces import IWorkUsecases
-from backend.src.v1.data.presentation.dtos.data_dto import BaseResponse
-from backend.src.v1.data.presentation.dtos.work_dto import WorkCreateResponse, WorkDeleteResponse, WorkResponse, WorkUpdateResponse, WorksResponse
-
+from backend.src.v1.data.presentation.dtos.data_dto import BaseRequest, BaseResponse
+from backend.src.v1.data.presentation.dtos.work_dto import WorkCreateRequest, WorkResponse, WorkUpdateRequest
 
 logger = logging.getLogger(__file__)
 
 router = APIRouter()
 
-@router.get('/', response_model=BaseResponse[WorksResponse])
+@router.get('/', response_model=BaseResponse[List[WorkResponse]])
 @inject
 async def get_works(
     uc: FromDishka[IWorkUsecases],
 ):
     try:
         result = await uc.get_works()
-        return result
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -29,12 +30,12 @@ async def get_works(
 @router.get('/{work_id}', response_model=BaseResponse[WorkResponse])
 @inject
 async def get_work(
+    work_id: int,
     uc: FromDishka[IWorkUsecases],
-    data: dict,
 ):
     try:
-        result = await uc.get_work(data = data)
-        return result
+        result = await uc.get_work(item_id = work_id)
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -44,11 +45,11 @@ async def get_work(
 @inject
 async def create_work(
     uc: FromDishka[IWorkUsecases],
-    data: dict, 
+    data: BaseRequest[WorkCreateRequest], 
 ):
     try:
-        result = await uc.create_work(data = data)
-        return result
+        result = await uc.create_work(data = data.data)
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -57,26 +58,28 @@ async def create_work(
 @router.patch('/{work_id}', response_model=BaseResponse[WorkUpdateResponse])
 @inject
 async def update_work(
+    work_id: int,
     uc: FromDishka[IWorkUsecases],
-    data: dict, 
+    data: BaseRequest[WorkUpdateRequest], 
 ):
     try:
-        result = await uc.update_work(data = data)
-        return result
+        result = await uc.update_work(item_id = work_id, data = data.data)
+        return BaseResponse(data = result)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating work")
 
-@router.delete('/{work_id}', response_model=BaseResponse[WorkDeleteResponse])
+@router.delete('/{work_id}', status_code=status.HTTP_204_NO_CONTENT)
 @inject
 async def delete_work(
+    work_id: int,
     uc: FromDishka[IWorkUsecases],
     data: dict, 
 ):
     try:
-        result = await uc.delete_work(data = data)
-        return result
+        await uc.delete_work(item_id = work_id)
+        return
     except HTTPException as e:
         raise e
     except Exception as e:

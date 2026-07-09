@@ -7,22 +7,22 @@ from fastapi import APIRouter, HTTPException, status
 from backend.src.v1.auth.presentation.api import CurrentUserPayload
 from backend.src.v1.data.domain.interfaces import ICompanyUsecases
 from backend.src.v1.data.presentation.dtos.data_dto import BaseRequest, BaseResponse
-from backend.src.v1.data.presentation.dtos.company_dto import CompanyCreateRequest, CompanyCreateResponse, CompanyDeleteRequest, CompanyDeleteResponse, CompanyRequest, CompanyResponse, CompanyUpdateRequest, CompanyUpdateResponse, CompanysResponse
+from backend.src.v1.data.presentation.dtos.company_dto import CompanyCreateRequest, CompanyCreateResponse, CompanyDeleteRequest, CompanyDeleteResponse, CompanyRequest, CompanyResponse, CompanyUpdateRequest, CompanyUpdateResponse, CompaniesResponse
 
 
 logger = logging.getLogger(__file__)
 
 router = APIRouter()
 
-@router.get('/', response_model=BaseResponse[CompanysResponse])
+@router.get('/', response_model=BaseResponse[CompaniesResponse])
 @inject
-async def get_companys(
+async def get_companies(
     current_user: CurrentUserPayload,
     uc: FromDishka[ICompanyUsecases],
 ):
     user_id = current_user.get('sub')
     try:
-        result = await uc.get_companys(user_id = user_id)
+        result = await uc.get_companies(user_id = user_id)
         return result
     except HTTPException as e:
         raise e
