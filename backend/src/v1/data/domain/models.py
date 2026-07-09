@@ -32,6 +32,16 @@ class TaskPriority(str, enum.Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
+class ObjectStatus(str, enum.Enum):
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    IN_PROGRESS = 'in_progress'
+    COMPLETED = 'completed'
+    PAUSED = 'paused'
+    CANCELLED = 'cancelled'
+    EXPIRED = 'expired'
+    FAILED = 'failed'
+
 class RepairProgram(StrEnum):
     kbu = "kbu"
     tekrem = "tekrem"

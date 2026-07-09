@@ -6,16 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.core.db.postgres.base_orm import Base
 
 
-class ObjectStatus(str, enum.Enum):
-    PENDING = 'pending'
-    ACCEPTED = 'accepted'
-    IN_PROGRESS = 'in_progress'
-    COMPLETED = 'completed'
-    PAUSED = 'paused'
-    CANCELLED = 'cancelled'
-    EXPIRED = 'expired'
-    FAILED = 'failed'
-
 class Object(Base):
     __tablename__ = "objects"
     

@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import List, Optional, Protocol
 
+from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.task_orm import Task
 
 class ITaskUsecases(Protocol):
@@ -46,7 +47,23 @@ class ITaskRepo(Protocol):
     async def delete(self, task: Task) -> None: ...
 
 class IObjectRepo(Protocol):
-    ...
+    @abstractmethod
+    async def get_by_id(self, item_id: int) -> Optional[Object]: pass
+    
+    @abstractmethod
+    async def get_by_id_with_relations(self, item_id: int) -> Optional[Object]: pass
+    
+    @abstractmethod
+    async def get_all(self) -> List[Object]: pass
+    
+    @abstractmethod
+    async def get_total_completed_cost(self, item_id: int) -> float: pass
+    
+    @abstractmethod
+    async def add(self, obj: Object) -> None: pass
+    
+    @abstractmethod
+    async def delete(self, obj: Object) -> None: pass
 
 class IWorkRepo(Protocol):
     ...

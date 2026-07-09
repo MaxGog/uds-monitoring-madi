@@ -5,10 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.core.db.postgres.data_orms.role_orm import Permission, Role
+from backend.core.db.postgres.data_orms.role_orm import Role
 from backend.src.v1.auth.domain.interfaces import IRoleRepo
-from backend.src.v1.auth.presentation.dto.role_dto import PermissionCreate, RoleCreateRequest, RoleCreateResponse
-from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest
 
 logger = logging.getLogger(__file__)
 

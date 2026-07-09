@@ -7,8 +7,7 @@ from fastapi import HTTPException, status
 from backend.core.db.postgres.data_orms.role_orm import Permission, Role
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IRoleRepo, IRoleUsecases, IUserRepo
-from backend.src.v1.auth.presentation.dto.role_dto import RoleCreateRequest, RoleCreateResponse, RoleResponse, RoleUpdateRequest
-from backend.src.v1.auth.presentation.dto.user_dto import BaseRequest
+from backend.src.v1.auth.presentation.dto.role_dto import RoleCreateRequest, RoleResponse, RoleUpdateRequest
 
 logger = logging.getLogger(__file__)
 
