@@ -1,7 +1,7 @@
 import logging
 
 from dishka import make_async_container
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dishka.integrations.fastapi import setup_dishka
 from fastapi.concurrency import asynccontextmanager

@@ -7,6 +7,7 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 
+from backend.core.db.postgres.data_orms.user_orm import User
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, ITokenAuth, ITokenProvider, ITokenStorage
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
@@ -26,16 +27,43 @@ class AuthUsecases:
     token_provider: ITokenProvider
     hasher: IPasswordHasher
 
-    async def register_new_user(self, dto: UserCreateRequest) -> UserResponse:
-        """Юзкейс 1: Регистрация"""
+    async def register_new_user(self, data: UserCreateRequest) -> UserResponse:
+        logger.info(f"Registering user: {data.username}")
+        
         async with self.uow as uow:
-            existing_user = await uow.users.get_by_email(dto.email)
-            if existing_user:
-                raise HTTPException(status_code=409, detail='username or email already exists')
-            password_hash_str = self.hasher.hash_password(dto.password)
-            dto.password = password_hash_str
-            user = await uow.users.create_user(dto)
-        return user
+            # 1. Проверка уникальности логина и почты
+            if await uow.user_repo.get_by_username(data.username):
+                raise HTTPException(status_code=400, detail="Username already taken")
+            if await uow.user_repo.get_by_email(data.email):
+                raise HTTPException(status_code=400, detail="Email already registered")
+
+            # 2. Валидация внешних ключей
+            if data.company_id and not await uow.company_repo.get_by_id(data.company_id):
+                raise HTTPException(status_code=400, detail=f"Company {data.company_id} not found")
+            # Предполагаем наличие role_repo в вашем UOW
+            if data.role_id and not await uow.role_repo.get_by_id(data.role_id):
+                raise HTTPException(status_code=400, detail=f"Role {data.role_id} not found")
+
+            # 3. Хэшируем пароль и создаем инстанс
+            hashed_password = self.hasher.hash_password(data.password)
+            
+            new_user = User(
+                username=data.username,
+                email=data.email,
+                pwdhash=hashed_password,
+                role_id=data.role_id,
+                full_name=data.full_name,
+                position=data.position,
+                company_id=data.company_id,
+                status=data.status
+            )
+            
+            await self.uow.user_repo.add(new_user)
+            await self.uow.commit()
+            
+            # Перечитываем со связями для красивого ответа
+            user = await self.uow.user_repo.get_by_id(new_user.id)
+            return UserResponse.model_validate(user)
 
     async def login(self, email: str, password: str, code_challenge: str) -> str:
         """Юзкейс 2: Проверка логина/пароля перед выдачей OAuth2 Code"""
@@ -52,7 +80,7 @@ class AuthUsecases:
 
     async def _validate_user_credentials(self, email: str, password: str) -> Optional[UserResponse]:
         async with self.uow:
-            user = await self.uow.users.get_by_email(email)
+            user = await self.uow.user_repo.get_by_email(email)
         if not user:
             raise HTTPException(status_code=409, detail='Incorrect email or password')
         is_password_valid = await self._check_password(pwd_hash=user.pwdhash, password=password)
