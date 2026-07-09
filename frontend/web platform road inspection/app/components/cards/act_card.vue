@@ -47,11 +47,11 @@
       </button>
     </div>
 
-    <CommonModal :isOpen="isModalOpen" width="750px" @close="isModalOpen = false">
+    <CommonModal :isOpen="isModalOpen" width="800px" @close="isModalOpen = false">
       <template #header>
         <div class="modal-header-layout">
           <span class="act-type">{{ act.type }} | {{ act.region }} округ</span>
-          <h3 class="modal-main-title">Система обработки и контроля объемов № {{ act.number }}</h3>
+          <h3 class="modal-main-title">Акт приемки выполненных работ № {{ act.number }}</h3>
         </div>
       </template>
 
@@ -74,6 +74,11 @@
           </div>
 
           <div class="detail-field">
+            <label>Дата составления акта</label>
+            <div class="field-value">📅 {{ act.date || 'Не указана' }}</div>
+          </div>
+
+          <div class="detail-field">
             <label>Территориальное управление (Округ)</label>
             <div class="field-value">📍 {{ act.region }}</div>
           </div>
@@ -83,7 +88,7 @@
             <div class="field-value">🏢 {{ act.contractor }}</div>
           </div>
 
-          <div class="detail-field">
+          <div class="detail-field full">
             <label>Ответственный инспектор</label>
             <div class="field-value">👤 {{ act.signedBy || 'Не назначен' }}</div>
           </div>
@@ -91,7 +96,36 @@
 
         <div class="modal-divider"></div>
 
-        <h4 class="block-title">Финансовые показатели и сверка с планом (C:M)</h4>
+        <h4 class="block-title">Выполненные физические объемы (C:M)</h4>
+        <div v-if="act.volumes && act.volumes.length" class="volumes-table-wrapper">
+          <table class="volumes-table">
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Наименование работ</th>
+                <th>Ед. изм.</th>
+                <th>План</th>
+                <th>Факт</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, idx) in act.volumes" :key="idx">
+                <td>{{ idx + 1 }}</td>
+                <td>{{ row.name }}</td>
+                <td class="text-center">{{ row.unit }}</td>
+                <td class="text-right">{{ row.plan }}</td>
+                <td class="text-right font-semibold">{{ row.fact }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else class="empty-volumes">
+          Объемы работ не заполнены или равны 0.
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <h4 class="block-title">Финансовые показатели и сверка с планом</h4>
         <div class="details-grid bg-finance-grid">
           <div class="detail-field">
             <label>Плановый объем СМР</label>
@@ -111,10 +145,10 @@
 
         <h4 class="block-title">Интеграция с файловым хранилищем Диска</h4>
         <div class="files-integration-box">
-          <a :href="act.docUrl" target="_blank" class="file-link doc" :class="{ disabled: act.docUrl === '#' }">
+          <a :href="act.docUrl" target="_blank" class="file-link doc" :class="{ disabled: !act.docUrl || act.docUrl === '#' }">
             <span class="file-icon">📝</span> Google Docs Оригинал
           </a>
-          <a :href="act.pdfUrl" target="_blank" class="file-link pdf" :class="{ disabled: act.pdfUrl === '#' }">
+          <a :href="act.pdfUrl" target="_blank" class="file-link pdf" :class="{ disabled: !act.pdfUrl || act.pdfUrl === '#' }">
             <span class="file-icon">📕</span> Экспорт в PDF
           </a>
         </div>
@@ -143,10 +177,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { MockAct } from '~/composables/useMockData'
+import type { Act } from '~/composables/useActs'
 import CommonModal from '~/components/common/common_modal.vue'
 
-const props = defineProps<{ act: MockAct }>()
+const props = defineProps<{ act: Act }>()
 const isModalOpen = ref(false)
 
 const statusSlug = computed(() => {
@@ -241,4 +275,47 @@ const signAct = () => {
 .file-link.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; background: #f3f2f1 !important; color: #a19f9d !important; border-color: #edebe9 !important; }
 
 .notes-content-box { background: #fffdf5; border: 1px solid #ffeab2; border-left: 4px solid #ffc247; padding: 12px; border-radius: 4px; font-size: 13px; color: #5d461a; font-style: italic; }
+
+.volumes-table-wrapper {
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.volumes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.volumes-table th {
+  background: #f3f2f1;
+  color: #323130;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid #edebe9;
+}
+
+.volumes-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f3f2f1;
+  color: #242424;
+}
+
+.volumes-table tr:last-child td {
+  border-bottom: none;
+}
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.empty-volumes {
+  font-size: 12px;
+  color: #8a8886;
+  font-style: italic;
+  padding: 8px;
+  background: #faf9f8;
+  border-radius: 4px;
+}
 </style>
