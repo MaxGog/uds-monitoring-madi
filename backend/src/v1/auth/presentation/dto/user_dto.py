@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Generic, Optional, TypeVar
 import uuid
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from backend.src.v1.auth.domain.models import UserStatus
 
@@ -34,7 +34,7 @@ class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = Field(default=None, max_length=255)
     position: Optional[str] = Field(default=None, max_length=100)
     company_id: Optional[int] = Field(default=None)
-    status: Optional[UserStatus] = Field(default=None)
+    #status: Optional[UserStatus] = Field(default=None)
 
 # --- RESPONSE ---
 class UserResponse(BaseModel):
@@ -54,5 +54,4 @@ class UserResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

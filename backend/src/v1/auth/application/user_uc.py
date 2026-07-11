@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IPasswordHasher, IUserRepo, IUserUsecases
+from backend.src.v1.auth.domain.models import UserStatus
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest, UserResponse, UserUpdateRequest
 
 logger = logging.getLogger(__file__)
@@ -77,51 +78,54 @@ class UserUsecases(IUserUsecases):
     # --- UPDATE (PATCH) ---
     async def update_user(self, user_id: UUID, data: UserUpdateRequest) -> UserResponse:
         logger.info(f"Patching user UUID: {user_id}")
-        
-        async with self.uow as uow:
-            user = await uow.user_repo.get_by_id(user_id)
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
+        try:
+            async with self.uow as uow:
+                user = await uow.user_repo.get_by_id(user_id)
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
 
-            update_data = data.model_dump(exclude_unset=True)
-            if not update_data:
+                update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+                if not update_data:
+                    return UserResponse.model_validate(user)
+
+                # Валидация измененного логина/почты на уникальность
+                if "username" in update_data and update_data["username"] != user.username:
+                    if await uow.user_repo.get_by_username(update_data["username"]):
+                        raise HTTPException(status_code=400, detail="Username already taken")
+                        
+                if "email" in update_data and update_data["email"] != user.email:
+                    if await uow.user_repo.get_by_email(update_data["email"]):
+                        raise HTTPException(status_code=400, detail="Email already registered")
+
+                # Валидация связей
+                if "company_id" in update_data and update_data["company_id"]:
+                    if not await uow.company_repo.get_by_id(update_data["company_id"]):
+                        raise HTTPException(status_code=400, detail="Company not found")
+                if "role_id" in update_data and update_data["role_id"]:
+                    if not await uow.role_repo.get_by_id(update_data["role_id"]):
+                        raise HTTPException(status_code=400, detail="Role not found")
+
+                # Обработка смены пароля
+                if "password" in update_data and update_data["password"]:
+                    raw_password = update_data.pop("password")
+                    user.pwdhash = self.hasher.hash_password(raw_password)
+
+                # Применяем остальные поля
+                for key, value in update_data.items():
+                    setattr(user, key, value)
+
+                await self.uow.commit()
+                
+                # Перечитываем обновленное состояние
+                user = await self.uow.user_repo.get_by_id(user_id)
+
                 return UserResponse.model_validate(user)
-
-            # Валидация измененного логина/почты на уникальность
-            if "username" in update_data and update_data["username"] != user.username:
-                if await uow.user_repo.get_by_username(update_data["username"]):
-                    raise HTTPException(status_code=400, detail="Username already taken")
-                    
-            if "email" in update_data and update_data["email"] != user.email:
-                if await uow.user_repo.get_by_email(update_data["email"]):
-                    raise HTTPException(status_code=400, detail="Email already registered")
-
-            # Валидация связей
-            if "company_id" in update_data and update_data["company_id"]:
-                if not await uow.company_repo.get_by_id(update_data["company_id"]):
-                    raise HTTPException(status_code=400, detail="Company not found")
-            if "role_id" in update_data and update_data["role_id"]:
-                if not await uow.role_repo.get_by_id(update_data["role_id"]):
-                    raise HTTPException(status_code=400, detail="Role not found")
-
-            # Обработка смены пароля
-            if "password" in update_data:
-                raw_password = update_data.pop("password")
-                user.pwdhash = self.hasher.hash_password(raw_password)
-
-            # Применяем остальные поля
-            for key, value in update_data.items():
-                setattr(user, key, value)
-
-            await self.uow.commit()
-            
-            # Перечитываем обновленное состояние
-            user = await self.uow.user_repo.get_by_id(user_id)
-            return UserResponse.model_validate(user)
+        except Exception as e:
+            logger.error(e)
         
     # --- SOFT DELETE ---
     async def delete_user(self, user_id: UUID) -> None:
-        logger.info(f"Soft deleting user UUID: {user_id}")
+        logger.info(f"SOFT deleting user UUID: {user_id}")
         async with self.uow:
             user = await self.uow.user_repo.get_by_id(user_id)
             if not user:
@@ -129,5 +133,18 @@ class UserUsecases(IUserUsecases):
                 
             # Вместо удаления проставляем дату удаления
             user.deleted_at = datetime.now(timezone.utc)
+            user.status = UserStatus.BLOCKED
             await self.uow.commit()
+
+    # --- HARD DELETE --- Special Usecase for tests
+    async def hard_delete_user_by_email(self, email: str) -> None:
+        logger.info(f"HARD deleting user by email: {email}")
+        try:
+            async with self.uow as uow:
+                await uow.user_repo.hard_delete_by_email(email)
+                return
+        except Exception as e:
+            logger.error(f'Error hard deleting user: {e}')
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error hard deleting user")
+    
 

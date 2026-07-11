@@ -1,12 +1,15 @@
+import logging
 from typing import List, Optional
 
 from sqlalchemy import func, select
 
-from backend.core.db.postgres.data_orms.act_orm import WorkAct
+from backend.core.db.postgres.data_orms.act_orm import Act, ActItem
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.src.v1.data.domain.interfaces import IObjectRepo
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
+
+logger = logging.getLogger()
 
 class PgObjectRepo(IObjectRepo):
     def __init__(self, session: AsyncSession):
@@ -34,7 +37,10 @@ class PgObjectRepo(IObjectRepo):
             select(Object)
             .options(
                 joinedload(Object.supervisor),
-                joinedload(Object.contractor)
+                joinedload(Object.contractor),
+                selectinload(Object.acts)
+                .selectinload(Act.items)
+                .joinedload(ActItem.contract_item)
             )
             .order_by(Object.id.desc())
         )
@@ -42,12 +48,17 @@ class PgObjectRepo(IObjectRepo):
         return list(result.scalars().all())
 
     async def get_total_completed_cost(self, object_id: int) -> float:
-        stmt = (
-            select(func.coalesce(func.sum(WorkAct.total_amount), 0.0))
-            .where(WorkAct.object_id == object_id)
-        )
-        result = await self.session.execute(stmt)
-        return float(result.scalar_one())
+        try:
+            stmt = (
+                select(func.coalesce(func.sum(ActItem.completed_quantity * ActItem.price), 0.0))
+                .join(Act, Act.id == ActItem.act_id)
+                .where(Act.object_id == object_id)
+            )
+            result = await self.session.execute(stmt)
+            return float(result.scalar_one())
+        except Exception as e:
+            logger.error(f"Error calculating cost: {e}")
+            return 0.0
 
     async def add(self, obj: Object) -> None:
         self.session.add(obj)

@@ -1,6 +1,7 @@
 from datetime import date, datetime
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Компактные схемы для вложения в ответ
 class ObjectShortResponse(BaseModel):
@@ -8,45 +9,42 @@ class ObjectShortResponse(BaseModel):
     title: str
     address: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ContractorShortResponse(BaseModel):
     id: int
     name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- CREATE ---
 class WorkCreateRequest(BaseModel):
     title: str = Field(..., min_length=2, max_length=255, description="Наименование работы / тип работы")
-    status: str = Field(..., max_length=50, description="Статус работы (например, 'в процессе')")
-    cost: float = Field(..., ge=0.0, description="Стоимость работы по смете")
-    deadline: date = Field(..., description="Крайний срок выполнения")
-    object_id: int = Field(..., description="ID объекта, к которому привязана работа")
-    contractor_id: int = Field(..., description="ID подрядчика, выполняющего работу")
+    status: Optional[str] = Field(None, max_length=50, description="Статус работы (например, 'в процессе')")
+    cost: Optional[float] = Field(None, ge=0.0, description="Стоимость работы по смете")
+    deadline: Optional[date] = Field(None, description="Крайний срок выполнения")
+    object_id: Optional[int] = Field(None, description="ID объекта, к которому привязана работа")
+    contractor_id: Optional[int] = Field(None, description="ID подрядчика, выполняющего работу")
 
 # --- UPDATE (PATCH) ---
 class WorkUpdateRequest(BaseModel):
-    title: str = Field(default=None, min_length=2, max_length=255)
-    status: str = Field(default=None, max_length=50)
-    cost: float = Field(default=None, ge=0.0)
-    deadline: date = Field(default=None)
-    object_id: int = Field(default=None)
-    contractor_id: int = Field(default=None)
+    title: Optional[str] = Field(default=None, min_length=2, max_length=255)
+    status: Optional[str] = Field(default=None, max_length=50)
+    cost: Optional[float] = Field(default=None, ge=0.0)
+    deadline: Optional[date] = Field(default=None)
+    object_id: Optional[int] = Field(default=None)
+    contractor_id: Optional[int] = Field(default=None)
 
 # --- RESPONSE ---
 class WorkResponse(BaseModel):
     id: int
     title: str
-    status: str
-    cost: float
-    deadline: date
-    created_at: datetime
-    updated_at: datetime
-    object: ObjectShortResponse
-    contractor: ContractorShortResponse
+    status: Optional[str]
+    cost: Optional[float] = None
+    deadline: Optional[date] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    object: Optional[ObjectShortResponse] = None
+    contractor: Optional[ContractorShortResponse] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

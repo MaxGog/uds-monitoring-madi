@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.src.v1.data.domain.models import ContractStatus, ContractType
 
@@ -15,14 +15,13 @@ class ContractItemCreate(BaseModel):
 class ContractItemResponse(BaseModel):
     id: int
     title: str
-    description: Optional[str]
+    description: Optional[str] = None
     quantity: float
     unit: str
     price_per_unit: float
     total_price: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- САМ ДОГОВОР ---
@@ -30,10 +29,10 @@ class ContractCreateRequest(BaseModel):
     contract_id: Optional[str] = Field(None, description="Номер договора (например, '№ 45-Б')")
     date_signed: Optional[date] = Field(None, description="Дата подписания")
     description: Optional[str] = Field(None)
-    status: ContractStatus = Field(default=ContractStatus.DRAFT)
-    type: ContractType = Field(default=ContractType.GENERAL)
+    status: Optional[ContractStatus] = Field(default=ContractStatus.DRAFT)
+    type: Optional[ContractType] = Field(default=ContractType.GENERAL)
     
-    cost: Optional[str] = Field(None, max_length=100, description="Текстовое описание стоимости (например, 'С НДС 20%')")
+    cost: Optional[float] = Field(None, description="Стоимость")
     
     planned_start: Optional[date] = Field(None)
     planned_end: Optional[date] = Field(None)
@@ -52,7 +51,7 @@ class ContractUpdateRequest(BaseModel):
     status: Optional[ContractStatus] = Field(default=None)
     type: Optional[ContractType] = Field(default=None)
     
-    cost: Optional[str] = Field(default=None)
+    cost: Optional[float] = Field(default=None)
     
     planned_start: Optional[date] = Field(default=None)
     planned_end: Optional[date] = Field(default=None)
@@ -67,22 +66,21 @@ class ContractUpdateRequest(BaseModel):
 class ContractResponse(BaseModel):
     id: int
     contract_id: Optional[str]
-    date_signed: Optional[date]
-    description: Optional[str]
-    status: ContractStatus
-    type: ContractType
-    cost: Optional[str]
-    total_cost: Optional[float]
+    date_signed: Optional[date] = None
+    description: Optional[str] = None
+    status: Optional[ContractStatus] = None
+    type: Optional[ContractType] = None
+    cost: Optional[float] = None
+    total_cost: Optional[float] = None
     
-    planned_start: Optional[date]
-    planned_end: Optional[date]
-    actual_start: Optional[date]
-    actual_end: Optional[date]
+    planned_start: Optional[date] = None
+    planned_end: Optional[date] = None
+    actual_start: Optional[date] = None
+    actual_end: Optional[date] = None
     
-    object_id: Optional[int]
-    work_id: Optional[int]
+    object_id: Optional[int] = None
+    work_id: Optional[int] = None
     
-    items: List[ContractItemResponse]
+    items: Optional[List[ContractItemResponse]] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -26,7 +26,7 @@ class Contract(Base):
     status: Mapped[ContractStatus] = mapped_column(SqlEnum(ContractStatus), default=ContractStatus.DRAFT, nullable=True)
     type: Mapped[ContractType] = mapped_column(SqlEnum(ContractType), default=ContractType.GENERAL, nullable=True)
 
-    cost: Mapped[str] = mapped_column(String(100), nullable=True)
+    cost: Mapped[float] = mapped_column(Numeric(15, 2), nullable=True)
     total_cost: Mapped[float] = mapped_column(Numeric(15, 2), nullable=True)
 
     planned_start: Mapped[date] = mapped_column(Date, nullable=True)
@@ -46,7 +46,7 @@ class Contract(Base):
     )
     object: Mapped[Optional["Object"]] = relationship("Object", back_populates="contracts")
     work: Mapped[Optional["Work"]] = relationship("Work", back_populates="contracts")
-    acts: Mapped[List["WorkAct"]] = relationship("WorkAct", back_populates="contract")
+    acts: Mapped[List["Act"]] = relationship("Act", back_populates="contract")
 
 class ContractItem(Base):
     '''

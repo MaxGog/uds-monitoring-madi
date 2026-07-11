@@ -21,7 +21,7 @@ class PgTaskRepo(ITaskRepo):
             select(Task)
             .where(Task.id == task_id)
             .options(
-                joinedload(Task.author),
+                selectinload(Task.author),
                 selectinload(Task.performers)
             )
         )

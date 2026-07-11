@@ -33,7 +33,7 @@ class RedisTokenStorage(ITokenStorage):
     async def save_code(self, code: str, user_id: str, challenge: str, code_ttl: int = 600) -> str:
         data = CodeData(user_id=user_id, challenge=challenge)
         key = f"auth_code:{code}"
-        await self.redis.setex(key, code_ttl, data.to_json())
+        await self.redis.set(name = key, value = data.to_json(), ex = code_ttl)
         return code
 
 

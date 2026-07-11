@@ -12,7 +12,7 @@ from backend.core.db.postgres.data_orms.user_orm import User
 from backend.core.db.postgres.data_orms.task_orm import Task
 from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.data_orms.work_orm import Work
-from backend.core.db.postgres.data_orms.act_orm import WorkAct, WorkActItem
+from backend.core.db.postgres.data_orms.act_orm import Act, ActItem
 from backend.core.db.postgres.data_orms.contract_orm import Contract, ContractItem
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.document_orm import Document

@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 import logging
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import Null, String, cast, func, select, update
+from sqlalchemy import Null, String, cast, delete, func, select, update
 
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.src.v1.auth.domain.interfaces import IUserRepo
@@ -63,6 +64,17 @@ class PgUserRepo(IUserRepo):
         )
         result = await self.session.execute(stmt)
         return result.scalar_one()
+
+    async def hard_delete_by_email(self, email: str) -> None:
+        try:
+            stmt = (
+                delete(User).where(User.email == email)
+            )
+            await self.session.execute(stmt)
+            return
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Error deleting user by email')
 
     async def add(self, user: User) -> None:
         self.session.add(user)

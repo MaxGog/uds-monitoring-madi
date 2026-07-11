@@ -44,35 +44,37 @@ class ObjectUsecases(IObjectUsecases):
             response_dto = ObjectResponse.model_validate(obj)
             response_dto.total_completed_cost = cost
             return response_dto
+        except HTTPException as e:
+            logger.error(e)
+            raise e
         except Exception as e:
             logger.error(e)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     async def create_object(self, data: ObjectCreateRequest) -> ObjectResponse:
         logger.info(f"Creating object: {data.title}")
+        create_data = data.model_dump(exclude_none=True, exclude_unset=True)
         try:
             async with self.uow as uow:
-                if not await uow.company_repo.get_by_id(data.supervisor_id):
-                    raise HTTPException(status_code=400, detail=f"Supervisor company {data.supervisor_id} not found")
-                if not await uow.company_repo.get_by_id(data.contractor_id):
-                    raise HTTPException(status_code=400, detail=f"Contractor company {data.contractor_id} not found")
+                supervisor_id = create_data.get("supervisor_id")
+                if supervisor_id:
+                    if not await uow.company_repo.get_by_id(supervisor_id):
+                        raise HTTPException(status_code=400, detail=f"Supervisor company {data.supervisor_id} not found")
+                contractor_id = create_data.get("contractor_id")
+                if contractor_id:
+                    if not await uow.company_repo.get_by_id(contractor_id):
+                        raise HTTPException(status_code=400, detail=f"Contractor company {data.contractor_id} not found")
 
                 new_object = Object(
-                    title=data.title,
-                    address=data.address,
-                    district=data.district,
-                    supervisor_id=data.supervisor_id,
-                    contractor_id=data.contractor_id,
-                    #status=data.status
+                    **create_data
                 )
                 await self.uow.object_repo.add(new_object)
                 await self.uow.commit()
 
                 obj = await uow.object_repo.get_by_id_with_relations(new_object.id)
-                cost = await uow.object_repo.get_total_completed_cost(obj.id)
+                cost = await uow.object_repo.get_total_completed_cost(obj.id) # type: ignore может быть ошибка кнш по рандом багу
 
                 response_dto = ObjectResponse.model_validate(obj)
-                response_dto.total_completed_cost = cost
                 return response_dto
         except Exception as e:
             logger.error(e)
@@ -86,7 +88,7 @@ class ObjectUsecases(IObjectUsecases):
                 if not obj:
                     raise HTTPException(status_code=404, detail="Object not found")
 
-                update_data = data.model_dump(exclude_unset=True)
+                update_data = data.model_dump(exclude_unset=True, exclude_none=True)
                 if not update_data:
                     cost = await uow.object_repo.get_total_completed_cost(obj.id)
                     dto = ObjectResponse.model_validate(obj)
@@ -109,11 +111,14 @@ class ObjectUsecases(IObjectUsecases):
                 
                 # Перечитываем и отдаем актуальный стейт
                 obj = await uow.object_repo.get_by_id_with_relations(item_id)
-                cost = await uow.object_repo.get_total_completed_cost(obj.id)
+                cost = await uow.object_repo.get_total_completed_cost(obj.id) # type: ignore может быть ошибка кнш по рандом багу
                 
                 dto = ObjectResponse.model_validate(obj)
                 dto.total_completed_cost = cost
                 return dto
+        except HTTPException as e:
+            logger.error(e)
+            raise e
         except Exception as e:
             logger.error(e)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -31,9 +31,9 @@ class RoleUsecases(IRoleUsecases):
 
             # 2. Вытягиваем сущности прав из БД для M2M связывания
             permissions_to_bind = []
-            if data.permission_ids:
-                permissions_to_bind = await uow.permission_repo.get_by_ids(data.permission_ids)
-                if len(permissions_to_bind) != len(set(data.permission_ids)):
+            if data.permissions:
+                permissions_to_bind = await uow.permission_repo.get_by_ids(data.permissions)
+                if len(permissions_to_bind) != len(set(data.permissions)):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="One or more permission IDs are invalid"
@@ -68,13 +68,12 @@ class RoleUsecases(IRoleUsecases):
     # --- UPDATE (PATCH) ---
     async def update_role(self, item_id: int, data: RoleUpdateRequest) -> RoleResponse:
         logger.info(f"Patching role ID: {item_id}")
-        
         async with self.uow as uow:
             role = await uow.role_repo.get_by_id(item_id)
             if not role:
                 raise HTTPException(status_code=404, detail="Role not found")
 
-            update_data = data.model_dump(exclude_unset=True)
+            update_data = data.model_dump(exclude_unset=True, exclude_none=True)
             if not update_data:
                 return RoleResponse.model_validate(role)
 

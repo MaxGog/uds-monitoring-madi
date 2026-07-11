@@ -45,6 +45,9 @@ class IUserRepo(Protocol):
     @abstractmethod
     async def add(self, user: User) -> None: pass
 
+    @abstractmethod
+    async def hard_delete_by_email(self, email: str) -> None: pass
+
 class IRoleRepo(Protocol):
     @abstractmethod
     async def get_by_id(self, role_id: int) -> Optional[Role]: pass
@@ -85,6 +88,9 @@ class IUserUsecases(Protocol):
     @abstractmethod
     async def delete_user(self, user_id: UUID) -> None:
         pass
+
+    @abstractmethod
+    async def hard_delete_user_by_email(self, email: str) -> None: pass
 
 class IPermissionRepo(Protocol):
     @abstractmethod
@@ -189,7 +195,7 @@ class ITokenAuth(Protocol):
 
 class IAuthUsecases(Protocol):
     @abstractmethod
-    async def register_new_user(self, dto: UserCreateRequest) -> UserResponse:
+    async def register_new_user(self, data: UserCreateRequest) -> UserResponse:
         pass
 
     @abstractmethod
