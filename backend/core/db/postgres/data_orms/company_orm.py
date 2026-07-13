@@ -14,7 +14,7 @@ class Company(Base):
     inn: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     kpp: Mapped[str] = mapped_column(String(20), nullable=True)
-    address: Mapped[str] = mapped_column(String(500))
+    address: Mapped[str] = mapped_column(String(500), nullable=True)
     
     # --- Конфиденциальные данные ---
     bank_account: Mapped[str] = mapped_column(String(30), nullable=True) # Р/с

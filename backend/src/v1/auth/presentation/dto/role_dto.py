@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.src.v1.auth.domain.role_models import ActionType, EntityType, ScopeType
 
@@ -11,23 +11,23 @@ class PermissionResponse(BaseModel):
     entity: EntityType
     action: ActionType
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+class PermissionCreateRequest(BaseModel):
+    entity: EntityType
+    action: ActionType
 
 # --- CREATE ---
 class RoleCreateRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, description="Уникальное имя роли (например, 'manager')")
     scope: ScopeType = Field(default=ScopeType.LOCAL, description="Область видимости данных")
-    permission_ids: List[int] = Field(default_factory=list, description="Список ID прав для привязки к роли")
+    permissions: Optional[List[int]] = Field(default_factory=list, description="Список ID прав для привязки к роли")#Optional[List[PermissionCreateRequest]] = Field(default_factory=list, description="Список прав для создания")
 
 # --- UPDATE (PATCH) ---
 class RoleUpdateRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=100)
     scope: Optional[ScopeType] = Field(default=None)
-    permission_ids: Optional[List[int]] = Field(
-        default=None, 
-        description="Полная перезапись прав роли. Если прислать [], все права будут сняты."
-    )
+    permissions: Optional[List[int]] = Field(default_factory=list, description="Список ID прав для привязки к роли") #Optional[List[PermissionCreateRequest]] = Field(default_factory=list, description="Список прав для создания")
 
 # --- RESPONSE ---
 class RoleResponse(BaseModel):
@@ -36,5 +36,4 @@ class RoleResponse(BaseModel):
     scope: ScopeType
     permissions: List[PermissionResponse]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

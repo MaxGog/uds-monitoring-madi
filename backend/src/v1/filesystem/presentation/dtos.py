@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.core.db.postgres.data_orms.document_orm import DocumentOwnerType
 
@@ -19,7 +19,24 @@ class PresignedUrlResponse(BaseModel):
     s3_bucket: str
     s3_key: str
 
-# --- СИГНАЛ ОБ УСПЕШНОЙ ЗАГРУЗКЕ (ДЛЯ ТРИГГЕРА CELERY) ---
+# Используется для сохранения в БД после успешной загрузки в S3
+class DocumentCreateRequest(BaseModel):
+    name: str
+    content_type: str
+    s3_bucket: str
+    s3_key: str
+    size_bytes: int
+    checksum_sha256: str
+    owner_type: Optional[DocumentOwnerType] = None
+    owner_id: Optional[int] = None
+
+# ДОПОЛНЕНО: Используется для PATCH-запроса (например, переименование файла)
+class DocumentUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    owner_type: Optional[DocumentOwnerType] = None
+    owner_id: Optional[int] = None
+
+#--- СИГНАЛ ОБ УСПЕШНОЙ ЗАГРУЗКЕ (ДЛЯ ТРИГГЕРА CELERY и Вебхука) ---
 class ConfirmUploadRequest(BaseModel):
     name: str
     s3_bucket: str
@@ -43,5 +60,4 @@ class DocumentResponse(BaseModel):
     owner_id: Optional[int]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

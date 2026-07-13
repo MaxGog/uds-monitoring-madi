@@ -44,8 +44,10 @@ async def get_object(
         result = await uc.get_object_by_id(item_id = object_id)
         return BaseResponse(data = result)
     except HTTPException as e:
+        logger.error(e)
         raise e
     except Exception as e:
+        logger.error(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error gettings object")
 
 @router.post('/', response_model=BaseResponse[ObjectResponse], status_code=status.HTTP_201_CREATED)
@@ -71,7 +73,7 @@ async def update_object(
     uc: FromDishka[IObjectUsecases],
     data: BaseRequest[ObjectUpdateRequest], 
     current_user: CurrentUserPayload,
-    scope: ScopeType = Depends(RequireAccess(EntityType.OBJECT, ActionType.READ))
+    scope: ScopeType = Depends(RequireAccess(EntityType.OBJECT, ActionType.UPDATE))
 ):
     try:
         result = await uc.update_object(item_id = object_id, data = data.data)

@@ -4,6 +4,10 @@ run:
 sync:
 	uv sync
 
+test:
+	python -m pytest
+
+
 init-migrate:
 	alembic init -t async backend/migrations
 

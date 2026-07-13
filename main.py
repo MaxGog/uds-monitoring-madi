@@ -1,6 +1,6 @@
 import logging
 
-from dishka import make_async_container
+from dishka import AsyncContainer, make_async_container
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dishka.integrations.fastapi import setup_dishka
@@ -36,65 +36,74 @@ from backend.core.db.redis.redis_conn import redis_client
 from backend.core.db.aws.minio_conn import check_aws_connection
 from backend.config.config import settings
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    setup_logger()
-    await check_db_connection(db_engine)
-    await check_redis_connection(redis_client)
-    client = await container().get(S3Client)
-    await check_aws_connection(client)
-    yield
-
-    await db_engine.dispose()
-
 logger = logging.getLogger(__file__)
-
-app = FastAPI(lifespan=lifespan)
-
 
 # Порядок вызовов функционала влияет
 @CsrfProtect.load_config
 def get_csrf_settings():
     return CsrfSettings()
 
-@app.exception_handler(CsrfProtectError)
-def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.message}
+def create_app(container: AsyncContainer | None = None) -> FastAPI:
+
+    if container is None:
+        container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        setup_logger()
+        await check_db_connection(db_engine)
+        await check_redis_connection(redis_client)
+        client = await container().get(S3Client)
+        await check_aws_connection(client)
+        yield
+
+        await db_engine.dispose()
+
+    app = FastAPI(lifespan=lifespan)
+
+
+    @app.exception_handler(CsrfProtectError)
+    def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.message}
+        )
+
+    origins = [
+        "http://localhost:4000",
+        "http://127.0.0.1:4000",
+    ]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
-origins = [
-    "http://localhost:4000",
-    "http://127.0.0.1:4000",
-]
+    app.include_router(router=auth_router, prefix="/auth", tags=['auth'])
+    app.include_router(router=user_router, prefix='/users', tags=['user'])
+    app.include_router(router=fs_router, prefix="/fs", tags=['fs'])
+    app.include_router(router=task_router, prefix = "/task", tags = ['task'])
+    app.include_router(router=object_router, prefix = "/object", tags = ['object'])
+    app.include_router(router=roadmap_router, prefix = "/roadmap", tags = ['roadmap'])
+    app.include_router(router=act_router, prefix = "/act", tags = ['act'])
+    app.include_router(router=work_router, prefix = "/work", tags = ['work'])
+    app.include_router(router=role_router, prefix = "/role", tags = ['role'])
+    app.include_router(router=contract_router, prefix = "/contract", tags = ['contract'])
+    app.include_router(router=company_router, prefix = "/company", tags = ['company'])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    from backend.src.v1.filesystem.presentation.api import public_fs_router # Неизвестный баг, при попытке теста через эндпоинт выдаёт 401 ошибку, несмотря на отсутствие защит
+    app.include_router(router = public_fs_router)
 
-app.include_router(router=auth_router, prefix="/auth", tags=['auth'])
-app.include_router(router=user_router, prefix='/users', tags=['user'])
-app.include_router(router=fs_router, prefix="/fs", tags=['fs'])
-app.include_router(router=task_router, prefix = "/task", tags = ['task'])
-app.include_router(router=object_router, prefix = "/object", tags = ['object'])
-app.include_router(router=roadmap_router, prefix = "/roadmap", tags = ['roadmap'])
-app.include_router(router=act_router, prefix = "/act", tags = ['act'])
-app.include_router(router=work_router, prefix = "/work", tags = ['work'])
-app.include_router(router=role_router, prefix = "/role", tags = ['role'])
-app.include_router(router=contract_router, prefix = "/contract", tags = ['contract'])
-app.include_router(router=company_router, prefix = "/company", tags = ['company'])
-
-container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())
-setup_dishka(container, app)
+    setup_dishka(container, app)
+    return app
 
 if __name__ == "__main__":
     run_args = {
-        "app": "main:app",
+        "app": "main:create_app",
+        "factory": True,
         "host": settings.server.host,
         "port": settings.server.port,
     }

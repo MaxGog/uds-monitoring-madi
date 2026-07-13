@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.core.db.postgres.data_orms.task_orm import TaskPriority, TaskStatus
 
@@ -11,8 +11,7 @@ class UserShortResponse(BaseModel):
     username: str
     full_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TaskCreateRequest(BaseModel):
     title: str = Field(..., min_length=3, max_length=255, description="Название задачи")
@@ -22,10 +21,10 @@ class TaskCreateRequest(BaseModel):
     performer_ids: List[UUID] = Field(default_factory=list, description="ID исполнителей")
 
 class TaskUpdateRequest(BaseModel):
-    title: str = Field(default=None, min_length=3, max_length=255)
+    title: Optional[str] = Field(default=None, min_length=3, max_length=255)
     description: Optional[str] = Field(default=None)
-    status: TaskStatus = Field(default=None)
-    priority: TaskPriority = Field(default=None)
+    status: Optional[TaskStatus] = Field(default=None)
+    priority: Optional[TaskPriority] = Field(default=None)
     performer_ids: Optional[List[UUID]] = Field(default=None, description="Новый полный список ID исполнителей")
 
 class TaskResponse(BaseModel):
@@ -34,11 +33,10 @@ class TaskResponse(BaseModel):
     description: Optional[str]
     status: TaskStatus
     priority: TaskPriority
-    author: UserShortResponse
-    performers: List[UserShortResponse]
+    author: Optional[UserShortResponse] = None
+    performers: List[UserShortResponse] = []
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

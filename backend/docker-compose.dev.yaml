@@ -91,7 +91,7 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadminpassword
       MINIO_NOTIFY_WEBHOOK_ENABLE_fastapi: "on"
-      MINIO_NOTIFY_WEBHOOK_ENDPOINT_fastapi: "http://backend-api:8000/api/v1/fs/webhook"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_fastapi: "http://host.docker.internal:8000/fs/webhook"
     volumes:
       - miniodata:/data
     networks:

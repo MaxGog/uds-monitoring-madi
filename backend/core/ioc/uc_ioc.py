@@ -16,7 +16,7 @@ from backend.src.v1.data.application.tasks_usecases import TaskUsecases
 from backend.src.v1.data.application.work_usecases import WorkUsecases
 from backend.src.v1.data.domain.interfaces import IActRepo, IActUsecases, ICompanyRepo, ICompanyUsecases, IContractRepo, IContractUsecases, IObjectRepo, IObjectUsecases, IRoadmapRepo, IRoadmapUsecases, ITaskRepo, ITaskUsecases, IWorkRepo, IWorkUsecases
 from backend.src.v1.filesystem.application.file_uc import FsUsecases
-from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileAuthUsecases, IFileRepo, IFsUsecases
+from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 
     # @provide(scope=Scope.REQUEST)
     # async def get_change_uc(self, uow: IUnitOfWork, change_repo: IHangeRepo, user_repo: IUserRepo) -> IHangeUsecases:

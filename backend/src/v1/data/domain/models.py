@@ -26,6 +26,7 @@ class TaskStatus(str, enum.Enum):
     EXPIRED = 'expired'
     FAILED = 'failed'
     
+    
 class TaskPriority(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
@@ -38,11 +39,22 @@ class ObjectStatus(str, enum.Enum):
     IN_PROGRESS = 'in_progress'
     COMPLETED = 'completed'
     PAUSED = 'paused'
-    CANCELLED = 'cancelled'
+    CANCELED = 'cancelled'
     EXPIRED = 'expired'
     FAILED = 'failed'
 
-class WorkActStatus(str, Enum):
+class WorkStatus(str, Enum):
+    PENDING = 'pending'
+    ASSIGNED = 'assigned'
+    IN_PROGRESS = 'in_progress'
+    PAUSED = 'paused'
+    COMPLETED = 'completed'
+    VERIFIED = 'verified'
+    CANCELED = 'canceled'
+    EXPIRED = 'expired'
+    FAILED = 'failed'
+
+class ActStatus(str, Enum):
     DRAFT = 'draft'
     PENDING = 'pending'
     APPROVED = 'approved'
@@ -54,7 +66,7 @@ class ActType(str, Enum):
 
 class ContractType(str, Enum):
     '''
-    Для различия того, кто выполняет работу
+    Для различия того, кто выполняет работу и по какому поводу
     '''
     GENERAL = "general"
     WORK = "work"

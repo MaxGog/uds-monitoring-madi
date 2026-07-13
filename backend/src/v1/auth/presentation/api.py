@@ -197,7 +197,7 @@ async def exchange_code_for_token(
         httponly = True,
         samesite = 'lax',
         max_age = settings.auth_jwt.refresh_token_expire_days * 24 * 60 * 60,
-        secure = settings.server.ssl
+        secure = settings.server.ssl.enabled
     )
     return { "access_token": tokens.access_token }
 
@@ -222,7 +222,7 @@ async def refresh_tokens(
         httponly = True,
         samesite = 'lax',
         max_age = settings.auth_jwt.refresh_token_expire_days * 24 * 60 * 60,
-        secure = settings.server.ssl
+        secure = settings.server.ssl.enabled
     )
     return { "access_token": new_tokens.access_token }
 
@@ -264,11 +264,11 @@ async def get_test_token(
     role: str = Query(default = 'admin'),
 ):
     if role == 'admin':
-        result = await auth_provider.set_tokens(user_id = '019f41c2-3004-7d8a-a088-515502c0d4ba') # беру напрямую из бд
+        result = await auth_provider.set_tokens(user_id = '019f5226-60af-74db-b51b-437b170833b2') # беру напрямую из бд
     elif role == 'viewer':
-        result = await auth_provider.set_tokens(user_id = '019f41c2-a6f7-75cd-8124-86d8fc724a0d')
+        result = await auth_provider.set_tokens(user_id = '019f5226-60af-74db-b51b-437b170833b2')
     elif role == 'string':
-        result = await auth_provider.set_tokens(user_id = '019f41da-c7c8-73fb-a534-af67ffc13e02')
+        result = await auth_provider.set_tokens(user_id = '019f5226-60af-74db-b51b-437b170833b2')
     else:
         result = None
     return result

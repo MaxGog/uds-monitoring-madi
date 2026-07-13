@@ -1,18 +1,11 @@
 from datetime import datetime
-from enum import Enum as PyEnum
 from typing import Optional
 from sqlalchemy import UUID, BigInteger, DateTime, Enum, Integer, Null, String, ForeignKey, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SqlEnum
 import uuid6
 from backend.core.db.postgres.base_orm import Base
-
-
-class DocumentOwnerType(str, PyEnum):
-    CONTRACT = "contract"
-    ACT = "act"
-    OBJECT = "object"
-    WORK = "work"
+from backend.src.v1.filesystem.domain.models import DocumentOwnerType
     
 # Таблица метаданных файлов и результатов парсинга
 class Document(Base):
@@ -38,7 +31,7 @@ class Document(Base):
     uploader: Mapped["User"] = relationship("User")
 
     owner_type: Mapped[DocumentOwnerType] = mapped_column(SqlEnum(DocumentOwnerType), default=Null, nullable=True)
-    owner_id: Mapped[int] = mapped_column(Integer) # ID сущности (Contract, Act, и т.д.)
+    owner_id: Mapped[int] = mapped_column(Integer, nullable=True) # ID сущности (Contract, Act, и т.д.)
     # Результаты парсинга (структурированные данные, пока не уверен как это будет реализовано на самом деле)
     #status: Mapped[str] = mapped_column(String(50), default="pending")
     #parsed_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)

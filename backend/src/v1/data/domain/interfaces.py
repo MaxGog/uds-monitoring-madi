@@ -1,13 +1,13 @@
 from abc import abstractmethod
 from typing import List, Optional, Protocol
 
-from backend.core.db.postgres.data_orms.act_orm import WorkAct
+from backend.core.db.postgres.data_orms.act_orm import Act
 from backend.core.db.postgres.data_orms.company_orm import Company
 from backend.core.db.postgres.data_orms.contract_orm import Contract
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.task_orm import Task
 from backend.core.db.postgres.data_orms.work_orm import Work
-from backend.src.v1.data.presentation.dtos.act_dto import WorkActCreateRequest, WorkActResponse, WorkActUpdateRequest
+from backend.src.v1.data.presentation.dtos.act_dto import ActCreateRequest, ActResponse, ActUpdateRequest
 from backend.src.v1.data.presentation.dtos.company_dto import CompanyCreateRequest, CompanyResponse, CompanyUpdateRequest
 from backend.src.v1.data.presentation.dtos.contract_dto import ContractCreateRequest, ContractResponse, ContractUpdateRequest
 from backend.src.v1.data.presentation.dtos.object_dto import ObjectCreateRequest, ObjectResponse, ObjectUpdateRequest
@@ -64,16 +64,16 @@ class IWorkUsecases(Protocol):
 
 class IActUsecases(Protocol):
     @abstractmethod
-    async def get_act_by_id(self, item_id: int) -> WorkActResponse: pass
+    async def get_act_by_id(self, item_id: int) -> ActResponse: pass
 
     @abstractmethod
-    async def get_all_acts(self) -> List[WorkActResponse]: pass
+    async def get_all_acts(self) -> List[ActResponse]: pass
 
     @abstractmethod
-    async def create_act(self, data: WorkActCreateRequest) -> WorkActResponse: pass
+    async def create_act(self, data: ActCreateRequest) -> ActResponse: pass
 
     @abstractmethod
-    async def update_act(self, item_id: int, data: WorkActUpdateRequest) -> WorkActResponse: pass
+    async def update_act(self, item_id: int, data: ActUpdateRequest) -> ActResponse: pass
 
     @abstractmethod
     async def delete_act(self, item_id: int) -> None: pass
@@ -167,19 +167,19 @@ class IWorkRepo(Protocol):
 
 class IActRepo(Protocol):
     @abstractmethod
-    async def get_by_id(self, item_id: int) -> Optional[WorkAct]: pass
+    async def get_by_id(self, item_id: int) -> Optional[Act]: pass
     
     @abstractmethod
-    async def get_by_id_with_relations(self, item_id: int) -> Optional[WorkAct]: pass
+    async def get_by_id_with_relations(self, item_id: int) -> Optional[Act]: pass
     
     @abstractmethod
-    async def get_all(self) -> List[WorkAct]: pass
+    async def get_all(self) -> List[Act]: pass
     
     @abstractmethod
-    async def add(self, act: WorkAct) -> None: pass
+    async def add(self, act: Act) -> None: pass
     
     @abstractmethod
-    async def delete(self, act: WorkAct) -> None: pass
+    async def delete(self, act: Act) -> None: pass
 
 class IRoadmapRepo(Protocol):
     ...

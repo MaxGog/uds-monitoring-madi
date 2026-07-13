@@ -1,7 +1,8 @@
 from typing import List, Optional
 import uuid
 
-from sqlalchemy import insert, select
+from fastapi import HTTPException, status
+from sqlalchemy import insert, select, update
 import uuid6
 
 from backend.core.db.postgres.data_orms.document_orm import Document
@@ -29,6 +30,17 @@ class PgFileRepo(IFileRepo):
         stmt = stmt.order_by(Document.created_at.desc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+    
+    async def update(self, document_id: uuid.UUID, update_dict: dict):
+        query = (
+            update(Document)
+            .where(Document.id == document_id)
+            .values(**update_dict)
+            .returning(Document)
+        )
+        res = await self.session.execute(query)
+        await self.session.commit()
+        return res.scalar_one()
 
     async def add(self, document: Document) -> None:
         self.session.add(document)

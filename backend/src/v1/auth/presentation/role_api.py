@@ -94,7 +94,6 @@ async def delete_role(
     """Удаление роли по ID (если к ней не привязаны пользователи)"""
     try:
         await uc.delete_role(role_id)
-        # Для 204 No Content возвращать BaseResponse не нужно, FastAPI сам отдаст пустой боди
         return
     except Exception as e:
         logger.error(e)

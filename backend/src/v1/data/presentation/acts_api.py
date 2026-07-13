@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from backend.src.v1.auth.domain.role_models import ActionType, EntityType, ScopeType
 from backend.src.v1.auth.presentation.api import CurrentUserPayload, RequireAccess
 from backend.src.v1.data.domain.interfaces import IActUsecases
-from backend.src.v1.data.presentation.dtos.act_dto import WorkActCreateRequest, WorkActResponse, WorkActUpdateRequest
+from backend.src.v1.data.presentation.dtos.act_dto import ActCreateRequest, ActResponse, ActUpdateRequest
 from backend.src.v1.data.presentation.dtos.data_dto import BaseRequest, BaseResponse
 
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__file__)
 
 router = APIRouter()
 
-@router.get('/', response_model=BaseResponse[List[WorkActResponse]])
+@router.get('/', response_model=BaseResponse[List[ActResponse]])
 @inject
 async def get_acts(
     uc: FromDishka[IActUsecases],
@@ -32,7 +32,7 @@ async def get_acts(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error gettings acts")
 
-@router.get('/{act_id}', response_model=BaseResponse[WorkActResponse])
+@router.get('/{act_id}', response_model=BaseResponse[ActResponse])
 @inject
 async def get_act(
     act_id: int,
@@ -48,11 +48,11 @@ async def get_act(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error gettings act")
 
-@router.post('/', response_model=BaseResponse[WorkActResponse], status_code=status.HTTP_201_CREATED)
+@router.post('/', response_model=BaseResponse[ActResponse], status_code=status.HTTP_201_CREATED)
 @inject
 async def create_act(
     uc: FromDishka[IActUsecases],
-    data: BaseRequest[WorkActCreateRequest],
+    data: BaseRequest[ActCreateRequest],
     current_user: CurrentUserPayload,
     scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.CREATE))
 ):
@@ -64,11 +64,11 @@ async def create_act(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error creating act")
 
-@router.patch('/{act_id}', response_model=BaseResponse[WorkActResponse])
+@router.patch('/{act_id}', response_model=BaseResponse[ActResponse])
 @inject
 async def update_act(
     act_id: int,
-    data: BaseRequest[WorkActUpdateRequest],
+    data: BaseRequest[ActUpdateRequest],
     uc: FromDishka[IActUsecases],
     current_user: CurrentUserPayload,
     scope: ScopeType = Depends(RequireAccess(EntityType.ACT, ActionType.UPDATE))
