@@ -9,16 +9,61 @@
 
     <div class="form-card">
       <form @submit.prevent="submitForm" class="fluent-form">
-        
+        <div v-if="error" class="error-banner">{{ error }}</div>
+
         <h3 class="form-section-title">Личные данные</h3>
         <div class="form-row">
           <div class="form-group">
             <label>ФИО сотрудника *</label>
-            <input v-model="form.username" type="text" class="fluent-input" placeholder="Иванов Петр Сергеевич" required />
+            <input 
+              v-model="form.full_name" 
+              type="text" 
+              class="fluent-input" 
+              placeholder="Иванов Петр Сергеевич" 
+              required 
+            />
+          </div>
+          <div class="form-group">
+            <label>Имя пользователя (Логин) *</label>
+            <input 
+              v-model="form.username" 
+              type="text" 
+              class="fluent-input" 
+              placeholder="p.ivanov" 
+              required 
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Рабочий Email *</label>
+            <input 
+              v-model="form.email" 
+              type="email" 
+              class="fluent-input" 
+              placeholder="p.ivanov@company.ru" 
+              required 
+            />
           </div>
           <div class="form-group">
             <label>Должность</label>
-            <input v-model="form.position" type="text" class="fluent-input" placeholder="Главный специалист технадзора" />
+            <input 
+              v-model="form.position" 
+              type="text" 
+              class="fluent-input" 
+              placeholder="Главный специалист технадзора" 
+            />
+          </div>
+          <div class="form-group">
+            <label>Пароль *</label>
+            <input 
+              v-model="form.password" 
+              type="password" 
+              class="fluent-input" 
+              placeholder="••••••••" 
+              required 
+            />
           </div>
         </div>
 
@@ -32,31 +77,19 @@
           </div>
           
           <div class="form-group">
-            <label>Системная роль *</label>
+            <label>Роль в системе *</label>
             <select v-model="form.role" class="fluent-select" required>
-              <option value="admin">Администратор</option>
-              <option value="user">Пользователь</option>
+              <option v-for="r in mockRoles" :key="r.value" :value="r.value">{{ r.label }}</option>
             </select>
-          </div>
-        </div>
-
-        <h3 class="form-section-title">Учетные данные</h3>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Электронная почта (Email) *</label>
-            <input v-model="form.email" type="email" class="fluent-input" placeholder="name@domain.ru" required />
-          </div>
-          <div class="form-group">
-            <label>Временный пароль *</label>
-            <input v-model="form.password" type="password" class="fluent-input" placeholder="••••••••" required />
           </div>
         </div>
 
         <div class="form-actions">
           <NuxtLink to="/users" class="btn-secondary">Отмена</NuxtLink>
-          <button type="submit" class="btn-primary">Зарегистрировать</button>
+          <button type="submit" class="btn-primary" :disabled="isLoading">
+            {{ isLoading ? 'Сохранение...' : 'Создать пользователя' }}
+          </button>
         </div>
-
       </form>
     </div>
   </div>
@@ -65,43 +98,49 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUser } from '#imports'
+import { useUser } from '~/composables/useUser'
 import type { UserCreate } from '~/types/user'
 
-const { 
-  users, 
-  isLoading, 
-  error, 
-  cleanError,
-  createUser,
-} = useUser()
-
 const router = useRouter()
+const { createUser, isLoading, error } = useUser()
 
 const mockCompanies = [
-  'ГБУ Автомобильные дороги',
-  'АО Мосинжпроект',
-  'ООО ТехСтрой',
-  'ООО Мостоотряд-4',
-  'ГБУ Автомобильные дороги ЮАО'
+  'ООО "ТехноМониторинг"',
+  'АО "СтройКонтроль"',
+  'ГБУ "Автодор-МАДИ"'
+]
+
+const mockRoles = [
+  { value: 'admin', label: 'Администратор' },
+  { value: 'engineer', label: 'Инженер технадзора' },
+  { value: 'viewer', label: 'Наблюдатель' }
 ]
 
 const form = ref({
-  username: 'user',
-  email: 'user@madi.ru',
-  password: 'secret',
-  position: 'pos',
+  full_name: '',
+  username: '',
+  email: '',
+  position: '',
   company: mockCompanies[0],
-  role: 'inspector',
+  role: 'engineer',
+  password: ''
 })
 
 const submitForm = async () => {
-  console.log('Данные нового пользователя отправлены:', form.value)
-  // Тут будет отправка на бэкенд: await useFetch('/api/users', { method: 'POST', body: form.value })
-  //if (confirm('Вы уверены, что хотите создать этого пользователя?')) {
-    await createUser(form.value)
-  //}
-  router.push('/users')
+  const payload: UserCreate = {
+    full_name: form.value.full_name,
+    username: form.value.username || form.value.email.split('@')[0],
+    email: form.value.email,
+    position: form.value.position,
+    company: form.value.company,
+    role: form.value.role,
+    password: form.value.password
+  }
+
+  const created = await createUser(payload)
+  if (created) {
+    router.push('/users')
+  }
 }
 </script>
 
