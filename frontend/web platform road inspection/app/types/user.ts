@@ -25,4 +25,7 @@ export interface UserUpdate {
   email?: string;
   username?: string;
   role?: string;
+  full_name: string;
+  company: string;
+  position: string;
 }
