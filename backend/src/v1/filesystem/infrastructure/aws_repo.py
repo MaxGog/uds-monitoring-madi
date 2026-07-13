@@ -3,7 +3,6 @@ import logging
 from uuid import UUID
 
 from types_aiobotocore_s3 import S3Client
-from uuid6 import uuid7
 from backend.config.config import settings
 from backend.src.v1.filesystem.domain.interfaces import IAwsService
 
@@ -27,7 +26,7 @@ class MinioFileService(IAwsService):
         """
         try:
             metadata = {"uploader-id": str(uploader_id)}
-
+            
             if owner_type:
                 metadata["owner-type"] = owner_type.value if hasattr(owner_type, 'value') else str(owner_type)
                 
@@ -40,7 +39,6 @@ class MinioFileService(IAwsService):
                     "Bucket": settings.minio.FILE_BUCKET_NAME,
                     "Key": s3_key,
                     "ContentType": content_type,
-                    # Boto3 автоматически превратит ключи в заголовки x-amz-meta-*
                     "Metadata": metadata
                 },
                 ExpiresIn=15 * 60,
@@ -48,22 +46,6 @@ class MinioFileService(IAwsService):
             )
         except Exception as e:
             logger.error(e)
-
-    # async def generate_upload_url(self, s3_key: str, content_type: str, expires_minutes: int = 15) -> str:
-    #     """
-    #     Генерирует presigned URL для загрузки файла методом PUT.
-    #     Важно: при отправке файла клиент ОБЯЗАН передать точно такой же Content-Type в заголовках.
-    #     """
-    #     return await self.client.generate_presigned_url(
-    #         ClientMethod="put_object",
-    #         Params={
-    #             "Bucket": settings.minio.FILE_BUCKET_NAME,
-    #             "Key": s3_key,
-    #             "ContentType": content_type,
-    #         },
-    #         ExpiresIn=expires_minutes * 60,  # Переводим минуты в секунды
-    #         HttpMethod="PUT"
-    #     )
 
     async def generate_download_url(self, bucket: str, s3_key: str, expires_minutes: int = 60) -> str:
         """

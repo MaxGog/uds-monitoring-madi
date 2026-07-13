@@ -7,99 +7,74 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from dishka.integrations.fastapi import FromDishka, inject
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from types_aiobotocore_s3 import S3Client
 import uuid6
 
-from backend.core.db.postgres.data_orms.document_orm import Document, DocumentOwnerType
+from backend.core.db.postgres.data_orms.document_orm import DocumentOwnerType
 from backend.core.db.postgres.data_orms.role_orm import ActionType
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.role_models import EntityType, ScopeType
 from backend.src.v1.auth.presentation.api import CurrentUserPayload, RequireAccess
 from backend.src.v1.data.presentation.dtos.data_dto import BaseRequest, BaseResponse
-from backend.src.v1.filesystem.application.file_uc import FsUsecases
 import httpx
 
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFsUsecases
-from backend.src.v1.filesystem.presentation.dtos import ConfirmUploadRequest, DocumentResponse, GetUploadUrlRequest, PresignedUrlResponse
+from backend.src.v1.filesystem.presentation.dtos import DocumentResponse, DocumentUpdateRequest, GetUploadUrlRequest, PresignedUrlResponse
 from backend.config.config import settings
 
 logger = logging.getLogger(__file__)
 
 router = APIRouter()
 
-@router.post("/request-upload", response_model=BaseResponse[PresignedUrlResponse])
+@router.post("/upload-url", response_model=BaseResponse[PresignedUrlResponse])
 @inject
 async def request_upload_url(
     data: BaseRequest[GetUploadUrlRequest],
     uc: FromDishka[IFsUsecases],
-    user: CurrentUserPayload
-    #scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.CREATE)),
+    user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.CREATE)),
 ):
-    """Шаг 1: Запрос presigned-ссылки для прямой загрузки файла в MinIO клиентом"""
+    """Запрос presigned-ссылки для прямой загрузки файла в MinIO клиентом,
+    автоматическое создание записи в postgresql через вебхук (альтернатива - реализовывать полноценную очередь и SQS)
+    """
     try:
         user_id = user.get('sub')
         result = await uc.initiate_upload(uploader_id = user_id, data = data.data)
         return BaseResponse(data=result)
+    except HTTPException as e:
+        logger.error(e)
+        raise e 
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# @router.post("/confirm-upload", status_code=status.HTTP_202_ACCEPTED)
-# @inject
-# async def confirm_upload(
-#     data: BaseRequest[ConfirmUploadRequest],
-#     uc: FromDishka[IFsUsecases],
-#     user: CurrentUserPayload,
-# ):
-#     """Шаг 2: Сигнал о том, что клиент залил файл. Ставит задачу в Celery для внесения в БД"""
-#     try:
-#         uploader_id: UUID = user.get('sub')
-#         result = await uc.confirm_upload(data.data, uploader_id)
-#         return BaseResponse(data=result)
-#     except Exception as e:
-#         logger.error(e)
-#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-@router.get("/{file_id}/download-url", response_model=BaseResponse[str])
+@router.get("/{file_id}/download", response_model=BaseResponse[str])
 @inject
 async def get_download_url(
     file_id: UUID,
     uc: FromDishka[IFsUsecases],
     user: CurrentUserPayload,
-    #scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
 ):
     """Получение временной ссылки на скачивание/просмотр файла"""
     try:
         url = await uc.get_document_download_link(file_id)
         return BaseResponse(data=url)
+    except HTTPException as e:
+        logger.error(e)
+        raise e 
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
-@inject
-async def delete_document(
-    file_id: UUID,
-    uc: FromDishka[IFsUsecases],
-    #scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.DELETE)),
-):
-    """Удаление файла из MinIO и чистка метаданных из БД"""
-    try:
-        await uc.delete_document(file_id)
-        return
-    except Exception as e:
-        logger.error(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 @router.get("/", response_model=BaseResponse[List[DocumentResponse]])
 @inject
 async def get_documents(
     uc: FromDishka[IFsUsecases],
     user: CurrentUserPayload,
-    #scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
     owner_type: Optional[DocumentOwnerType] = Query(
         None, 
         description="Фильтр по типу владельца файла (contract, act, object, work)"
@@ -109,17 +84,15 @@ async def get_documents(
         description="Идентификатор связанной сущности (например, ID договора)"
     ),
 ):
-    """
-    Получение списка метаданных всех файлов из PostgreSQL.
-    
-    Примеры использования:
-    - GET /documents -> все файлы в системе
-    - GET /documents?owner_type=contract&owner_id=12 -> все файлы договора с OWNER ID 12
-    - GET /documents?owner_type=object&owner_id=5 -> все файлы строительного объекта с OWNER ID 5
-    """
-    result = await uc.get_files(owner_type=owner_type, owner_id=owner_id)
-    return BaseResponse(data=result)
-
+    try:
+        result = await uc.get_files(owner_type=owner_type, owner_id=owner_id)
+        return BaseResponse(data=result)
+    except HTTPException as e:
+        logger.error(e)
+        raise e 
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @router.get("/{file_id}", response_model=BaseResponse[DocumentResponse])
 @inject
@@ -127,14 +100,58 @@ async def get_document_by_id(
     file_id: UUID,
     uc: FromDishka[IFsUsecases],
     user: CurrentUserPayload,
-    #scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.READ)),
 ):
-    """
-    Получение метаданных конкретного файла по его UUID из PostgreSQL
-    (размер, контрольная сумма, тип контента, дата загрузки и т.д.)
-    """
-    result = await uc.get_file_by_id(file_id)
-    return BaseResponse(data=result)
+    try:
+        result = await uc.get_file_by_id(file_id)
+        return BaseResponse(data=result)
+    except HTTPException as e:
+        logger.error(e)
+        raise e 
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@router.patch("/{document_id}", response_model=BaseResponse[DocumentResponse])
+@inject
+async def patch_document(
+    document_id: UUID,
+    data: BaseRequest[DocumentUpdateRequest],
+    uc: FromDishka[IFsUsecases],
+    user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.UPDATE)),
+):
+    try:
+        result = await uc.update_document(
+            document_id=document_id, 
+            update_data=data.data
+        )
+        return BaseResponse(data=result)
+    except HTTPException as e:
+        logger.error(e)
+        raise e 
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def delete_document(
+    file_id: UUID,
+    uc: FromDishka[IFsUsecases],
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.DELETE)),
+):
+    """Удаление файла из MinIO и чистка метаданных из БД"""
+    try:
+        await uc.delete_document(file_id)
+        return
+    except HTTPException as e:
+        logger.error(e)
+        raise e 
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # Ужасный тестовый эндпоинт
 @router.post("/webhook", status_code=status.HTTP_200_OK)
@@ -147,6 +164,7 @@ async def minio_webhook(
     """
     Эндпоинт, который MinIO вызывает сам сразу после успешного сохранения файла
     """
+    print("=====================MINIO WEBHOOK EVENT=================================")
     try:
         records = event_data.get("Records", [])
         if not records:
@@ -199,24 +217,23 @@ async def minio_webhook(
         # Если в ключе 'common/019f4862-...', то имя файла — '019f4862-...'
         filename = s3_key.split("/")[-1] if s3_key else "unknown"
         try:
-            # Извлекаем UUID (первые 36 символов имени без расширения)
+            # Извлекаем UUID (без расширения)
             possible_uuid = filename.split(".")[0]
             document_id = uuid.UUID(possible_uuid)
         except (ValueError, IndexError):
-            document_id = uuid.uuid4()  # Фолбэк, если имя файла не UUID
+            document_id = uuid6.uuid7()
 
-        # 4. Передаем структурированные данные в Сервисный слой (Usecase)
         await uc.register_uploaded_file(
             document_id=document_id,
             name=filename,
             size_bytes=size_bytes,
-            checksum_sha256=etag,  # Маппим MD5/Etag в поле хэша
+            checksum_sha256=etag,
             file_type=file_type,
             s3_bucket=s3_bucket,
             s3_key=s3_key,
             content_type=content_type,
             uploader_id=uploader_id,
-            owner_type_str=raw_owner_type,  # Передаем чистую строку (или None)
+            owner_type_str=raw_owner_type,
             owner_id=owner_id
         )
 

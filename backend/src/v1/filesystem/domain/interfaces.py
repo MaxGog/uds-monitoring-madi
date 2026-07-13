@@ -1,10 +1,9 @@
 from abc import abstractmethod
 from typing import List, Optional, Protocol
 from uuid import UUID
-import uuid
 
 from backend.core.db.postgres.data_orms.document_orm import Document, DocumentOwnerType
-from backend.src.v1.filesystem.presentation.dtos import ConfirmUploadRequest, DocumentResponse, GetUploadUrlRequest
+from backend.src.v1.filesystem.presentation.dtos import ConfirmUploadRequest, DocumentResponse, DocumentUpdateRequest, GetUploadUrlRequest
 
 class IAwsService(Protocol):
     @abstractmethod
@@ -12,12 +11,8 @@ class IAwsService(Protocol):
         pass
 
     @abstractmethod
-    async def generate_upload_url(self, s3_key: str, content_type: str, uploader_id: str, owner_type: str | None, owner_id: int | None) -> str:
+    async def generate_upload_url(self, s3_key: str, content_type: str, uploader_id: UUID, owner_type: str | None, owner_id: int | None) -> str:
         pass
-
-    # @abstractmethod
-    # async def generate_upload_url(self, s3_key: str, content_type: str, expires_minutes: int = 15) -> str:
-    #     pass
 
     @abstractmethod
     async def generate_download_url(self, bucket: str, s3_key: str, expires_minutes: int = 60) -> str:
@@ -50,24 +45,25 @@ class IFsUsecases(Protocol):
         pass
     
     @abstractmethod
-    async def confirm_upload(self, data: ConfirmUploadRequest, uploader_id: uuid.UUID) -> dict:
+    async def confirm_upload(self, data: ConfirmUploadRequest, uploader_id: UUID) -> dict:
         pass
 
     @abstractmethod
-    async def get_document_download_link(self, item_id: uuid.UUID) -> str:
+    async def get_document_download_link(self, item_id: UUID) -> str:
         pass
 
     @abstractmethod
-    async def delete_document(self, item_id: uuid.UUID) -> None:
+    async def update_document(self, document_id: UUID, update_data: DocumentUpdateRequest):
         pass
 
     @abstractmethod
-    async def get_file_by_id(self, item_id: uuid.UUID) -> DocumentResponse:
+    async def delete_document(self, item_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    async def get_file_by_id(self, item_id: UUID) -> DocumentResponse:
         pass
 
     @abstractmethod
     async def get_files(self, owner_type: Optional[DocumentOwnerType] = None, owner_id: Optional[int] = None) -> List[DocumentResponse]:
         pass
-
-class IFileAuthUsecases(Protocol):
-    ...

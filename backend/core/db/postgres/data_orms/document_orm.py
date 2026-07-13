@@ -1,18 +1,11 @@
 from datetime import datetime
-from enum import Enum as PyEnum
 from typing import Optional
 from sqlalchemy import UUID, BigInteger, DateTime, Enum, Integer, Null, String, ForeignKey, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SqlEnum
 import uuid6
 from backend.core.db.postgres.base_orm import Base
-
-
-class DocumentOwnerType(str, PyEnum):
-    CONTRACT = "contract"
-    ACT = "act"
-    OBJECT = "object"
-    WORK = "work"
+from backend.src.v1.filesystem.domain.models import DocumentOwnerType
     
 # Таблица метаданных файлов и результатов парсинга
 class Document(Base):
