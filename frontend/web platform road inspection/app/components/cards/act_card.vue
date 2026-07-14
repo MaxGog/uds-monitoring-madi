@@ -1,16 +1,16 @@
 <template>
-  <div class="fluent-act-card" :class="`status-${statusSlug}`">
+  <div class="fluent-act-card" :class="`status-${act.status}`">
     <div class="card-header">
       <div class="header-main">
         <div class="badge-row">
-          <span class="act-type">{{ act.type }}</span>
-          <span class="region-tag">{{ act.region }}</span>
+          <span class="act-type">{{ displayType }}</span>
+          <span v-if="region" class="region-tag">{{ region }}</span>
         </div>
-        <h3 class="act-title">Акт № {{ act.number }}</h3>
+        <h3 class="act-title">{{ act.name || `Акт № ${act.id}` }}</h3>
       </div>
-      <span class="status-badge" :class="statusSlug">
+      <span class="status-badge" :class="act.status">
         <span class="status-dot"></span>
-        {{ act.status }}
+        {{ displayStatus }}
       </span>
     </div>
 
@@ -18,268 +18,319 @@
       <div class="info-row">
         <span class="fluent-icon">🏢</span>
         <div class="info-content">
-          <span class="info-label">Объект дорожного хозяйства (ОДХ)</span>
-          <span class="info-value text-ellipsis" :title="act.objectName">{{ act.objectName }}</span>
+          <span class="info-label">Объект (ОДХ)</span>
+          <span class="info-value text-ellipsis" :title="objectName">{{ objectName }}</span>
         </div>
       </div>
+
       <div class="info-row">
         <span class="fluent-icon">🤝</span>
         <div class="info-content">
-          <span class="info-label">Подрядчик</span>
-          <span class="info-value text-ellipsis" :title="act.contractor">{{ act.contractor }}</span>
+          <span class="info-label">Подрядчик / Контракт</span>
+          <span class="info-value text-ellipsis" :title="contractor">
+            {{ contractor }} <template v-if="contractNumber">({{ contractNumber }})</template>
+          </span>
+        </div>
+      </div>
+
+      <div class="info-row" v-if="act.date_signed">
+        <span class="fluent-icon">📅</span>
+        <div class="info-content">
+          <span class="info-label">Дата подписания</span>
+          <span class="info-value">{{ act.date_signed }}</span>
         </div>
       </div>
 
       <div class="divider"></div>
 
       <div class="total-row">
-        <span class="total-label">Факт выполнения:</span>
-        <span class="total-amount">{{ act.amount }}</span>
+        <span class="total-label">Плановая сумма:</span>
+        <span class="total-amount">{{ planAmount }} ₽</span>
       </div>
     </div>
 
-    <div class="card-actions">
-      <button class="fluent-button button-secondary" @click="isModalOpen = true">
-        Открыть
+    <div class="card-expandable">
+      <button class="expand-toggle" @click="isExpanded = !isExpanded">
+        <span>{{ isExpanded ? 'Скрыть объёмы работ' : 'Показать объёмы работ' }}</span>
+        <span class="chevron" :class="{ open: isExpanded }">❯</span>
       </button>
-      <button v-if="act.status === 'Ожидает подписи'" class="fluent-button button-primary" @click="signAct">
-        Подписать
-      </button>
-    </div>
 
-    <CommonModal :isOpen="isModalOpen" width="800px" @close="isModalOpen = false">
-      <template #header>
-        <div class="modal-header-layout">
-          <span class="act-type">{{ act.type }} | {{ act.region }} округ</span>
-          <h3 class="modal-main-title">Акт приемки выполненных работ № {{ act.number }}</h3>
-        </div>
-      </template>
-
-      <div class="modal-act-extended">
-        <div class="modal-status-banner" :class="statusSlug">
-          <strong>Статус записи в ИС:</strong> {{ act.status }} 
-          <span v-if="act.status === 'Подписан'"> (Утверждено ЭЦП: {{ act.signDate }})</span>
+      <div v-if="isExpanded" class="expand-content">
+        <div v-if="notes" class="notes-box">
+          <strong>Примечание:</strong> {{ notes }}
         </div>
 
-        <h4 class="block-title">Реквизиты и привязка к контракту</h4>
-        <div class="details-grid">
-          <div class="detail-field full">
-            <label>Наименование объекта (ОДХ)</label>
-            <div class="field-value font-semibold">{{ act.objectName }}</div>
-          </div>
-          
-          <div class="detail-field">
-            <label>Государственный контракт / Основание</label>
-            <div class="field-value">📄 {{ act.contractNumber }}</div>
-          </div>
-
-          <div class="detail-field">
-            <label>Дата составления акта</label>
-            <div class="field-value">📅 {{ act.date || 'Не указана' }}</div>
-          </div>
-
-          <div class="detail-field">
-            <label>Территориальное управление (Округ)</label>
-            <div class="field-value">📍 {{ act.region }}</div>
-          </div>
-
-          <div class="detail-field">
-            <label>Генеральный подрядчик</label>
-            <div class="field-value">🏢 {{ act.contractor }}</div>
-          </div>
-
-          <div class="detail-field full">
-            <label>Ответственный инспектор</label>
-            <div class="field-value">👤 {{ act.signedBy || 'Не назначен' }}</div>
-          </div>
-        </div>
-
-        <div class="modal-divider"></div>
-
-        <h4 class="block-title">Выполненные физические объемы (C:M)</h4>
-        <div v-if="act.volumes && act.volumes.length" class="volumes-table-wrapper">
+        <div v-if="volumes.length > 0" class="volumes-table-wrapper">
           <table class="volumes-table">
             <thead>
               <tr>
-                <th>№</th>
-                <th>Наименование работ</th>
-                <th>Ед. изм.</th>
-                <th>План</th>
-                <th>Факт</th>
+                <th>Наименование</th>
+                <th class="text-right">План</th>
+                <th class="text-right">Факт</th>
+                <th>Ед.</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, idx) in act.volumes" :key="idx">
-                <td>{{ idx + 1 }}</td>
-                <td>{{ row.name }}</td>
-                <td class="text-center">{{ row.unit }}</td>
-                <td class="text-right">{{ row.plan }}</td>
-                <td class="text-right font-semibold">{{ row.fact }}</td>
+              <tr v-for="(v, i) in volumes" :key="i">
+                <td>{{ v.name }}</td>
+                <td class="text-right">{{ v.plan }}</td>
+                <td class="text-right font-bold">{{ v.fact }}</td>
+                <td>{{ v.unit }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div v-else class="empty-volumes">
-          Объемы работ не заполнены или равны 0.
-        </div>
-
-        <div class="modal-divider"></div>
-
-        <h4 class="block-title">Финансовые показатели и сверка с планом</h4>
-        <div class="details-grid bg-finance-grid">
-          <div class="detail-field">
-            <label>Плановый объем СМР</label>
-            <div class="field-value-light">{{ act.planAmount }}</div>
-          </div>
-          <div class="detail-field">
-            <label>Принято по факту (Без НДС)</label>
-            <div class="field-value-light">{{ act.amount }} (НДС 20%: {{ act.vatAmount }})</div>
-          </div>
-          <div class="detail-field full">
-            <label>Итоговая сумма к закрытию</label>
-            <div class="total-highlight-value">{{ act.amount }}</div>
-          </div>
-        </div>
-
-        <div class="modal-divider"></div>
-
-        <h4 class="block-title">Интеграция с файловым хранилищем Диска</h4>
-        <div class="files-integration-box">
-          <a :href="act.docUrl" target="_blank" class="file-link doc" :class="{ disabled: !act.docUrl || act.docUrl === '#' }">
-            <span class="file-icon">📝</span> Google Docs Оригинал
-          </a>
-          <a :href="act.pdfUrl" target="_blank" class="file-link pdf" :class="{ disabled: !act.pdfUrl || act.pdfUrl === '#' }">
-            <span class="file-icon">📕</span> Экспорт в PDF
-          </a>
-        </div>
-
-        <div v-if="act.notes" class="modal-notes-section">
-          <label>Примечания инспекции / Журнал изменений</label>
-          <div class="notes-content-box">
-            {{ act.notes }}
-          </div>
+        <div v-else class="no-volumes">
+          Объёмы работ не указаны
         </div>
       </div>
-
-      <template #footer>
-        <button class="fluent-button button-secondary" @click="isModalOpen = false">Закрыть</button>
-        <button 
-          v-if="act.status === 'Ожидает подписи'" 
-          class="fluent-button button-primary" 
-          @click="signAct"
-        >
-          ✍️ Утвердить объемы и подписать ЭЦП
-        </button>
-      </template>
-    </CommonModal>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Act } from '~/composables/useActs'
-import CommonModal from '~/components/common/common_modal.vue'
+import type { Act } from '~/types/act'
 
-const props = defineProps<{ act: Act }>()
-const isModalOpen = ref(false)
+const props = defineProps<{
+  act: Act
+}>()
 
-const statusSlug = computed(() => {
-  if (props.act.status === 'Подписан') return 'signed'
-  if (props.act.status === 'Ожидает подписи') return 'pending'
-  return 'review'
+const isExpanded = ref(false)
+
+const metadata = computed(() => props.act.metadata_fields || {})
+const objectName = computed(() => metadata.value.objectName || 'Не указан')
+const contractor = computed(() => metadata.value.contractor || 'Не указан')
+const contractNumber = computed(() => metadata.value.contractNumber || '')
+const region = computed(() => metadata.value.region || '')
+const planAmount = computed(() => metadata.value.planAmount || '0.00')
+const notes = computed(() => metadata.value.notes || '')
+const volumes = computed(() => metadata.value.volumes || [])
+
+const displayType = computed(() => {
+  switch (props.act.type) {
+    case 'contractor': return 'Подрядный'
+    case 'supervisory': return 'Технадзор'
+    default: return props.act.type || 'Акт'
+  }
 })
 
-const signAct = () => {
-  alert(`Акт № ${props.act.number} отправлен на шлюз ЭЦП. Запись зафиксирована в логе Google Таблиц.`)
-}
+const displayStatus = computed(() => {
+  switch (props.act.status) {
+    case 'draft': return 'Черновик'
+    case 'pending': return 'На рассмотрении'
+    case 'approved': return 'Утверждён'
+    case 'completed': return 'Завершён'
+    default: return props.act.status
+  }
+})
 </script>
 
 <style scoped>
 .fluent-act-card {
   background: #ffffff;
   border: 1px solid #e1e3e8;
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
-  position: relative;
+  transition: box-shadow 0.2s, border-color 0.2s;
   overflow: hidden;
 }
-.fluent-act-card::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+
+.fluent-act-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #c8cacc;
 }
-.fluent-act-card.status-signed::before { background: #107c41; }
-.fluent-act-card.status-pending::before { background: #b13512; }
-.fluent-act-card.status-review::before { background: #0078d4; }
 
-.card-header { padding: 14px 16px; display: flex; justify-content: space-between; align-items: flex-start; }
-.badge-row { display: flex; gap: 6px; align-items: center; margin-bottom: 2px; }
-.region-tag { font-size: 10px; background: #f3f2f1; padding: 1px 5px; border-radius: 2px; font-weight: 600; color: #424242; }
-.act-type { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #616161; }
-.act-title { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+.card-header {
+  padding: 16px;
+  background: #faf9f8;
+  border-bottom: 1px solid #edebe9;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
 
-.status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 500; }
-.status-badge.signed { background: #ecfdf5; color: #107c41; }
-.status-badge.pending { background: #fdf2f2; color: #b13512; }
-.status-badge.review { background: #eff6ff; color: #0078d4; }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: currentColor; }
+.badge-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
 
-.card-body { padding: 0 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
-.divider { height: 1px; background: #f3f3f3; margin: 2px 0; }
-.info-row { display: flex; gap: 8px; font-size: 13px; }
-.info-label { font-size: 11px; color: #797979; display: block; }
-.info-value { font-size: 13px; color: #242424; margin-top: 1px; }
-.font-semibold { font-weight: 600; }
-.text-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+.act-type {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: #eff6fc;
+  color: #005a9e;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
 
-.total-row { display: flex; justify-content: space-between; align-items: center; background: #fbfbfb; padding: 6px 10px; border-radius: 4px; border: 1px solid #f3f3f3; }
-.total-label { font-size: 11px; font-weight: 600; }
-.total-amount { font-size: 14px; font-weight: 700; color: #242424; }
+.region-tag {
+  font-size: 11px;
+  font-weight: 600;
+  background: #f3f2f1;
+  color: #605e5c;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
 
-.card-actions { padding: 10px 16px; background: #f8f9fa; border-top: 1px solid #f3f3f3; display: flex; justify-content: flex-end; gap: 8px; }
+.act-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #323130;
+}
 
-.fluent-button { font-size: 12px; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: 500; }
-.button-secondary { background: #ffffff; border: 1px solid #d2d0ce; color: #323130; }
-.button-secondary:hover { background: #f3f2f1; }
-.button-primary { background: #0078d4; border: 1px solid #0078d4; color: #ffffff; }
-.button-primary:hover { background: #106ebe; }
+/* Статусы */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
 
-.modal-header-layout { display: flex; flex-direction: column; }
-.modal-main-title { margin: 2px 0 0 0; font-size: 18px; font-weight: 600; color: #242424; }
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
 
-.modal-act-extended { display: flex; flex-direction: column; gap: 14px; }
-.modal-status-banner { padding: 10px 14px; border-radius: 4px; font-size: 13px; border-left: 4px solid #a1a1a1; }
-.modal-status-banner.signed { background: #ecfdf5; color: #107c41; border-left-color: #107c41; }
-.modal-status-banner.pending { background: #fdf2f2; color: #b13512; border-left-color: #b13512; }
-.modal-status-banner.review { background: #eff6ff; color: #0078d4; border-left-color: #0078d4; }
+.status-badge.draft { background: #f3f2f1; color: #605e5c; }
+.status-badge.draft .status-dot { background: #8a8886; }
 
-.block-title { margin: 8px 0 2px 0; font-size: 12px; font-weight: 600; color: #616161; text-transform: uppercase; letter-spacing: 0.3px; }
+.status-badge.pending { background: #fff4ce; color: #797673; }
+.status-badge.pending .status-dot { background: #797673; }
 
-.details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.detail-field { display: flex; flex-direction: column; gap: 4px; }
-.detail-field.full { grid-column: span 2; }
-.detail-field label { font-size: 11px; font-weight: 600; color: #797979; }
+.status-badge.approved { background: #dff6dd; color: #107c41; }
+.status-badge.approved .status-dot { background: #107c41; }
 
-.field-value { background: #f3f2f1; padding: 8px 12px; border-radius: 4px; border: 1px solid #edebe9; font-size: 13px; color: #242424; }
-.field-value-light { background: #fafafa; padding: 6px 10px; border-radius: 4px; border: 1px dashed #d2d0ce; font-size: 13px; }
+.status-badge.completed { background: #e1dfdd; color: #323130; }
+.status-badge.completed .status-dot { background: #323130; }
 
-.bg-finance-grid { background-color: #fcfcfc; padding: 14px; border-radius: 6px; border: 1px solid #f0f0f0; }
-.total-highlight-value { font-size: 22px; font-weight: 700; color: #107c41; margin-top: 2px; }
-.modal-divider { height: 1px; background-color: #eaeaea; margin: 4px 0; }
+.card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-grow: 1;
+}
 
-.files-integration-box { display: flex; gap: 12px; }
-.file-link { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 4px; font-size: 13px; text-decoration: none; font-weight: 500; border: 1px solid transparent; transition: all 0.1s; }
-.file-link.doc { background: #f3f8ff; color: #005a9e; border-color: #d0e1f9; }
-.file-link.doc:hover:not(.disabled) { background: #e0ecfd; }
-.file-link.pdf { background: #fff5f5; color: #a4261d; border-color: #fcd2d2; }
-.file-link.pdf:hover:not(.disabled) { background: #ffebeb; }
-.file-link.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; background: #f3f2f1 !important; color: #a19f9d !important; border-color: #edebe9 !important; }
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
 
-.notes-content-box { background: #fffdf5; border: 1px solid #ffeab2; border-left: 4px solid #ffc247; padding: 12px; border-radius: 4px; font-size: 13px; color: #5d461a; font-style: italic; }
+.fluent-icon {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.info-label {
+  font-size: 11px;
+  color: #8a8886;
+}
+
+.info-value {
+  font-size: 13px;
+  color: #323130;
+  font-weight: 500;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.divider {
+  height: 1px;
+  background: #edebe9;
+  margin: 4px 0;
+}
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.total-label {
+  font-size: 12px;
+  color: #605e5c;
+}
+
+.total-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0078d4;
+}
+
+/* Разворачиваемая секция */
+.card-expandable {
+  border-top: 1px solid #edebe9;
+  background: #faf9f8;
+}
+
+.expand-toggle {
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #0078d4;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.expand-toggle:hover {
+  background: #f3f2f1;
+}
+
+.chevron {
+  transition: transform 0.2s;
+  font-size: 10px;
+}
+
+.chevron.open {
+  transform: rotate(90deg);
+}
+
+.expand-content {
+  padding: 0 16px 16px 16px;
+}
+
+.notes-box {
+  background: #fffdf5;
+  border: 1px solid #ffeab2;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #5d461a;
+  margin-bottom: 10px;
+}
 
 .volumes-table-wrapper {
   border: 1px solid #edebe9;
   border-radius: 4px;
-  overflow-x: auto;
+  background: #ffffff;
+  overflow: hidden;
 }
 
 .volumes-table {
@@ -290,32 +341,25 @@ const signAct = () => {
 
 .volumes-table th {
   background: #f3f2f1;
-  color: #323130;
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-align: left;
   font-weight: 600;
-  border-bottom: 1px solid #edebe9;
+  color: #605e5c;
 }
 
 .volumes-table td {
-  padding: 6px 10px;
-  border-bottom: 1px solid #f3f2f1;
-  color: #242424;
+  padding: 6px 8px;
+  border-top: 1px solid #edebe9;
+  color: #323130;
 }
 
-.volumes-table tr:last-child td {
-  border-bottom: none;
-}
-
-.text-center { text-align: center; }
 .text-right { text-align: right; }
+.font-bold { font-weight: 600; }
 
-.empty-volumes {
+.no-volumes {
   font-size: 12px;
   color: #8a8886;
-  font-style: italic;
+  text-align: center;
   padding: 8px;
-  background: #faf9f8;
-  border-radius: 4px;
 }
 </style>

@@ -1,7 +1,7 @@
 import type { ApiResponse } from "~/types/api";
-import type { export export Act, ActCreate, ActUpdate } from "~/types/act";
+import type { Act, ActCreate, ActUpdate } from "~/types/act";
 
-export function useAct() {
+export function useActs() {
   const acts = ref<Act[]>([]);
   const currentAct = ref<Act | null>(null);
 
@@ -16,12 +16,12 @@ export function useAct() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Act[]>>(`/Act/`, {
+      const response = await apiFetch<ApiResponse<Act[]>>("/act/", {
         method: "GET",
       });
       acts.value = response.data;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при загрузке пользователей";
+      error.value = err.data?.detail || "Ошибка при загрузке актов";
     } finally {
       isLoading.value = false;
     }
@@ -31,34 +31,30 @@ export function useAct() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Act>>(`/Act/${id}`, {
+      const response = await apiFetch<ApiResponse<Act>>(`/act/${id}`, {
         method: "GET",
       });
       currentAct.value = response.data;
     } catch (err: any) {
-      error.value =
-        err.data?.detail || "Ошибка при загрузке данных о своём пользователе";
+      error.value = err.data?.detail || "Ошибка при загрузке информации об акте";
     } finally {
       isLoading.value = false;
     }
   };
 
-  const createAct = async (payload: ActCreate) => {
+  const createAct = async (payload: ActCreate): Promise<Act | null> => {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Act>>("/Act", {
+      const response = await apiFetch<ApiResponse<Act>>("/act/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: { data: payload },
       });
-      const newUser = response.data;
-      acts.value.push(newUser);
-      return newUser;
+      const newAct = response.data;
+      acts.value.unshift(newAct);
+      return newAct;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при создании пользователя";
+      error.value = err.data?.detail || "Ошибка при создании акта";
       return null;
     } finally {
       isLoading.value = false;
@@ -67,28 +63,28 @@ export function useAct() {
 
   const updateAct = async (
     id: number,
-    payload: ActUpdate,
+    payload: ActUpdate
   ): Promise<Act | null> => {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Act>>(`/users/${id}`, {
+      const response = await apiFetch<ApiResponse<Act>>(`/act/${id}`, {
         method: "PATCH",
-        body: payload,
+        body: { data: payload },
       });
-      const updatedUser = response.data;
-      // Локально обновляем массив, чтобы избежать лишнего запроса к БД
-      const index = acts.value.findIndex((u) => u.id === id);
+      const updated = response.data;
+
+      const index = acts.value.findIndex((a) => a.id === id);
       if (index !== -1) {
-        acts.value[index] = { ...acts.value[index], ...updatedUser };
+        acts.value[index] = { ...acts.value[index], ...updated };
       }
       if (currentAct.value?.id === id) {
-        currentAct.value = { ...currentAct.value, ...updatedUser };
+        currentAct.value = { ...currentAct.value, ...updated };
       }
 
-      return updatedUser;
+      return updated;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при обновлении пользователя";
+      error.value = err.data?.detail || "Ошибка при обновлении акта";
       return null;
     } finally {
       isLoading.value = false;
@@ -97,19 +93,19 @@ export function useAct() {
 
   const deleteAct = async (id: number): Promise<boolean> => {
     isLoading.value = true;
-    clearError();
+    cleanError();
     try {
-      await apiFetch(`/Act/${id}`, {
+      await apiFetch(`/act/${id}`, {
         method: "DELETE",
       });
-      // Локально удаляем из стейта
-      acts.value = acts.value.filter((u) => u.id !== id);
+
+      acts.value = acts.value.filter((a) => a.id !== id);
       if (currentAct.value?.id === id) {
         currentAct.value = null;
       }
       return true;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при удалении";
+      error.value = err.data?.detail || "Ошибка при удалении акта";
       return false;
     } finally {
       isLoading.value = false;
@@ -118,6 +114,7 @@ export function useAct() {
 
   return {
     acts,
+    currentAct,
     isLoading,
     error,
     cleanError,

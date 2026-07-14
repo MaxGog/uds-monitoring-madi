@@ -9,14 +9,17 @@
         <NuxtLink to="/acts" class="fluent-button button-secondary">
           Отмена
         </NuxtLink>
-        <button class="fluent-button button-primary" @click="handleSubmit">
-          Сформировать акт
+        <button 
+          class="fluent-button button-primary" 
+          :disabled="isLoading" 
+          @click="handleSubmit"
+        >
+          {{ isLoading ? 'Сохранение...' : 'Сформировать акт' }}
         </button>
       </div>
     </div>
 
     <form @submit.prevent="handleSubmit" class="form-layout">
-      
       <div class="form-section">
         <h3 class="section-title">Основные реквизиты объекта и контракта</h3>
         <div class="form-grid">
@@ -37,153 +40,108 @@
               v-model="form.contractNumber" 
               type="text" 
               required 
-              placeholder="ГК-2026/..." 
+              placeholder="ГК-2024/05" 
               class="fluent-input"
             />
           </div>
 
           <div class="form-field">
-            <label>Территориальное управление (Округ)</label>
-            <select v-model="form.region" required class="fluent-select">
-              <option value="" disabled>Выберите округ</option>
+            <label>Округ (Регион)</label>
+            <select v-model="form.region" class="fluent-select">
               <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
             </select>
           </div>
 
           <div class="form-field">
-            <label>Генеральный подрядчик</label>
+            <label>Подрядчик</label>
             <input 
               v-model="form.contractor" 
               type="text" 
               required 
-              placeholder="ООО, АО или ГБУ" 
+              placeholder="ООО 'ДорСтрой'" 
               class="fluent-input"
             />
           </div>
 
           <div class="form-field">
-            <label>Тип документационного контроля</label>
+            <label>Тип документа</label>
             <select v-model="form.type" class="fluent-select">
-              <option value="Приёмка работ">Приёмка работ</option>
-              <option value="Технический контроль">Технический контроль</option>
-              <option value="Инспекция объемов">Инспекция объемов</option>
+              <option value="acceptance">Приёмка работ</option>
+              <option value="control">Технический контроль</option>
+              <option value="inspection">Инспекция объемов</option>
             </select>
           </div>
-
-          <div class="form-field full-width">
-            <label>Общая плановая сумма контракта (₽)</label>
-            <input 
-              v-model="form.planAmount" 
-              type="text" 
-              placeholder="15 000 000 ₽" 
-              class="fluent-input"
-            />
-          </div>
         </div>
       </div>
 
-      <div class="form-section">
-        <h3 class="section-title">Контролируемые технологические объёмы (Диапазон C:M)</h3>
-        <p class="section-desc">Строки со значениями 0 или пусто согласно логике бэкенда будут исключены из печатной формы Google Docs.</p>
-        
-        <div class="volumes-table-wrapper">
-          <table class="volumes-table">
-            <thead>
-              <tr>
-                <th>Наименование технологической операции / Контрольной позиции</th>
-                <th width="140">План</th>
-                <th width="140">Факт</th>
-                <th width="100">Ед. изм.</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(vol, index) in form.volumes" :key="index">
-                <td class="vol-name">{{ vol.name }}</td>
-                <td>
-                  <input v-model.number="vol.plan" type="number" min="0" step="any" class="fluent-table-input" />
-                </td>
-                <td>
-                  <input v-model.number="vol.fact" type="number" min="0" step="any" class="fluent-table-input" />
-                </td>
-                <td class="vol-unit">{{ vol.unit }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h3 class="section-title">Дополнительные сведения</h3>
-        <div class="form-field full-width">
-          <label>Примечания инспектора / Журнал разногласий</label>
-          <textarea v-model="form.notes" rows="3" placeholder="Укажите замечания или комментарии к объемам..." class="fluent-textarea"></textarea>
-        </div>
-      </div>
-    </form>
+      </form>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMockData } from '~/composables/useMockData'
+import { useActs } from '~/composables/useActs'
+import type { ActCreate, ActType } from '~/types/act'
 
 const router = useRouter()
-const { acts, regions } = useMockData()
+const { createAct, isLoading } = useActs()
+
+const regions = ['ЦАО', 'САО', 'ЮАО', 'ЗАО', 'ВАО'] as const
 
 const form = reactive({
   objectName: '',
   contractNumber: '',
-  region: 'ЦАО',
+  region: 'ЦАО' as typeof regions[number],
   contractor: '',
-  type: 'Приёмка работ',
-  planAmount: '',
+  type: 'acceptance' as ActType,
+  planAmount: '0.00',
   notes: '',
   volumes: [
-    { name: '1. Фрезерование асфальтобетонного покрытия', plan: 0, fact: 0, unit: 'м³' },
-    { name: '2. Укладка нижнего слоя покрытия из горячих смесей', plan: 0, fact: 0, unit: 'т' },
-    { name: '3. Укладка upper слоя (ЩМА-16) на ПБВ', plan: 0, fact: 0, unit: 'т' },
-    { name: '4. Демонтаж и установка бортового камня', plan: 0, fact: 0, unit: 'п.м.' },
-    { name: '5. Ремонт и регулировка высотного положения люков колодцев', plan: 0, fact: 0, unit: 'шт' },
-    { name: '6. Устройство подстилающих слоев из песка', plan: 0, fact: 0, unit: 'м³' },
-    { name: '7. Устройство щебеночного основания', plan: 0, fact: 0, unit: 'м³' },
-    { name: '8. Нанесение дорожной разметки термопластиком', plan: 0, fact: 0, unit: 'п.м.' }
+    { name: '1. Фрезерование асфальтобетонного покрытия', plan: 1200, fact: 1200, unit: 'м³' },
+    { name: '2. Укладка нижнего слоя покрытия', plan: 450, fact: 450, unit: 'т' }
   ]
 })
 
-const handleSubmit = () => {
-  const totalFactItems = form.volumes.reduce((sum, v) => sum + (v.fact || 0), 0)
-  const simulatedAmount = totalFactItems > 0 
-    ? (totalFactItems * 4500).toLocaleString('ru-RU') + ' ₽' 
-    : '0 ₽'
+const handleSubmit = async () => {
+  const todayDate = new Date().toISOString().split('T')[0]
+  
+  const mappedType = form.type === 'contractor' || 'supervisory'
 
-  const newId = acts.value.length ? Math.max(...acts.value.map(a => a.id)) + 1 : 1
-  const actNumber = `АКТ-2026-${String(newId).padStart(3, '0')}`
+  const items = form.volumes
+    .filter(v => v.plan > 0 || v.fact > 0)
+    .map((v, index) => ({
+      contract_item_id: index + 1,
+      completed_quantity: Number(v.fact) || 0,
+      price: 0
+    }))
 
-  const newAct = {
-    id: newId,
-    number: actNumber,
-    objectName: form.objectName,
-    type: form.type,
-    date: new Date().toLocaleDateString('ru-RU'),
-    contractor: form.contractor,
-    status: 'На утверждении' as const,
-    amount: simulatedAmount,
-    signedBy: 'Иванов И. И.',
-    notes: form.notes || 'Акт успешно инициализирован в системе.',
-    region: form.region as any,
-    contractNumber: form.contractNumber,
-    planAmount: form.planAmount || simulatedAmount,
-    vatAmount: (totalFactItems * 900).toLocaleString('ru-RU') + ' ₽',
-    docUrl: '#',
-    pdfUrl: '#',
-    signDate: '—',
-    volumes: form.volumes.filter(v => v.plan > 0 || v.fact > 0)
+  const payload = {
+    name: form.objectName ? `Акт: ${form.objectName}` : "Новый Акт",
+    status: "draft",
+    type: mappedType,
+    date_signed: todayDate,
+    object_id: null,
+    contract_id: null,
+    work_id: null,
+    items: items,
+    metadata_fields: {
+      objectName: form.objectName,
+      contractNumber: form.contractNumber,
+      region: form.region,
+      contractor: form.contractor,
+      planAmount: form.planAmount,
+      notes: form.notes,
+      volumes: form.volumes
+    }
   }
 
-  acts.value.unshift(newAct)
-  router.push('/acts')
+  const result = await createAct(payload as any)
+  if (result) {
+    router.push('/acts')
+  }
 }
+
 </script>
 
 <style scoped>
