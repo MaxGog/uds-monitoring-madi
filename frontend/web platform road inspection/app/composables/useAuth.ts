@@ -120,7 +120,7 @@ export function useAuth() {
     const mockUser: UserInfo = {
       id: 0,
       email: 'dev@madi.ru',
-      role: 'Администратор',
+      role: 'admin',
       name: 'Разработчик'
     }
 

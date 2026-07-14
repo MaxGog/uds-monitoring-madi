@@ -18,8 +18,9 @@
     </div>
 
     <div class="header-right">
-      <UserAvatar :full-name="user?.fullName" :email="user?.email" show-name />
-      
+      <NuxtLink to="/users/" class="user-profile-link">
+        <UserAvatar :full-name="user?.fullName" :email="user?.email" show-name />
+      </NuxtLink>
       <button class="icon-btn" @click="onNotifications" title="Уведомления">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -76,7 +77,7 @@ const defaultMenu: MenuItem[] = []
 
 const filteredMenuItems = computed(() => {
   return (props.menuItems || defaultMenu).filter(
-    item => !item.adminOnly || props.user?.role === 'Администратор'
+    item => !item.adminOnly || props.user?.role === 'admin'
   )
 })
 
