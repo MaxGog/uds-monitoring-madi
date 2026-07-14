@@ -3,15 +3,14 @@ import { generateCodeVerifier, generateCodeChallenge } from '~/utils/pkce'
 
 interface TokenResponse {
   access_token: string
-  refresh_token: string
-  user: { id: number; email: string; role: string }
 }
 
 interface UserInfo {
   id: number
   email: string
-  role: string
-  name?: string
+  role_id: number
+  role_name: string
+  full_name?: string
 }
 
 export function useAuth() {
@@ -97,8 +96,10 @@ export function useAuth() {
       })
 
       accessToken.value = response.access_token
-      user.value = response.user
+      user.value = { id: 0, email: '', role: '' }
+
       accessCookie.value = response.access_token
+
       sessionStorage.removeItem('pkce_code_verifier')
       localStorage.removeItem(mockUserStorageKey)
 

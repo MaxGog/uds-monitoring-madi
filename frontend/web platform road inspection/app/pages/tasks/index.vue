@@ -8,7 +8,7 @@
       @update:activeTab="(value: string) => currentFilter = value"
     >
       <template #actions>
-        <button class="btn-primary" @click="openCreateModal">
+        <button v-if="isAdmin" class="btn-primary" @click="openCreateModal">
           <span class="btn-icon">＋</span> Создать задачу
         </button>
       </template>
@@ -36,16 +36,20 @@
         />
       </div>
 
-      <div v-else class="empty-state">
-        <div class="empty-icon">📋</div>
-        <h3>Нет задач</h3>
-        <p>В этом фильтре сейчас нет подходящих задач.</p>
-      </div>
+      <EmptyState
+        v-else
+        icon="📋"
+        title="Нет задач"
+        description="В выбранном фильтре пока нет задач."
+        :button-text="isAdmin ? 'Создать задачу' : undefined"
+        @action="openCreateModal"
+      />
     </div>
 
     <TaskModal
       v-if="isModalOpen"
-      :task-to-edit="selectedTask"
+      :is-open="isModalOpen"
+      :task="selectedTask"
       @close="closeModal"
       @save="handleSaveTask"
     />
@@ -54,39 +58,41 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useTasks } from '~/composables/useTasks'
-import { TaskStatus, type Task, type TaskCreate, type TaskUpdate } from '~/types/task'
+import PageToolbar from '~/components/common/page_toolbar.vue'
+import EmptyState from '~/components/common/empty_state.vue'
+import TaskCard from '~/components/cards/task_card.vue'
 import TaskModal from '~/components/task_modal.vue'
+import { useTasks } from '~/composables/useTasks'
+import { useAuth } from '~/composables/useAuth'
+import { useUserProfile } from '~/composables/useUserProfile'
 
-const { tasks, isLoading, error, fetchTasks, createTask, updateTask, deleteTask } = useTasks()
+const { isAdmin } = useUserProfile()
+const { tasks, isLoading, error, fetchTasks, updateTask, deleteTask } = useTasks()
+const { user } = useAuth()
 
-const isAdmin = ref(true)
+
 const currentFilter = ref('all')
-const isModalOpen = ref(false)
-const selectedTask = ref<Task | null>(null)
-
 const filters = [
-  { id: 'all', label: 'Все' },
-  { id: 'pending', label: 'В ожидании' },
-  { id: 'in_progress', label: 'В работе' },
-  { id: 'completed', label: 'Завершенные' },
+  { label: 'Все задачи', value: 'all' },
+  { label: 'В работе', value: 'in_progress' },
+  { label: 'Завершенные', value: 'completed' }
 ]
-
-onMounted(() => {
-  fetchTasks()
-})
 
 const filteredTasks = computed(() => {
   if (currentFilter.value === 'all') return tasks.value
-  return tasks.value.filter(t => t.status === currentFilter.value)
+  return tasks.value.filter(task => task.status === currentFilter.value)
 })
 
+const isModalOpen = ref(false)
+const selectedTask = ref<any>(null)
+
 const openCreateModal = () => {
+  if (!isAdmin.value) return
   selectedTask.value = null
   isModalOpen.value = true
 }
 
-const openEditModal = (task: Task) => {
+const openEditModal = (task: any) => {
   selectedTask.value = task
   isModalOpen.value = true
 }
@@ -96,20 +102,13 @@ const closeModal = () => {
   selectedTask.value = null
 }
 
-const handleSaveTask = async (payload: TaskCreate | TaskUpdate) => {
-  if (selectedTask.value) {
-    await updateTask(selectedTask.value.id, payload as TaskUpdate)
-  } else {
-    await createTask(payload as TaskCreate)
-  }
+const handleSaveTask = async () => {
+  await fetchTasks()
   closeModal()
 }
 
-const handleToggleTask = async (task: Task) => {
-  const newStatus = task.status === TaskStatus.COMPLETED 
-    ? TaskStatus.IN_PROGRESS 
-    : TaskStatus.COMPLETED
-
+const handleToggleTask = async (task: any) => {
+  const newStatus = task.status === 'completed' ? 'in_progress' : 'completed'
   await updateTask(task.id, { status: newStatus })
 }
 
@@ -118,6 +117,10 @@ const handleDeleteTask = async (id: number) => {
     await deleteTask(id)
   }
 }
+
+onMounted(() => {
+  fetchTasks()
+})
 </script>
 
 <style scoped>
@@ -125,7 +128,13 @@ const handleDeleteTask = async (id: number) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.tasks-container {
+  background: #ffffff;
+  border: 1px solid #e1e3e8;
+  border-radius: 8px;
+  padding: 16px;
 }
 
 .btn-primary {
@@ -141,46 +150,8 @@ const handleDeleteTask = async (id: number) => {
   align-items: center;
   gap: 6px;
 }
-.btn-primary:hover { background-color: #106ebe; }
 
-.tasks-container {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.tasks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.loading-card, .empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #605e5c;
-  background: #ffffff;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-.error-banner {
-  background: #fde7e9;
-  color: #a80000;
-  padding: 12px 16px;
-  border-radius: 4px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.btn-retry {
-  background: #ffffff;
-  border: 1px solid #a80000;
-  color: #a80000;
-  padding: 4px 12px;
-  border-radius: 4px;
-  cursor: pointer;
+.btn-primary:hover {
+  background-color: #106ebe;
 }
 </style>

@@ -1,8 +1,8 @@
 <template>
   <div class="app-layout">
     <app-header
-      :menu-items="menuItems"
-      :user="currentUser!"
+      :menu-items="filteredMenuItems"
+      :user="currentUserHeader!"
       @search="handleSearch"
       @navigate="handleNavigate"
     />
@@ -13,45 +13,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useAuth } from '~/composables/useAuth'
-import { apiFetch } from '~/composables/useAPI'
+import { computed, onMounted } from 'vue'
+import { useUserProfile } from '~/composables/useUserProfile'
 
-const { user: authUser } = useAuth()
-
-const currentUser = computed(() => {
-  if (!authUser.value) return null
-
-  const fullName = authUser.value.name || authUser.value.email || 'Пользователь'
-
-  const roleName = typeof authUser.value.role === 'object' 
-    ? (authUser.value.role as any)?.name 
-    : authUser.value.role
-
-  return {
-    fullName: fullName,
-    email: authUser.value.email,
-    role: roleName
-  }
-})
-
-onMounted(async () => {
-  if (authUser.value && !authUser.value.name) {
-    try {
-      const response = await apiFetch<any>('/users/me')
-      if (response?.data) {
-        const data = response.data
-        const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ') || data.email
-        authUser.value = {
-          ...authUser.value,
-          name: fullName
-        }
-      }
-    } catch (err) {
-      console.error('Ошибка при получении профиля:', err)
-    }
-  }
-})
+const { currentUserHeader, isAdmin, loadProfile } = useUserProfile()
 
 const menuItems = [
   { label: 'Главная', to: '/', icon: '🏠' },
@@ -62,6 +27,14 @@ const menuItems = [
   { label: 'Задачи', to: '/tasks', icon: '✔️' },
   { label: 'Пользователи', to: '/users', icon: '👤', adminOnly: true },
 ]
+
+const filteredMenuItems = computed(() => {
+  return menuItems.filter(item => !item.adminOnly || isAdmin.value)
+})
+
+onMounted(async () => {
+  await loadProfile()
+})
 
 const handleSearch = (query: string) => {
   console.log('Поиск:', query)

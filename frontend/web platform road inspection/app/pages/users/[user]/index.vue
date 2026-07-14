@@ -51,14 +51,8 @@
           <UserAvatar 
             :full-name="currentUser.full_name || currentUser.username" 
             :email="currentUser.email" 
-            :show-name="false"
             class="large-avatar"
           />
-          <div class="persona-details">
-            <h1 class="persona-name">{{ currentUser.full_name || currentUser.username }}</h1>
-            <p class="persona-position">{{ currentUser.position || 'Должность не указана' }}</p>
-            <p class="persona-company" v-if="currentUser.company">{{ currentUser.company }}</p>
-          </div>
         </div>
         <div class="persona-status">
           <span :class="['status-badge', getStatusClass(currentUser.status)]">
