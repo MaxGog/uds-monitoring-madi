@@ -9,23 +9,36 @@
         <NuxtLink to="/monitoring" class="fluent-button button-secondary">
           Отмена
         </NuxtLink>
-        <button class="fluent-button button-primary" @click="handleSubmit">
-          Сохранить объект
+        <button class="fluent-button button-primary" :disabled="isLoading" @click="handleSubmit">
+          {{ isLoading ? 'Сохранение...' : 'Сохранить объект' }}
         </button>
       </div>
     </div>
 
-    <div class="form-layout">
+    <form @submit.prevent="handleSubmit" class="form-layout">
       <div class="form-section">
         <h3 class="section-title">Основные параметры</h3>
         <div class="form-grid">
           <div class="form-field full-width">
-            <label>Наименование объекта дорожного хозяйства (ОДХ)</label>
+            <label>Наименование объекта (ОДХ) *</label>
             <input 
               v-model="form.title" 
               type="text" 
+              required
               class="fluent-input" 
               placeholder="Введите точное наименование объекта"
+            />
+          </div>
+
+          <div class="form-field full-width">
+            <label>Адрес объекта * (минимум 5 символов)</label>
+            <input 
+              v-model="form.address" 
+              type="text" 
+              required
+              minlength="5"
+              class="fluent-input" 
+              placeholder="г. Москва, ул. Тверская, д. 1"
             />
           </div>
 
@@ -40,94 +53,87 @@
           </div>
 
           <div class="form-field">
-            <label>Текущий статус объекта</label>
+            <label>Статус объекта</label>
             <select v-model="form.status" class="fluent-select">
-              <option value="В планировании">В планировании</option>
-              <option value="Активен / В работе">Активен / В работе</option>
-              <option value="Приемка объемов">Приемка объемов</option>
-              <option value="Приостановлен">Приостановлен</option>
+              <option value="pending">Ожидает (pending)</option>
+              <option value="in_progress">В процессе (in_progress)</option>
+              <option value="paused">На паузе (paused)</option>
+              <option value="completed">Завершено (completed)</option>
+              <option value="cancelled">Отменено (cancelled)</option>
             </select>
           </div>
         </div>
       </div>
 
       <div class="form-section">
-        <h3 class="section-title">Контрагенты и Исполнители</h3>
+        <h3 class="section-title">Контрактные данные и исполнители</h3>
         <div class="form-grid">
           <div class="form-field">
             <label>Генеральный подрядчик</label>
-            <input 
-              v-model="form.contractor" 
-              type="text" 
-              class="fluent-input" 
-              placeholder="Наименование организации"
-            />
+            <input v-model="form.contractor" type="text" class="fluent-input" />
           </div>
 
           <div class="form-field">
-            <label>Контролирующий орган / Эксплуатирующая организация</label>
-            <input 
-              v-model="form.executor" 
-              type="text" 
-              class="fluent-input" 
-              placeholder="Ответственный орган"
-            />
+            <label>Исполнитель / Заказчик</label>
+            <input v-model="form.executor" type="text" class="fluent-input" />
+          </div>
+
+          <div class="form-field">
+            <label>Номер контракта</label>
+            <input v-model="form.contractNumber" type="text" class="fluent-input" />
+          </div>
+
+          <div class="form-field">
+            <label>Сумма контракта (руб.)</label>
+            <input v-model="form.contractAmount" type="text" class="fluent-input" placeholder="1000000.00" />
           </div>
         </div>
       </div>
-
-      <div class="form-section connection-alert">
-        <div class="alert-icon">📄</div>
-        <div class="alert-content">
-          <h4>Интеграция с актами выполненных работ</h4>
-          <p>После сохранения объекта, акты с совпадающим наименованием строительного объекта будут автоматически консолидированы в карточке мониторинга.</p>
-        </div>
-      </div>
-    </div>
+    </form>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useObject } from '~/composables/useObjects'
-import type { ObjectCreate } from '~/types/object'
+import type { ObjectCreate, ObjectStatus } from '~/types/object'
 
-const router = useRouter()
-const { createObject, isLoading, error } = useObject()
+const { createObject, isLoading } = useObject()
 
-const regions = ['ЦАО', 'САО', 'ЮАО', 'ЗАО', 'ВАО'] as const
+const regions = ['ЦАО', 'САО', 'ЮАО', 'ЗАО', 'ВАО']
 
-const form = ref<ObjectCreate>({
+const form = ref({
   title: '',
+  address: '',
   region: 'ЦАО',
-  status: 'Планирование',
+  status: 'pending' as ObjectStatus,
   contractor: '',
   executor: '',
-  progressSMR: 0,
-  source: 'Ручной ввод',
-  sourceLabel: 'Локальный ввод',
-  contractNumber: '—',
-  contractDate: new Date().toISOString().split('T')[0] || '',
-  contractAmount: '0 ₽',
-  spentAmount: '0 ₽',
-  remainingAmount: '0 ₽',
-  address: '',
-  startDate: '',
-  endDate: '',
-  isOverdue: false,
-  actsList: []
+  contractNumber: '',
+  contractAmount: ''
 })
-
 const handleSubmit = async () => {
-  if (!form.value.title || !form.value.region) {
-    alert('Пожалуйста, заполните обязательные поля: Наименование и Регион.')
+  if (!form.value.address || form.value.address.trim().length < 5) {
+    alert('Адрес объекта должен содержать не менее 5 символов.')
     return
   }
 
-  const result = await createObject(form.value)
-  if (result) {
-    router.push('/monitoring')
+  const payload: ObjectCreate = {
+    title: form.value.title,
+    address: form.value.address,
+    region: form.value.region,
+    status: form.value.status,
+    metadata_fields: {
+      contractor: form.value.contractor,
+      executor: form.value.executor,
+      contractNumber: form.value.contractNumber,
+      contractAmount: form.value.contractAmount
+    }
+  }
+
+  const created = await createObject(payload)
+  if (created) {
+    await navigateTo('/monitoring')
   }
 }
 </script>

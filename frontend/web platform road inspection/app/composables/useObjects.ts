@@ -1,5 +1,5 @@
 import type { ApiResponse } from "~/types/api";
-import type { Object, ObjectCreate, ObjectUpdate } from "~/types/object";
+import type { ObjectUpdate, ObjectCreate, ObjectItem } from "~/types/object";
 
 export function useObject() {
   const objects = ref<Object[]>([]);
@@ -16,7 +16,7 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object[]>>("/monitoring/", {
+      const response = await apiFetch<ApiResponse<Object[]>>("/object", {
         method: "GET",
       });
       objects.value = response.data || [];
@@ -31,7 +31,7 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/monitoring/${id}`, {
+      const response = await apiFetch<ApiResponse<Object>>(`/object/${id}`, {
         method: "GET",
       });
       currentObject.value = response.data;
@@ -42,22 +42,23 @@ export function useObject() {
     }
   };
 
-  const createObject = async (payload: ObjectCreate) => {
+  const createObject = async (payload: ObjectCreate): Promise<ObjectItem | null> => {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>("/monitoring/", {
+      const response = await apiFetch<ApiResponse<ObjectItem>>("/object/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: { data: payload },
       });
+
       const newObj = response.data;
-      if (newObj) {
-        objects.value.push(newObj);
-      }
+      objects.value.push(newObj);
       return newObj;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при создании объекта";
+      console.error("422 Details:", err.data?.detail);
+      error.value = Array.isArray(err.data?.detail)
+        ? err.data.detail.map((e: any) => `${e.loc.join('.')}: ${e.msg}`).join(', ')
+        : err.data?.detail || "Ошибка при создании объекта";
       return null;
     } finally {
       isLoading.value = false;
@@ -71,18 +72,15 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/monitoring/${id}`, {
+      const response = await apiFetch<ApiResponse<Object>>(`/object/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: { data: payload },
       });
       const updatedObj = response.data;
-      const index = objects.value.findIndex((u) => u.id === id);
+      const index = objects.value.findIndex((u) => u === id);
       if (index !== -1) {
         objects.value[index] = { ...objects.value[index], ...updatedObj };
-      }
-      if (currentObject.value?.id === id) {
-        currentObject.value = { ...currentObject.value, ...updatedObj };
       }
 
       return updatedObj;
@@ -98,13 +96,10 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      await apiFetch(`/monitoring/${id}`, {
+      await apiFetch(`/object/${id}`, {
         method: "DELETE",
       });
-      objects.value = objects.value.filter((u) => u.id !== id);
-      if (currentObject.value?.id === id) {
-        currentObject.value = null;
-      }
+      objects.value = objects.value.filter((u) => u !== id);
       return true;
     } catch (err: any) {
       error.value = err.data?.detail || "Ошибка при удалении объекта";
