@@ -90,34 +90,45 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMockData } from '~/composables/useMockData'
+import { useObject } from '~/composables/useObjects'
+import type { ObjectCreate } from '~/types/object'
 
 const router = useRouter()
-const { regions, addObject } = useMockData()
+const { createObject, isLoading, error } = useObject()
 
-const form = ref({
+const regions = ['ЦАО', 'САО', 'ЮАО', 'ЗАО', 'ВАО'] as const
+
+const form = ref<ObjectCreate>({
   title: '',
-  region: '' as any,
-  status: 'В планировании',
+  region: 'ЦАО',
+  status: 'Планирование',
   contractor: '',
-  executor: ''
+  executor: '',
+  progressSMR: 0,
+  source: 'Ручной ввод',
+  sourceLabel: 'Локальный ввод',
+  contractNumber: '—',
+  contractDate: new Date().toISOString().split('T')[0] || '',
+  contractAmount: '0 ₽',
+  spentAmount: '0 ₽',
+  remainingAmount: '0 ₽',
+  address: '',
+  startDate: '',
+  endDate: '',
+  isOverdue: false,
+  actsList: []
 })
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!form.value.title || !form.value.region) {
     alert('Пожалуйста, заполните обязательные поля: Наименование и Регион.')
     return
   }
 
-  addObject({
-    title: form.value.title,
-    region: form.value.region,
-    status: form.value.status,
-    contractor: form.value.contractor,
-    executor: form.value.executor
-  })
-
-  router.push('/monitoring')
+  const result = await createObject(form.value)
+  if (result) {
+    router.push('/monitoring')
+  }
 }
 </script>
 

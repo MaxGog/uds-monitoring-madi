@@ -57,15 +57,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useMockData } from '~/composables/useMockData'
+import { ref, computed, onMounted } from 'vue'
+import { useObject } from '~/composables/useObjects'
 import ObjectCard from '~/components/cards/object_card.vue'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import SearchBar from '~/components/search_bar.vue'
 
-const { objects } = useMockData()
+const { objects, fetchObjects, isLoading, error } = useObject()
 
 const searchQuery = ref('')
 const currentStatusFilter = ref('all')
@@ -80,18 +80,20 @@ const statusTabs = [
   { label: 'Завершенные', value: 'Завершено' }
 ]
 
+onMounted(() => {
+  fetchObjects()
+})
+
 const filteredObjects = computed(() => {
   return objects.value.filter(obj => {
     const text = searchQuery.value.trim().toLowerCase()
     const matchesText = !text || 
-      obj.title.toLowerCase().includes(text) ||
-      obj.contractor.toLowerCase().includes(text) ||
-      obj.contractNumber.toLowerCase().includes(text)
+      (obj.title && obj.title.toLowerCase().includes(text)) ||
+      (obj.contractor && obj.contractor.toLowerCase().includes(text)) ||
+      (obj.contractNumber && obj.contractNumber.toLowerCase().includes(text))
 
     const matchesStatus = currentStatusFilter.value === 'all' || obj.status === currentStatusFilter.value
-
     const matchesRegion = regionFilter.value === 'all' || obj.region === regionFilter.value
-
     const matchesSource = sourceFilter.value === 'all' || obj.source === sourceFilter.value
 
     return matchesText && matchesStatus && matchesRegion && matchesSource

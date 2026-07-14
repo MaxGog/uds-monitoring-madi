@@ -16,10 +16,10 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object[]>>(`/Object/`, {
+      const response = await apiFetch<ApiResponse<Object[]>>("/monitoring/", {
         method: "GET",
       });
-      objects.value = response.data;
+      objects.value = response.data || [];
     } catch (err: any) {
       error.value = err.data?.detail || "Ошибка при загрузке объектов";
     } finally {
@@ -31,7 +31,7 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/Object/${id}`, {
+      const response = await apiFetch<ApiResponse<Object>>(`/monitoring/${id}`, {
         method: "GET",
       });
       currentObject.value = response.data;
@@ -46,13 +46,15 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>("/Object", {
+      const response = await apiFetch<ApiResponse<Object>>("/monitoring/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: { data: payload },
       });
       const newObj = response.data;
-      objects.value.push(newObj);
+      if (newObj) {
+        objects.value.push(newObj);
+      }
       return newObj;
     } catch (err: any) {
       error.value = err.data?.detail || "Ошибка при создании объекта";
@@ -69,9 +71,10 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/Object/${id}`, {
+      const response = await apiFetch<ApiResponse<Object>>(`/monitoring/${id}`, {
         method: "PATCH",
-        body: payload,
+        headers: { "Content-Type": "application/json" },
+        body: { data: payload },
       });
       const updatedObj = response.data;
       const index = objects.value.findIndex((u) => u.id === id);
@@ -95,7 +98,7 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      await apiFetch(`/Object/${id}`, {
+      await apiFetch(`/monitoring/${id}`, {
         method: "DELETE",
       });
       objects.value = objects.value.filter((u) => u.id !== id);
