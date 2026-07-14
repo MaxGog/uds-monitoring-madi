@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 import logging
+import os
+import shutil
 from typing import List, Optional
 from uuid import UUID
+import uuid
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from urllib.parse import unquote
 import uuid6
 
@@ -12,10 +15,21 @@ from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 from backend.config.config import settings
-from backend.src.v1.filesystem.infrastructure.celery_sqs import process_document_upload_task
+from backend.src.v1.filesystem.infrastructure.celery_sqs import process_excel_file_task
 from backend.src.v1.filesystem.presentation.dtos import ConfirmUploadRequest, DocumentResponse, DocumentUpdateRequest, GetUploadUrlRequest
 
 logger = logging.getLogger(__file__)
+
+# Допустимые форматы для Excel
+ALLOWED_EXTENSIONS = {".xlsx", ".xls", ".xlsm"}
+ALLOWED_CONTENT_TYPES = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
+    "application/vnd.ms-excel",                                          # .xls
+}
+
+# Папка, куда временно сохраняем файлы перед отправкой в Celery
+TEMP_UPLOAD_DIR = "./temp_uploads"
+os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 
 @dataclass
 class FsUsecases(IFsUsecases):
@@ -38,22 +52,6 @@ class FsUsecases(IFsUsecases):
                 "s3_bucket": settings.minio.FILE_BUCKET_NAME,
                 "s3_key": unique_key
             }
-        except HTTPException as e:
-            logger.error(e)
-            raise e 
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # --- ОПОВЕЩЕНИЕ О ЗАГРУЗКЕ (ОТПРАВКА В CELERY) ---
-    async def confirm_upload(self, data: ConfirmUploadRequest, uploader_id: UUID) -> dict:
-        # Отправляем задачу в Celery.
-        try:
-            process_document_upload_task.delay(
-                payload=data.model_dump(),
-                uploader_id_str=str(uploader_id)
-            )
-            return {"message": "File processing dispatched to queue"}
         except HTTPException as e:
             logger.error(e)
             raise e 
@@ -307,3 +305,63 @@ class FsUsecases(IFsUsecases):
         )
 
         return document_id
+    
+    def is_excel_file(self, file: UploadFile) -> bool:
+            """
+            Проверяет, является ли файл Excel-таблицей по расширению и MIME-типу.
+            """
+            filename = file.filename or ""
+            _, ext = os.path.splitext(filename.lower())
+            
+            # 1. Проверка по расширению
+            if ext not in ALLOWED_EXTENSIONS:
+                return False
+                
+            # 2. Проверка по MIME-типу (Content-Type)
+            if file.content_type not in ALLOWED_CONTENT_TYPES:
+                return False
+                
+            return True
+
+    async def upload_document(self, file):
+        """
+        Эндпоинт для загрузки документов.
+        Принимает файлы, валидирует их и отправляет Excel-файлы в Celery.
+        """
+        # 1. Валидация формата файла
+        if not self.is_excel_file(file):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Недопустимый формат файла. Разрешены только файлы Excel (.xlsx, .xls)"
+            )
+
+        # Генерируем уникальное имя файла, чтобы избежать конфликтов в файловой системе
+        document_id = str(uuid.uuid4())
+        _, ext = os.path.splitext(file.filename)
+        unique_filename = f"{document_id}{ext}"
+        dest_path = os.path.join(TEMP_UPLOAD_DIR, unique_filename)
+
+        try:
+            # 2. Сохраняем файл на локальный диск (в реальном проекте здесь может быть загрузка в S3)
+            with open(dest_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+                
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Не удалось сохранить файл на сервере: {str(e)}"
+            )
+
+        # 3. Отправляем задачу в Celery асинхронно через .delay()
+        # Мы передаем путь к сохраненному файлу, а не сам файл в байтах!
+        task = process_excel_file_task.delay(
+            file_path=dest_path, 
+            document_id=document_id
+        )
+
+        return {
+            "status": "queued",
+            "message": "Файл успешно валидирован и отправлен на обработку",
+            "document_id": document_id,
+            "celery_task_id": task.id
+        }
