@@ -9,6 +9,7 @@ export type ObjectStatus =
     | 'failed'
 
 export interface ObjectItem {
+    isOverdue: any
     id: number
     title: string
     address: string
