@@ -50,10 +50,12 @@
           <div class="form-group">
             <label class="form-label">Статус задачи</label>
             <select v-model="form.status" class="fluent-select">
-              <option :value="TaskStatus.NEW">Новая</option>
+              <option :value="TaskStatus.PENDING">В ожидании</option>
+              <option :value="TaskStatus.STARTED">Запущена</option>
               <option :value="TaskStatus.IN_PROGRESS">В работе</option>
-              <option :value="TaskStatus.PENDING">На проверке</option>
               <option :value="TaskStatus.COMPLETED">Завершена</option>
+              <option :value="TaskStatus.PAUSED">Приостановлена</option>
+              <option :value="TaskStatus.CANCELLED">Отменена</option>
             </select>
           </div>
 
@@ -68,29 +70,38 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">ID объекта (название)</label>
+            <label class="form-label">Наименование объекта</label>
             <input
-              v-model="form.objectId"
+              v-model="form.objectTitle"
               type="text"
               class="fluent-input"
-              placeholder="Укажите ID или код объекта"
+              placeholder="Укажите название объекта"
             />
           </div>
 
           <div class="form-group">
-            <label class="form-label">Ответственные пользователи</label>
+            <label class="form-label">Срок выполнения (Дата)</label>
+            <input
+              v-model="form.dueDate"
+              type="date"
+              class="fluent-input"
+            />
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label">Ответственные сотрудники</label>
             <select 
-              v-model="form.responsibleUserIds" 
+              v-model="form.responsibleNames" 
               class="fluent-select" 
               multiple 
-              style="height: 96px;"
+              style="height: 100px;"
             >
               <option 
                 v-for="u in usersList" 
                 :key="u.id" 
-                :value="u.id"
+                :value="u.full_name || u.email || u.username"
               >
-                {{ u.full_name || u.email }}
+                {{ u.full_name || u.email || u.username }}
               </option>
             </select>
             <span class="field-hint">Зажмите Ctrl (или Cmd), чтобы выбрать нескольких</span>
@@ -117,7 +128,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTasks } from '~/composables/useTasks'
 import { apiFetch } from '~/composables/useAPI'
-import { TaskType, TaskStatus } from '~/types/task'
+import { TaskType, TaskStatus, type TaskCreate } from '~/types/task'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,10 +144,12 @@ const usersList = ref<any[]>([])
 const form = reactive({
   title: '',
   type: TaskType.CMR_CHECK,
-  status: TaskStatus.NEW,
+  status: TaskStatus.PENDING,
   description: '',
-  objectId: '',
-  responsibleUserIds: [] as string[]
+  objectTitle: '',
+  dueDate: '',
+  responsibleNames: [] as string[],
+  hasReminderTrigger: false
 })
 
 const loadUsers = async () => {
@@ -157,28 +170,59 @@ const loadTaskData = async () => {
   const task = await fetchTask(numericId)
 
   if (task) {
+    const rawTask = task as any
     form.title = task.title || ''
     form.type = task.type || TaskType.CMR_CHECK
-    form.status = task.status || TaskStatus.NEW
+    form.status = task.status || TaskStatus.PENDING
     form.description = task.description || ''
-    form.objectId = task.objectId || task.object_id || ''
-    form.responsibleUserIds = task.responsibleUserIds || task.responsible_user_ids || []
+    
+    form.objectTitle = task.objectTitle || rawTask.object_title || ''
+
+    const rawDate = task.dueDate || rawTask.due_date
+    if (rawDate) {
+      form.dueDate = String(rawDate).split('T')[0]
+    } else {
+      form.dueDate = ''
+    }
+
+    const resp = task.responsibleNames || rawTask.responsible_names || []
+    form.responsibleNames = Array.isArray(resp) ? [...resp] : []
+    
+    form.hasReminderTrigger = task.hasReminderTrigger ?? rawTask.has_reminder_trigger ?? false
   }
 }
 
 const goBack = () => {
   router.push('/tasks')
 }
-
 const handleSubmit = async () => {
   isSubmitting.value = true
-  let result = null
+
+  const payload: Record<string, any> = {
+    title: form.title,
+    type: form.type,
+    status: form.status,
+    description: form.description,
+    
+    objectTitle: form.objectTitle,
+    object_title: form.objectTitle,
+
+    dueDate: form.dueDate ? form.dueDate : null,
+    due_date: form.dueDate ? form.dueDate : null,
+
+    responsibleNames: form.responsibleNames,
+    responsible_names: form.responsibleNames,
+
+    hasReminderTrigger: form.hasReminderTrigger,
+    has_reminder_trigger: form.hasReminderTrigger
+  }
 
   try {
+    let result = null
     if (isEdit.value) {
-      result = await updateTask(Number(taskId.value), form)
+      result = await updateTask(Number(taskId.value), payload as any)
     } else {
-      result = await createTask(form)
+      result = await createTask(payload as any)
     }
 
     if (result) {
