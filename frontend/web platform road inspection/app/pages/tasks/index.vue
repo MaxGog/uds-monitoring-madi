@@ -4,11 +4,11 @@
       title="Управление задачами"
       :countText="`Задач: ${tasks.length}`"
       :tabs="filters"
-      :activeTab="currentFilter"
-      @update:activeTab="(value: string) => currentFilter = value"
+      v-model:activeTab="currentFilter"
+
     >
       <template #actions>
-        <button v-if="isAdmin" class="btn-primary" @click="openCreateModal">
+        <button v-if="isAdmin" class="btn-primary" @click="openCreatePage">
           <span class="btn-icon">＋</span> Создать задачу
         </button>
       </template>
@@ -31,7 +31,7 @@
           :task="task"
           :is-admin="isAdmin"
           @toggle="handleToggleTask"
-          @edit="openEditModal(task)"
+          @edit="openEditPage(task)"
           @delete="handleDeleteTask"
         />
       </div>
@@ -42,17 +42,10 @@
         title="Нет задач"
         description="В выбранном фильтре пока нет задач."
         :button-text="isAdmin ? 'Создать задачу' : undefined"
-        @action="openCreateModal"
+        @action="openCreatePage"
       />
     </div>
 
-    <TaskModal
-      v-if="isModalOpen"
-      :is-open="isModalOpen"
-      :task="selectedTask"
-      @close="closeModal"
-      @save="handleSaveTask"
-    />
   </div>
 </template>
 
@@ -61,10 +54,11 @@ import { ref, computed, onMounted } from 'vue'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import TaskCard from '~/components/cards/task_card.vue'
-import TaskModal from '~/components/task_modal.vue'
 import { useTasks } from '~/composables/useTasks'
 import { useAuth } from '~/composables/useAuth'
 import { useUserProfile } from '~/composables/useUserProfile'
+
+const router = useRouter()
 
 const { isAdmin } = useUserProfile()
 const { tasks, isLoading, error, fetchTasks, updateTask, deleteTask } = useTasks()
@@ -104,7 +98,6 @@ const closeModal = () => {
 
 const handleSaveTask = async () => {
   await fetchTasks()
-  closeModal()
 }
 
 const handleToggleTask = async (task: any) => {
@@ -116,6 +109,15 @@ const handleDeleteTask = async (id: number) => {
   if (confirm('Вы действительно хотите удалить эту задачу?')) {
     await deleteTask(id)
   }
+}
+
+const openCreatePage = () => {
+  if (!isAdmin.value) return
+  router.push('/tasks/new')
+}
+
+const openEditPage = (task: any) => {
+  router.push(`/tasks/${task.id}`)
 }
 
 onMounted(() => {
