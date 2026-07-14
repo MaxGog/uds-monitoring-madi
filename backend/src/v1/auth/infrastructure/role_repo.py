@@ -33,3 +33,4 @@ class PgRoleRepo(IRoleRepo):
 
     async def delete(self, role: Role) -> None:
         await self.session.delete(role)
+

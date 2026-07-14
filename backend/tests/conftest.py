@@ -20,7 +20,7 @@ from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest
 from main import create_app
 
 @pytest.fixture(scope="session")
-def test_container():
+def test_container() -> AsyncContainer:
     """Создаем изолированный контейнер для тестов."""
     container = make_async_container(
         DbProvider(),
@@ -43,14 +43,7 @@ def event_loop():
 # Фикстура для самого FastAPI приложения
 @pytest.fixture(scope="session")
 def app(test_container):
-    container = make_async_container(
-        DbProvider(), 
-        AuthProvider(), 
-        FilesystemProvider(), 
-        RepoProvider(), 
-        UsecaseProvider()
-    )
-    app_instance = create_app(container=container)
+    app_instance = create_app(container=test_container)
     return app_instance
 
 # Фикстура асинхронного клиента для выполнения запросов/каждого теста
@@ -107,3 +100,8 @@ async def auth_client(app, client: AsyncClient, test_user) -> AsyncClient:
 
     client.headers.pop("Authorization", None)
     client.cookies.pop("refresh_token", None)
+
+@pytest.fixture(scope="function")
+async def uow(test_container: AsyncContainer) -> IUnitOfWork:
+    async with test_container() as request_container:
+        yield await request_container.get(IUnitOfWork)
