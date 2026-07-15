@@ -2,7 +2,7 @@
   <div class="work-statuses-page">
     <PageToolbar
       title="Статусы работ"
-      :countText="`Всего объектов: (Найдено: ${filteredWorkStatuses.length})`"
+      :countText="`Всего объектов: ${works.length} (Найдено: ${filteredWorkStatuses.length})`"
       :tabs="[]"
     >
       <template #actions>
@@ -17,7 +17,6 @@
         v-model="search"
         placeholder="Поиск по объекту или менеджеру..."
       />
-
       <select v-model="stageFilter" class="fluent-select">
         <option value="all">Все этапы</option>
         <option v-for="stage in stages" :key="stage" :value="stage">
@@ -25,6 +24,34 @@
         </option>
       </select>
     </FilterBar>
+
+    <!-- Блок круговых диаграмм -->
+    <div class="charts-grid">
+      <DonutChart
+        title="Этапы работ"
+        :items="works"
+        key="stage"
+        :colors="['#6752f5', '#48d6d2', '#ffc247', '#34c978', '#ff5b66']"
+      />
+      <DonutChart
+        title="Менеджеры (топ-5)"
+        :items="works"
+        key="manager"
+        :colors="['#6752f5', '#48d6d2', '#34c978', '#ffc247', '#ff5b66']"
+      />
+      <DonutChart
+        title="Округа"
+        :items="works"
+        key="region"
+        :colors="['#6752f5', '#48d6d2', '#34c978', '#ffc247', '#ff5b66', '#8a6cff']"
+      />
+      <DonutChart
+        title="Наличие отклонений"
+        :items="works"
+        key="hasDeviationAlert"
+        :colors="['#6752f5', '#ff5b66']"
+      />
+    </div>
 
     <div v-if="filteredWorkStatuses.length" class="status-grid">
       <WorkStatusCard
@@ -48,11 +75,12 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import WorkStatusCard from '~/components/cards/work_status_card.vue'
-import { useWork } from '~/composables/useWork' // Переключаемся на реальный composable
+import { useWork } from '~/composables/useWork'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import SearchBar from '~/components/search_bar.vue'
+import DonutChart from '~/components/donut_chart.vue'
 
 const { works, isLoading, error, fetchWorks } = useWork()
 const search = ref('')
@@ -126,25 +154,6 @@ const resetFilters = () => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.search-box {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 10px;
-  font-size: 14px;
-  color: #797979;
-}
-
-.search-box .fluent-input {
-  padding-left: 32px;
-  width: 100%;
-}
-
 .fluent-input,
 .fluent-select {
   border: 1px solid #d6d9dc;
@@ -166,43 +175,30 @@ const resetFilters = () => {
   cursor: pointer;
 }
 
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 4px;
+}
+
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 16px;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 48px;
-  background: #ffffff;
-  border: 1px dashed #c8c9cc;
-  border-radius: 8px;
-  color: #616161;
-}
-
-.empty-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.empty-state h3 {
-  margin: 0 0 4px 0;
-  color: #242424;
-}
-
-.empty-state p {
-  margin: 0 0 12px 0;
-  font-size: 13px;
-}
-
-.fluent-link-btn {
-  background: none;
-  border: none;
-  color: #0078d4;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 13px;
-  text-decoration: underline;
-}
+/* стили для EmptyState уже есть в компоненте */
 </style>

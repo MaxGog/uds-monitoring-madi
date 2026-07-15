@@ -3,7 +3,6 @@
     <PageToolbar
       title="Работа с актами"
       :countText="`Всего: ${acts.length} (Утверждено: ${approvedCount}, В обработке: ${pendingCount})`"
-      :tabs="statusTabs"
       :activeTab="statusFilter"
       @update:activeTab="(value: string) => statusFilter = value"
     >
@@ -19,7 +18,6 @@
         v-model="search"
         placeholder="Поиск по наименованию, объекту или подрядчику..."
       />
-      
       <select v-model="typeFilter" class="fluent-select type-select">
         <option value="all">Все типы актов</option>
         <option value="contractor">Подрядный (contractor)</option>
@@ -27,6 +25,35 @@
       </select>
     </FilterBar>
 
+    <!-- Блок круговых диаграмм -->
+    <div class="charts-grid">
+      <DonutChart
+        title="Статусы актов"
+        :items="acts"
+        key="status"
+        :colors="['#6752f5', '#48d6d2', '#ffc247', '#34c978']"
+      />
+      <DonutChart
+        title="Типы актов"
+        :items="acts"
+        key="type"
+        :colors="['#6752f5', '#48d6d2']"
+      />
+      <DonutChart
+        title="Объекты (топ-5)"
+        :items="acts"
+        key="metadata_fields.objectName"
+        :colors="['#6752f5', '#48d6d2', '#34c978', '#ffc247', '#ff5b66']"
+      />
+      <DonutChart
+        title="Месяцы подписания"
+        :items="actsWithMonth"
+        key="month"
+        :colors="['#6752f5', '#48d6d2', '#34c978', '#ffc247', '#ff5b66', '#8a6cff']"
+      />
+    </div>
+
+    <!-- Список актов -->
     <div v-if="isLoading" class="loading-state">
       Загрузка актов...
     </div>
@@ -50,13 +77,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useActs } from '~/composables/useActs'
-import type { ActStatus } from '~/types/act'
+import type { ActStatus } from '~/types/enums'
 import ActCard from '~/components/cards/act_card.vue'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import SearchBar from '~/components/search_bar.vue'
-
+import DonutChart from '~/components/donut_chart.vue'
 
 const { acts, isLoading, fetchActs } = useActs()
 
@@ -76,6 +103,27 @@ const statusTabs = [
   { id: 'completed', label: 'Завершены' }
 ]
 
+// Вычисляемое поле для группировки по месяцам подписания
+const actsWithMonth = computed(() => {
+  return acts.value.map(act => {
+    let month = 'Не указан'
+    if (act.date_signed) {
+      try {
+        const date = new Date(act.date_signed)
+        if (!isNaN(date.getTime())) {
+          month = date.toLocaleString('default', { month: 'long', year: 'numeric' })
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return {
+      ...act,
+      month
+    }
+  })
+})
+
 const filteredActs = computed(() => {
   return acts.value.filter(act => {
     const objectName = act.metadata_fields?.objectName || ''
@@ -83,7 +131,7 @@ const filteredActs = computed(() => {
     const actName = act.name || ''
 
     const searchLower = search.value.toLowerCase()
-    const matchesSearch = !search.value || 
+    const matchesSearch = !search.value ||
       actName.toLowerCase().includes(searchLower) ||
       objectName.toLowerCase().includes(searchLower) ||
       contractor.toLowerCase().includes(searchLower)
@@ -98,6 +146,7 @@ const filteredActs = computed(() => {
 const approvedCount = computed(() => acts.value.filter(act => act.status === 'approved' || act.status === 'completed').length)
 const pendingCount = computed(() => acts.value.filter(act => act.status === 'pending' || act.status === 'draft').length)
 </script>
+
 
 <style scoped>
 .acts-page {
@@ -146,5 +195,24 @@ const pendingCount = computed(() => acts.value.filter(act => act.status === 'pen
   text-align: center;
   color: #605e5c;
   font-size: 14px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 4px;
+}
+
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

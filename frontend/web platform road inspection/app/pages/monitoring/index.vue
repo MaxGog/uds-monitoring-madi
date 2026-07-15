@@ -1,6 +1,5 @@
 <template>
-  <div class="admin-page-layout">
-    <!-- Системный PageToolbar с табами на основе TypeScript Enum -->
+  <div class="monitoring-page">
     <PageToolbar
       title="🛣️ Мониторинг объектов УДС"
       :countText="`Найдено ОДХ: ${filteredObjects.length} из ${objects.length}`"
@@ -15,22 +14,17 @@
       </template>
     </PageToolbar>
 
-    <!-- Системный FilterBar -->
     <FilterBar>
       <SearchBar
         v-model="searchQuery"
         placeholder="Поиск по наименованию или адресу..."
       />
-
-      <!-- Фильтр по округам -->
       <select v-model="regionFilter" class="fluent-select">
         <option value="all">Все административные округа</option>
         <option v-for="district in districts" :key="district" :value="district">
           {{ district }}
         </option>
       </select>
-
-      <!-- Фильтр по генподрядчикам из БД -->
       <select v-model="contractorFilter" class="fluent-select" :disabled="isCompaniesLoading">
         <option value="all">Все подрядчики</option>
         <option v-for="company in companies" :key="company.id" :value="company.id">
@@ -39,18 +33,65 @@
       </select>
     </FilterBar>
 
+    <!-- Блок круговых диаграмм -->
+    <div class="charts-grid">
+      <DonutChart
+        title="Наличие геометрии"
+        :items="filteredObjects"
+        key="geometryStatus"
+        :colors="['#6752f5', '#48d6d2', '#9bb7ff', '#d8e7ff']"
+      />
+      <DonutChart
+        title="Наличие акта"
+        :items="filteredObjects"
+        key="actStatus"
+        :colors="['#6752f5', '#48d6d2', '#9bb7ff', '#d8e7ff']"
+      />
+      <DonutChart
+        title="Загрузка актов в СОК"
+        :items="filteredObjects"
+        key="uploadStatus"
+        :colors="['#6752f5', '#48d6d2', '#9bb7ff', '#d8e7ff']"
+      />
+      <DonutChart
+        title="Состояние карточки"
+        :items="filteredObjects"
+        key="cardStatus"
+        :colors="['#6752f5', '#48d6d2', '#9bb7ff', '#d8e7ff']"
+      />
+      <DonutChart
+        title="Исполнители"
+        :items="filteredObjects"
+        key="executor"
+      />
+    </div>
+
     <!-- Сетка объектов -->
     <div v-if="filteredObjects.length > 0" class="objects-grid">
       <ObjectCard
-        v-for="obj in filteredObjects"
+        v-for="obj in paginatedObjects"
         :key="obj.id"
         :obj="obj"
       />
     </div>
 
-    <!-- Системный EmptyState -->
+    <!-- Пагинация (опционально) -->
+    <div v-if="filteredObjects.length > pageSize" class="pagination">
+      <button
+        class="page-btn"
+        :disabled="currentPage === 1"
+        @click="currentPage--"
+      >‹</button>
+      <span>Страница {{ currentPage }} из {{ totalPages }}</span>
+      <button
+        class="page-btn"
+        :disabled="currentPage === totalPages"
+        @click="currentPage++"
+      >›</button>
+    </div>
+
     <EmptyState
-      v-else
+      v-if="filteredObjects.length === 0"
       icon="📂"
       title="Объекты не найдены"
       description="Попробуйте изменить параметры поиска или сбросить фильтры."
@@ -69,6 +110,7 @@ import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import SearchBar from '~/components/search_bar.vue'
+import DonutChart from '~/components/donut_chart.vue'
 
 const { objects, fetchObjects } = useObject()
 
@@ -76,10 +118,11 @@ const searchQuery = ref('')
 const currentStatusFilter = ref('all')
 const regionFilter = ref('all')
 const contractorFilter = ref('all')
+const currentPage = ref(1)
+const pageSize = 20
 
 const districts = ['ЦАО', 'САО', 'ЮАО', 'ЗАО', 'ВАО', 'СЗАО', 'СВАО', 'ЮВАО', 'ЮЗАО']
 
-// Список статусов на основе системного Enum
 const statusTabs = [
   { label: 'Все ОДХ', value: 'all' },
   { label: 'В процессе', value: ObjectStatus.IN_PROGRESS },
@@ -89,7 +132,6 @@ const statusTabs = [
   { label: 'Завершены', value: ObjectStatus.COMPLETED }
 ]
 
-// Подгружаем компании для фильтрации
 const companies = ref<any[]>([])
 const isCompaniesLoading = ref(false)
 
@@ -113,7 +155,7 @@ onMounted(() => {
 const filteredObjects = computed(() => {
   return objects.value.filter(obj => {
     const text = searchQuery.value.trim().toLowerCase()
-    const matchesText = !text || 
+    const matchesText = !text ||
       (obj.title && obj.title.toLowerCase().includes(text)) ||
       (obj.address && obj.address.toLowerCase().includes(text))
 
@@ -125,12 +167,23 @@ const filteredObjects = computed(() => {
   })
 })
 
+const totalPages = computed(() => Math.ceil(filteredObjects.value.length / pageSize))
+const paginatedObjects = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredObjects.value.slice(start, start + pageSize)
+})
+
 const resetFilters = () => {
   searchQuery.value = ''
   currentStatusFilter.value = 'all'
   regionFilter.value = 'all'
   contractorFilter.value = 'all'
+  currentPage.value = 1
 }
+
+watch([searchQuery, currentStatusFilter, regionFilter, contractorFilter], () => {
+  currentPage.value = 1
+})
 </script>
 
 <style scoped>
@@ -283,5 +336,29 @@ const resetFilters = () => {
 
 .button-primary:hover {
   background: #106ebe;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

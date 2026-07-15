@@ -12,6 +12,35 @@
       </div>
     </div>
 
+    <!-- Блок диаграмм -->
+    <div v-if="!isLoadingActs && !isLoadingObjects" class="charts-grid">
+      <DonutChart
+        title="Статусы объектов"
+        :items="objects"
+        key="status"
+        :colors="['#6752f5', '#48d6d2', '#34c978', '#ffc247', '#ff5b66']"
+      />
+      <DonutChart
+        title="Округа объектов"
+        :items="objects"
+        key="district"
+        :colors="['#6752f5', '#48d6d2', '#34c978', '#ffc247', '#ff5b66', '#8a6cff']"
+      />
+      <DonutChart
+        title="Типы актов"
+        :items="acts"
+        key="type"
+        :colors="['#6752f5', '#48d6d2']"
+      />
+      <DonutChart
+        title="Статусы актов"
+        :items="acts"
+        key="status"
+        :colors="['#6752f5', '#48d6d2', '#ffc247', '#34c978']"
+      />
+    </div>
+
+    <!-- Индикаторы загрузки / ошибок -->
     <div v-if="isLoadingActs || isLoadingObjects" class="loading-state">
       Загрузка данных...
     </div>
@@ -20,6 +49,7 @@
     </div>
 
     <div v-else class="dashboard-sections">
+      <!-- Последние акты -->
       <CommonCard title="Последние акты" subtitle="Недавняя документация по объектам">
         <div v-if="recentActs.length" class="compact-grid">
           <ActCard v-for="act in recentActs" :key="act.id" :act="act" />
@@ -30,6 +60,7 @@
         </div>
       </CommonCard>
 
+      <!-- Объекты мониторинга -->
       <CommonCard title="Объекты мониторинга" subtitle="Состояние строительных объектов">
         <div v-if="recentObjects.length" class="compact-grid">
           <ObjectCard v-for="obj in recentObjects" :key="obj.id" :obj="obj" />
@@ -48,6 +79,7 @@ import { onMounted, computed } from 'vue'
 import CommonCard from '~/components/common/common_card.vue'
 import ActCard from '~/components/cards/act_card.vue'
 import ObjectCard from '~/components/cards/object_card.vue'
+import DonutChart from '~/components/donut_chart.vue'
 import { useActs } from '~/composables/useActs'
 import { useObject } from '~/composables/useObjects'
 
@@ -160,6 +192,26 @@ onMounted(async () => {
 .empty-state p {
   margin: 0;
   font-size: 13px;
+}
+
+/* Стили для блока диаграмм */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 960px) {
