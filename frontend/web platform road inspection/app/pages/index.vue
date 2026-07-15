@@ -7,25 +7,36 @@
       </div>
       <div class="quick-links">
         <NuxtLink to="/acts" class="link-card">Акты</NuxtLink>
-        <NuxtLink to="/work-statuses" class="link-card">Статусы работ</NuxtLink>
+        <NuxtLink to="/monitoring" class="link-card">Объекты</NuxtLink>
         <NuxtLink to="/roadmap" class="link-card">Формирование ДК</NuxtLink>
       </div>
     </div>
 
-    <div class="dashboard-sections">
+    <div v-if="isLoadingActs || isLoadingObjects" class="loading-state">
+      Загрузка данных...
+    </div>
+    <div v-if="errorActs || errorObjects" class="error-banner">
+      ⚠️ {{ errorActs || errorObjects }}
+    </div>
+
+    <div v-else class="dashboard-sections">
       <CommonCard title="Последние акты" subtitle="Недавняя документация по объектам">
-        <div class="compact-grid">
+        <div v-if="recentActs.length" class="compact-grid">
           <ActCard v-for="act in recentActs" :key="act.id" :act="act" />
+        </div>
+        <div v-else class="empty-state">
+          <span>📄</span>
+          <p>Актов пока нет</p>
         </div>
       </CommonCard>
 
-      <CommonCard title="Текущие статусы" subtitle="Состояние строительных объектов">
-        <div class="compact-grid">
-          <WorkStatusCard
-            v-for="status in recentStatuses"
-            :key="status.id"
-            :status="status"
-          />
+      <CommonCard title="Объекты мониторинга" subtitle="Состояние строительных объектов">
+        <div v-if="recentObjects.length" class="compact-grid">
+          <ObjectCard v-for="obj in recentObjects" :key="obj.id" :obj="obj" />
+        </div>
+        <div v-else class="empty-state">
+          <span>🏗️</span>
+          <p>Объектов пока нет</p>
         </div>
       </CommonCard>
     </div>
@@ -33,17 +44,22 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, computed } from 'vue'
 import CommonCard from '~/components/common/common_card.vue'
-import SummaryCard from '~/components/cards/summary_card.vue'
 import ActCard from '~/components/cards/act_card.vue'
-import WorkStatusCard from '~/components/cards/work_status_card.vue'
-import { useMockData } from '~/composables/useMockData'
-import { computed } from 'vue'
+import ObjectCard from '~/components/cards/object_card.vue'
+import { useActs } from '~/composables/useActs'
+import { useObject } from '~/composables/useObjects'
 
-const { acts, workStatuses, roadmapItems } = useMockData()
+const { acts, isLoading: isLoadingActs, error: errorActs, fetchActs } = useActs()
+const { objects, isLoading: isLoadingObjects, error: errorObjects, fetchObjects } = useObject()
 
 const recentActs = computed(() => acts.value.slice(0, 2))
-const recentStatuses = computed(() => workStatuses.value.slice(0, 2))
+const recentObjects = computed(() => objects.value.slice(0, 3))
+
+onMounted(async () => {
+  await Promise.all([fetchActs(), fetchObjects()])
+})
 </script>
 
 <style scoped>
@@ -102,10 +118,20 @@ const recentStatuses = computed(() => workStatuses.value.slice(0, 2))
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 18px;
+.loading-state,
+.error-banner {
+  padding: 16px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e1e3e8;
+  text-align: center;
+  color: #605e5c;
+}
+
+.error-banner {
+  background: #fde7e9;
+  border-color: #fccfd2;
+  color: #a80000;
 }
 
 .dashboard-sections {
@@ -117,6 +143,23 @@ const recentStatuses = computed(() => workStatuses.value.slice(0, 2))
 .compact-grid {
   display: grid;
   gap: 16px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 24px 0;
+  color: #797979;
+}
+
+.empty-state span {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 13px;
 }
 
 @media (max-width: 960px) {
