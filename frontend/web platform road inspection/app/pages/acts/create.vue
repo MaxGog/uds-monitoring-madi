@@ -82,7 +82,8 @@
 import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useActs } from '~/composables/useActs'
-import type { ActCreate, ActType } from '~/types/act'
+import type { ActCreate } from '~/types/act'
+import type { ActType } from '~/types/enums'
 
 const router = useRouter()
 const { createAct, isLoading } = useActs()

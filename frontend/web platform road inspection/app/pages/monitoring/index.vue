@@ -10,7 +10,7 @@
     >
       <template #actions>
         <NuxtLink to="/monitoring/create" class="fluent-button button-primary">
-          ➕ Регистрация ОДХ
+          <span class="plus-icon">＋</span> Регистрация ОДХ
         </NuxtLink>
       </template>
     </PageToolbar>

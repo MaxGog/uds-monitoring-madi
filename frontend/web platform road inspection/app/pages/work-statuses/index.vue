@@ -7,7 +7,7 @@
     >
       <template #actions>
         <NuxtLink to="/work-statuses/create" class="fluent-button button-primary">
-          ➕ Инициализировать статус
+          <span class="plus-icon">＋</span> Инициализировать статус
         </NuxtLink>
       </template>
     </PageToolbar>
