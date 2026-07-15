@@ -48,8 +48,8 @@ class ExcelParser:
                 self._map_headers(headers)
             except StopIteration:
                 raise ValueError("Файл пуст")
-            finally:
-                self._validate_required_mappings()
+            #finally:
+                #self._validate_required_mappings()
 
             tree_data: Dict[str, Dict[str, Dict[str, ContractDTO]]] = {}
             objects_meta: Dict[str, Dict[str, Any]] = {}
@@ -221,9 +221,9 @@ class ExcelParser:
                     self.col_indices[field] = idx
                     break
 
-    def _validate_required_mappings(self):
-        # Базовые обязательные поля для успешного импорта
-        required = {"obj_title", "work_title"}
-        missing = required - set(self.col_indices.keys())
-        if missing:
-            raise ValueError(f"Не найдены обязательные колонки: {', '.join(missing)}")
+    # def _validate_required_mappings(self):
+    #     # Базовые обязательные поля для успешного импорта
+    #     required = {"obj_title", "work_title"}
+    #     missing = required - set(self.col_indices.keys())
+    #     if missing:
+    #         raise ValueError(f"Не найдены обязательные колонки: {', '.join(missing)}")
