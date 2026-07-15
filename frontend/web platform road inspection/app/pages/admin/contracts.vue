@@ -45,10 +45,10 @@
           <tr v-for="contract in filteredContracts" :key="contract.id">
             <td class="font-semibold">
               <div>#{{ contract.id }}</div>
-              <div class="sub-text">{{ contract.number || 'Б/Н' }}</div>
+              <div class="sub-text">{{ contract.id || 'Б/Н' }}</div>
             </td>
             <td>
-              <span class="type-badge">{{ contract.type_display || contract.contract_type }}</span>
+              <span class="type-badge">{{ contract.type || contract.type }}</span>
             </td>
             <td>
               <span class="status-badge" :class="contract.status">
@@ -56,14 +56,14 @@
               </span>
             </td>
             <td class="font-semibold">
-              {{ formatCurrency(contract.limit_cost) }}
+              {{ formatCurrency(contract.cost) }}
             </td>
             <td class="sub-text">
               <div>С: {{ formatDate(contract.planned_start) }}</div>
               <div>По: {{ formatDate(contract.planned_end) }}</div>
             </td>
             <td>
-              <div v-if="contract.work_name" class="sub-text">🛠️ {{ contract.work_name }}</div>
+              <div v-if="contract.work_id" class="sub-text">🛠️ {{ contract.work_id }}</div>
               <div v-else-if="contract.work_id" class="sub-text">ID Работы: {{ contract.work_id }}</div>
               <div v-else class="sub-text text-muted">Нет привязки</div>
             </td>
@@ -98,7 +98,7 @@
 
     <CommonModal
       :is-open="isModalOpen"
-      :title="isEditMode ? `Редактирование контракта #${form.id}` : 'Заключение нового контракта'"
+      :title="isEditMode ? `Редактирование контракта #${form.contract_id}` : 'Заключение нового контракта'"
       width="680px"
       @close="closeModal"
     >
@@ -113,7 +113,7 @@
               <label for="con-num">Номер контракта *</label>
               <input
                 id="con-num"
-                v-model="form.number"
+                v-model="form.contract_id"
                 type="text"
                 required
                 placeholder="ГК-2026/04"
@@ -122,10 +122,10 @@
             </div>
             <div class="form-group">
               <label for="con-type">Тип контракта *</label>
-              <select id="con-type" v-model="form.contract_type" required class="fluent-select">
-                <option value="state_contract">Государственный контракт</option>
-                <option value="commercial">Коммерческий</option>
-                <option value="subcontract">Субподряд</option>
+              <select id="con-type" v-model="form.type" required class="fluent-select">
+                <option :value="ContractType.GENERAL">Генподряд (general)</option>
+                <option :value="ContractType.WORK">Рабочий контрагент (work)</option>
+                <option :value="ContractType.ADDITIONAL">Доп. соглашение (additional)</option>
               </select>
             </div>
           </div>
@@ -160,7 +160,7 @@
               <label for="con-limit">Финансовый лимит (Сумма) *</label>
               <input
                 id="con-limit"
-                v-model.number="form.limit_cost"
+                v-model.number="form.cost"
                 type="number"
                 min="0"
                 step="0.01"
@@ -168,7 +168,7 @@
                 placeholder="0.00"
                 class="fluent-input"
               />
-              <span v-if="form.limit_cost <= 0" class="field-warning">⚠️ Сумма контракта должна быть больше 0</span>
+              <span v-if="form.cost! <= 0" class="field-warning">⚠️ Сумма контракта должна быть больше 0</span>
             </div>
             <div class="form-group">
               <label for="con-status">Статус контракта</label>
@@ -206,33 +206,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import CommonModal from '~/components/common/common_modal.vue'
 import FormControls from '~/components/common/form_controls.vue'
+import { useContract } from '~/composables/useContract'
+import { ContractStatus, ContractType } from '~/types/enums'
+import type { Contract, ContractCreate, ContractUpdate } from '~/types/contract'
 
-const contracts = ref<any[]>([
-  { id: 101, number: 'ГК-88329', contract_type: 'state_contract', type_display: 'Госконтракт', status: 'active', limit_cost: 15400000, planned_start: '2026-01-10', planned_end: '2026-12-25', work_name: 'Ремонт ОДХ ул. Ленина' }
-])
+const {
+  contracts,
+  isLoading,
+  error,
+  fetchContracts,
+  createContract,
+  updateContract,
+  deleteContract,
+  clearError
+} = useContract()
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
-const error = ref<string | null>(null)
-
 const isModalOpen = ref(false)
 const isEditMode = ref(false)
+const currentContractId = ref<number | null>(null)
 
-const form = ref<any>({
-  id: null,
-  number: '',
-  contract_type: 'state_contract',
-  status: 'draft',
-  limit_cost: 0,
+const getEmptyForm = (): ContractCreate => ({
+  contract_id: '',
+  status: ContractStatus.DRAFT,
+  type: ContractType.GENERAL,
+  description: '',
+  cost: 0,
+  total_cost: 0,
   planned_start: '',
   planned_end: '',
-  description: ''
+  actual_start: null,
+  actual_end: null,
+  object_id: null,
+  work_id: null,
+  date_signed: new Date().toISOString().split('T')[0]
+})
+
+const form = ref<ContractCreate | ContractUpdate>(getEmptyForm())
+
+onMounted(() => {
+  fetchContracts()
 })
 
 const dateOrderError = computed(() => {
@@ -250,7 +270,7 @@ const filteredContracts = computed(() => {
   return contracts.value.filter(c => {
     const matchesSearch = !searchQuery.value || 
       c.id.toString().includes(searchQuery.value) || 
-      (c.number && c.number.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
+      (c.contract_id && c.contract_id.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
       (c.description && c.description.toLowerCase().includes(searchQuery.value.toLowerCase()))
 
     const matchesStatus = statusFilter.value === 'all' || c.status === statusFilter.value
@@ -264,23 +284,16 @@ const resetFilters = () => {
   statusFilter.value = 'all'
 }
 
-const openModal = (contract: any | null = null) => {
-  error.value = null
+const openModal = (contract: Contract | null = null) => {
+  clearError()
   if (contract) {
     isEditMode.value = true
-    form.value = { ...contract }
+    currentContractId.value = contract.id
+    form.value = { ...contract } as ContractUpdate
   } else {
     isEditMode.value = false
-    form.value = {
-      id: null,
-      number: '',
-      contract_type: 'state_contract',
-      status: 'draft',
-      limit_cost: 0,
-      planned_start: '',
-      planned_end: '',
-      description: ''
-    }
+    currentContractId.value = null
+    form.value = getEmptyForm()
   }
   isModalOpen.value = true
 }
@@ -289,46 +302,64 @@ const closeModal = () => {
   isModalOpen.value = false
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (dateOrderError.value) return
 
   const payload = { ...form.value }
-  if (!payload.planned_start) payload.planned_start = null
-  if (!payload.planned_end) payload.planned_end = null
+  if (!payload.planned_start) payload.planned_start = 'null'
+  if (!payload.planned_end) payload.planned_end = 'null'
 
-  if (isEditMode.value && payload.id) {
-    const idx = contracts.value.findIndex(c => c.id === payload.id)
-    if (idx !== -1) contracts.value[idx] = { ...contracts.value[idx], ...payload }
-  } else {
-    contracts.value.push({
-      id: Date.now(),
-      ...payload
-    })
+  if (payload.cost && !payload.total_cost) {
+    payload.total_cost = payload.cost
   }
-  closeModal()
+
+  let result = null
+  if (isEditMode.value && currentContractId.value) {
+    result = await updateContract(currentContractId.value, payload as ContractUpdate)
+  } else {
+    result = await createContract(payload as ContractCreate)
+  }
+
+  if (result) {
+    await fetchContracts()
+    closeModal()
+  }
 }
 
-const handleDelete = (id: number) => {
+const handleDelete = async (id: number) => {
   if (confirm('Удалить этот контракт из системы?')) {
-    contracts.value = contracts.value.filter(c => c.id !== id)
+    const success = await deleteContract(id)
+    if (success) {
+      await fetchContracts()
+    }
   }
 }
 
 const formatStatus = (st: string) => {
   const map: Record<string, string> = {
-    draft: 'Черновик',
-    active: 'Активен',
-    completed: 'Завершен',
-    terminated: 'Расторгнут'
+    [ContractStatus.DRAFT]: 'Черновик',
+    [ContractStatus.ACTIVE]: 'Активен',
+    [ContractStatus.COMPLETED]: 'Завершен',
+    [ContractStatus.TERMINATED]: 'Расторгнут'
   }
   return map[st] || st
 }
 
+const formatType = (type: string) => {
+  const map: Record<string, string> = {
+    [ContractType.GENERAL]: 'Генподряд',
+    [ContractType.WORK]: 'Рабочий контрагент',
+    [ContractType.ADDITIONAL]: 'Доп. соглашение'
+  }
+  return map[type] || type
+}
+
 const formatCurrency = (val: number) => {
+  if (!val) return '0 ₽'
   return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(val)
 }
 
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr: string | null) => {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('ru-RU')
 }

@@ -189,30 +189,45 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import CommonModal from '~/components/common/common_modal.vue'
 import FormControls from '~/components/common/form_controls.vue'
+import { useCompany } from '~/composables/useCompany'
+import type { Company, CompanyCreate, CompanyUpdate } from '~/types/company'
 
-const companies = ref<any[]>([
-  { id: 1, name: 'ООО ДорСтрой', inn: '7707083893', kpp: '773601001', address: 'г. Москва, ул. Ленина, д. 10', bank_account: '40702810900000001234', bic: '044525225' }
-])
+const {
+  companies,
+  isLoading,
+  error,
+  fetchCompanies,
+  createCompany,
+  updateCompany,
+  deleteCompany,
+  clearError
+} = useCompany()
+
 const searchQuery = ref('')
-const error = ref<string | null>(null)
-
 const isModalOpen = ref(false)
 const isEditMode = ref(false)
 const currentCompanyId = ref<number | null>(null)
 
-const form = ref({
+const getEmptyForm = (): CompanyCreate => ({
   name: '',
   inn: '',
   kpp: '',
   address: '',
   bank_account: '',
-  bic: ''
+  bic: '',
+  bank_name: ''
+})
+
+const form = ref<CompanyCreate | CompanyUpdate>(getEmptyForm())
+
+onMounted(() => {
+  fetchCompanies()
 })
 
 const filteredCompanies = computed(() => {
@@ -276,16 +291,16 @@ const hasValidationErrors = computed(() => {
   return !!(innError.value || kppError.value || addressError.value || bicError.value || bankAccountError.value)
 })
 
-const openModal = (company: any | null = null) => {
-  error.value = null
+const openModal = (company: Company | null = null) => {
+  clearError()
   if (company) {
     isEditMode.value = true
     currentCompanyId.value = company.id
-    form.value = { ...company }
+    form.value = { ...company } as CompanyUpdate
   } else {
     isEditMode.value = false
     currentCompanyId.value = null
-    form.value = { name: '', inn: '', kpp: '', address: '', bank_account: '', bic: '' }
+    form.value = getEmptyForm()
   }
   isModalOpen.value = true
 }
@@ -294,24 +309,28 @@ const closeModal = () => {
   isModalOpen.value = false
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (hasValidationErrors.value) return
 
+  let result = null
   if (isEditMode.value && currentCompanyId.value) {
-    const idx = companies.value.findIndex(c => c.id === currentCompanyId.value)
-    if (idx !== -1) companies.value[idx] = { ...companies.value[idx], ...form.value }
+    result = await updateCompany(currentCompanyId.value, form.value as CompanyUpdate)
   } else {
-    companies.value.push({
-      id: Date.now(),
-      ...form.value
-    })
+    result = await createCompany(form.value as CompanyCreate)
   }
-  closeModal()
+
+  if (result) {
+    await fetchCompanies()
+    closeModal()
+  }
 }
 
-const handleDelete = (id: number) => {
+const handleDelete = async (id: number) => {
   if (confirm('Вы уверены, что хотите удалить этого контрагента?')) {
-    companies.value = companies.value.filter(c => c.id !== id)
+    const success = await deleteCompany(id)
+    if (success) {
+      await fetchCompanies()
+    }
   }
 }
 </script>
