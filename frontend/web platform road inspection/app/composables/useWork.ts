@@ -1,6 +1,25 @@
 import type { ApiResponse } from "~/types/api";
 import type { Work, WorkCreate, WorkUpdate } from "~/types/work";
 
+const STATUS_TO_BACKEND: Record<string, string> = {
+  "Проверка объемов": "pending",
+  "Анализ отклонений": "in_progress",
+  "Приемка работ": "verified",
+  "Завершено": "completed",
+};
+
+const STATUS_TO_FRONTEND: Record<string, 'Проверка объемов' | 'Анализ отклонений' | 'Приемка работ' | 'Завершено'> = {
+  "pending": "Проверка объемов",
+  "assigned": "Проверка объемов",
+  "in_progress": "Анализ отклонений",
+  "paused": "Анализ отклонений",
+  "verified": "Приемка работ",
+  "completed": "Завершено",
+  "canceled": "Завершено",
+  "expired": "Завершено",
+  "failed": "Завершено",
+};
+
 export function useWork() {
   const works = ref<Work[]>([]);
   const currentWork = ref<Work | null>(null);
@@ -12,16 +31,49 @@ export function useWork() {
     error.value = null;
   };
 
+  const mapWorkFromBackend = (backendData: any): Work => {
+    if (!backendData) return backendData;
+
+    const rawStatus = backendData.status || backendData.stage;
+    const mappedStage = STATUS_TO_FRONTEND[rawStatus] || "Проверка объемов";
+
+    const totalBudget = Number(backendData.cost || 0);
+    const spentBudget = Number(backendData.budgetSpent || 0);
+    const remainingBudget = totalBudget - spentBudget;
+
+    return {
+      id: backendData.id,
+      objectName: backendData.title || backendData.objectName || "Без названия",
+      region: backendData.region || "Не указан",
+      stage: mappedStage,
+      progress: backendData.progress !== undefined ? `${backendData.progress}%` : "0%",
+      manager: backendData.manager || "Не назначен",
+      updatedAt: backendData.updated_at
+        ? new Date(backendData.updated_at).toLocaleDateString("ru-RU")
+        : new Date().toLocaleDateString("ru-RU"),
+      nextAction: backendData.nextAction || "Нет запланированных действий",
+      hasDeviationAlert: !!backendData.hasDeviationAlert,
+
+      budgetAllocation: {
+        total: String(totalBudget),
+        spent: String(spentBudget),
+        remaining: String(remainingBudget)
+      },
+
+      historyLog: backendData.historyLog || []
+    };
+  };
+
   const fetchWorks = async () => {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Work[]>>(`/Work/`, {
+      const response = await apiFetch<ApiResponse<any[]>>(`/work/`, {
         method: "GET",
       });
-      works.value = response.data;
+      works.value = (response.data || []).map(mapWorkFromBackend);
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при загрузке пользователей";
+      error.value = err.data?.detail || "Ошибка при загрузке мониторинга работ";
     } finally {
       isLoading.value = false;
     }
@@ -31,13 +83,12 @@ export function useWork() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Work>>(`/Work/${id}`, {
+      const response = await apiFetch<ApiResponse<any>>(`/work/${id}`, {
         method: "GET",
       });
-      currentWork.value = response.data;
+      currentWork.value = mapWorkFromBackend(response.data);
     } catch (err: any) {
-      error.value =
-        err.data?.detail || "Ошибка при загрузке данных о своём пользователе";
+      error.value = err.data?.detail || "Ошибка при загрузке данных об объекте";
     } finally {
       isLoading.value = false;
     }
@@ -47,18 +98,29 @@ export function useWork() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Work>>("/Work", {
+      const dbStatus = STATUS_TO_BACKEND[payload.stage] || "UNDER_REVIEW";
+
+      const backendPayload = {
+        title: payload.objectName,
+        status: dbStatus,
+        cost: payload.budgetTotal || 0,
+        object_id: null,
+        contractor_id: null
+      };
+
+      const response = await apiFetch<ApiResponse<any>>("/work/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: { data: payload },
+        body: { data: backendPayload },
       });
-      const newUser = response.data;
-      works.value.push(newUser);
-      return newUser;
+
+      const newWork = mapWorkFromBackend(response.data);
+      works.value.push(newWork);
+      return newWork;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при создании пользователя";
+      error.value = err.data?.detail || "Ошибка при инициализации мониторинга";
       return null;
     } finally {
       isLoading.value = false;
@@ -72,23 +134,36 @@ export function useWork() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Work>>(`/users/${id}`, {
-        method: "PATCH",
-        body: payload,
-      });
-      const updatedUser = response.data;
-      // Локально обновляем массив, чтобы избежать лишнего запроса к БД
-      const index = works.value.findIndex((u) => u.id === id);
-      if (index !== -1) {
-        works.value[index] = { ...works.value[index], ...updatedUser };
+      const backendPayload: Record<string, any> = {};
+
+      if (payload.objectName !== undefined) {
+        backendPayload.title = payload.objectName;
       }
-      if (currentWork.value?.id === id) {
-        currentWork.value = { ...currentWork.value, ...updatedUser };
+      if (payload.stage !== undefined) {
+        backendPayload.status = STATUS_TO_BACKEND[payload.stage] || "UNDER_REVIEW";
+      }
+      if (payload.budgetTotal !== undefined) {
+        backendPayload.cost = payload.budgetTotal;
       }
 
-      return updatedUser;
+      const response = await apiFetch<ApiResponse<any>>(`/work/${id}`, {
+        method: "PATCH",
+        body: { data: backendPayload },
+      });
+
+      const updatedWork = mapWorkFromBackend(response.data);
+
+      const index = works.value.findIndex((w) => w.id === id);
+      if (index !== -1) {
+        works.value[index] = { ...works.value[index], ...updatedWork };
+      }
+      if (currentWork.value?.id === id) {
+        currentWork.value = { ...currentWork.value, ...updatedWork };
+      }
+
+      return updatedWork;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при обновлении пользователя";
+      error.value = err.data?.detail || "Ошибка при обновлении статуса работы";
       return null;
     } finally {
       isLoading.value = false;
@@ -97,19 +172,18 @@ export function useWork() {
 
   const deleteWork = async (id: number): Promise<boolean> => {
     isLoading.value = true;
-    clearError();
+    cleanError();
     try {
-      await apiFetch(`/Work/${id}`, {
+      await apiFetch(`/work/${id}`, {
         method: "DELETE",
       });
-      // Локально удаляем из стейта
-      works.value = works.value.filter((u) => u.id !== id);
+      works.value = works.value.filter((w) => w.id !== id);
       if (currentWork.value?.id === id) {
         currentWork.value = null;
       }
       return true;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при удалении";
+      error.value = err.data?.detail || "Ошибка при удалении объекта из мониторинга";
       return false;
     } finally {
       isLoading.value = false;
@@ -118,6 +192,7 @@ export function useWork() {
 
   return {
     works,
+    currentWork,
     isLoading,
     error,
     cleanError,

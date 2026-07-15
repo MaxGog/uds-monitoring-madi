@@ -143,10 +143,12 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMockData } from '~/composables/useMockData'
+import { useWork } from '~/composables/useWork'
 
 const router = useRouter()
-const { workStatuses, regions } = useMockData()
+const { createWork, error, isLoading } = useWork()
+
+const regions = ['ЦАО', 'САО', 'СВАО', 'ВАО', 'ЮВАО', 'ЮАО', 'ЮЗАО', 'ЗАО', 'СЗАО', 'Новая Москва']
 
 const form = reactive({
   objectName: '',
@@ -161,39 +163,27 @@ const form = reactive({
   initialComment: ''
 })
 
-const handleSubmit = () => {
-  const total = form.budgetTotal || 0
-  const spent = form.budgetSpent || 0
-  const remaining = Math.max(0, total - spent)
-
-  const newId = workStatuses.value.length ? Math.max(...workStatuses.value.map(s => s.id)) + 1 : 1
-
-  const newStatus = {
-    id: newId,
+const handleSubmit = async () => {
+  const payload = {
     objectName: form.objectName,
-    region: form.region as any,
-    stage: form.stage,
-    progress: `${form.progress}%`,
+    region: form.region,
     manager: form.manager,
-    updatedAt: new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-    nextAction: form.nextAction ? `🔮 ${form.nextAction}` : '🔮 Плановое обновление данных',
+    stage: form.stage,
+    progress: form.progress,
     hasDeviationAlert: form.hasDeviationAlert,
-    budgetAllocation: {
-      total: `${total} млн ₽`,
-      spent: `${spent} млн ₽`,
-      remaining: `${remaining.toFixed(1)} млн ₽`
-    },
-    historyLog: [
-      {
-        date: new Date().toLocaleDateString('ru-RU'),
-        title: 'Объект успешно добавлен в систему мониторинга',
-        comment: form.initialComment || 'Первичная инициализация карточки контроля ОДХ.',
-        author: form.manager
-      }
-    ]
+    budgetTotal: form.budgetTotal || 0,
+    budgetSpent: form.budgetSpent || 0,
+    nextAction: form.nextAction,
+    initialComment: form.initialComment
   }
+
+  const result = await createWork(payload)
   
-  router.push('/work-statuses')
+  if (result) {
+    router.push('/work-statuses')
+  } else {
+    console.error("Ошибка при создании:", error.value)
+  }
 }
 </script>
 

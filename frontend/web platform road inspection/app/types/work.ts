@@ -13,13 +13,29 @@ export interface Work {
         spent: string
         remaining: string
     }
-    historyLog: Array<{ date: string; action: string; user: string }>
+    historyLog: Array<{
+        date: string;
+        title?: string;
+        comment?: string;
+        action?: string;
+        user?: string;
+        author?: string
+    }>
 }
 
 export interface WorkCreate {
-
+    objectName: string
+    region: string
+    manager: string
+    stage: 'Проверка объемов' | 'Анализ отклонений' | 'Приемка работ' | 'Завершено'
+    progress: number
+    hasDeviationAlert: boolean
+    budgetTotal: number
+    budgetSpent: number
+    nextAction?: string
+    initialComment?: string
 }
 
-export interface WorkUpdate {
-    
+export interface WorkUpdate extends Partial<WorkCreate> {
+    // При необходимости можно переопределить точечные поля
 }

@@ -22,7 +22,7 @@ export function useUserProfile() {
 
     const userFullName = computed(() => {
         if (!authUser.value) return ''
-        return authUser.value.full_name || authUser.value.name || authUser.value.email || 'Пользователь'
+        return authUser.value.full_name || authUser.value.email || 'Пользователь'
     })
 
     const currentUserHeader = computed(() => {

@@ -2,7 +2,7 @@
   <div class="work-statuses-page">
     <PageToolbar
       title="Статусы работ"
-      :countText="`Всего объектов: ${workStatuses.length} (Найдено: ${filteredWorkStatuses.length})`"
+      :countText="`Всего объектов: (Найдено: ${filteredWorkStatuses.length})`"
       :tabs="[]"
     >
       <template #actions>
@@ -46,27 +46,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import WorkStatusCard from '~/components/cards/work_status_card.vue'
-import { useMockData } from '~/composables/useMockData'
+import { useWork } from '~/composables/useWork' // Переключаемся на реальный composable
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import SearchBar from '~/components/search_bar.vue'
 
-const { workStatuses } = useMockData()
+const { works, isLoading, error, fetchWorks } = useWork()
 const search = ref('')
 const stageFilter = ref('all')
 
 const stages = computed(() => {
-  return [...new Set(workStatuses.value.map(item => item.stage))]
+  return [...new Set(works.value.map(item => item.stage))]
+})
+
+onMounted(async () => {
+  await fetchWorks()
 })
 
 const filteredWorkStatuses = computed(() => {
-  return workStatuses.value.filter(status => {
+  return works.value.filter(status => {
     const term = search.value.trim().toLowerCase()
     const matchesText = !term || [status.objectName, status.manager, status.nextAction]
-      .some(field => field.toLowerCase().includes(term))
+      .some(field => field && field.toLowerCase().includes(term))
 
     const matchesStage = stageFilter.value === 'all' || status.stage === stageFilter.value
     return matchesText && matchesStage
