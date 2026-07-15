@@ -84,5 +84,16 @@ export function useContract() {
         }
     };
 
-    return { contracts, currentContract, isLoading, error, fetchContracts, fetchContract, createContract, updateContract, deleteContract, clearError };
+    return {
+        contracts,
+        currentContract,
+        isLoading, 
+        error, 
+        fetchContracts, 
+        fetchContract, 
+        createContract, 
+        updateContract, 
+        deleteContract, 
+        clearError, 
+    };
 }
