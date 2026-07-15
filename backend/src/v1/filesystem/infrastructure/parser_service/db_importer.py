@@ -6,7 +6,7 @@ from backend.core.db.postgres.data_orms.contract_orm import Contract, ContractIt
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.work_orm import Work
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
-from backend.src.v1.data.domain.models import ContractStatus, WorkStatus
+from backend.src.v1.data.domain.models import ContractStatus, ObjectStatus, WorkStatus
 
 
 
@@ -31,7 +31,7 @@ class DatabaseImporter:
                         title=obj_dto.title,
                         address=obj_dto.address,
                         district=obj_dto.district,
-                        status="active"
+                        status=ObjectStatus.PENDING
                     )
                     self.uow.session.add(db_object)
                     await self.uow.session.flush()
