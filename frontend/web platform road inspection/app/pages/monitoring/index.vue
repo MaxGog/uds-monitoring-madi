@@ -1,42 +1,45 @@
 <template>
-  <div class="monitoring-page">
+  <div class="admin-page-layout">
+    <!-- Системный PageToolbar с табами на основе TypeScript Enum -->
     <PageToolbar
-      title="Мониторинг объектов УДС"
+      title="🛣️ Мониторинг объектов УДС"
       :countText="`Найдено ОДХ: ${filteredObjects.length} из ${objects.length}`"
       :tabs="statusTabs"
       :activeTab="currentStatusFilter"
       @update:activeTab="value => currentStatusFilter = value"
     >
       <template #actions>
-        <NuxtLink to="/monitoring/create" class="fluent-btn-primary">
-          <span class="btn-icon">➕</span> Регистрация ОДХ
+        <NuxtLink to="/monitoring/create" class="fluent-button button-primary">
+          ➕ Регистрация ОДХ
         </NuxtLink>
       </template>
     </PageToolbar>
 
+    <!-- Системный FilterBar -->
     <FilterBar>
       <SearchBar
         v-model="searchQuery"
-        placeholder="Поиск по наименованию, контракту или подрядчику..."
+        placeholder="Поиск по наименованию или адресу..."
       />
 
+      <!-- Фильтр по округам -->
       <select v-model="regionFilter" class="fluent-select">
         <option value="all">Все административные округа</option>
-        <option value="ЦАО">ЦАО (Центральный)</option>
-        <option value="САО">САО (Северный)</option>
-        <option value="ЮАО">ЮАО (Южный)</option>
-        <option value="ЗАО">ЗАО (Западный)</option>
-        <option value="ВАО">ВАО (Восточный)</option>
+        <option v-for="district in districts" :key="district" :value="district">
+          {{ district }}
+        </option>
       </select>
 
-      <select v-model="sourceFilter" class="fluent-select">
-        <option value="all">Все источники данных</option>
-        <option value="АСУ ПРИЗ">АСУ ПРИЗ</option>
-        <option value="ЕАИСТ">ЕАИСТ</option>
-        <option value="Ручной ввод">Локальный ввод</option>
+      <!-- Фильтр по генподрядчикам из БД -->
+      <select v-model="contractorFilter" class="fluent-select" :disabled="isCompaniesLoading">
+        <option value="all">Все подрядчики</option>
+        <option v-for="company in companies" :key="company.id" :value="company.id">
+          {{ company.name }}
+        </option>
       </select>
     </FilterBar>
 
+    <!-- Сетка объектов -->
     <div v-if="filteredObjects.length > 0" class="objects-grid">
       <ObjectCard
         v-for="obj in filteredObjects"
@@ -45,6 +48,7 @@
       />
     </div>
 
+    <!-- Системный EmptyState -->
     <EmptyState
       v-else
       icon="📂"
@@ -59,29 +63,51 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useObject } from '~/composables/useObjects'
+import { ObjectStatus } from '~/types/enums'
 import ObjectCard from '~/components/cards/object_card.vue'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import SearchBar from '~/components/search_bar.vue'
 
-const { objects, fetchObjects, isLoading, error } = useObject()
+const { objects, fetchObjects } = useObject()
 
 const searchQuery = ref('')
 const currentStatusFilter = ref('all')
 const regionFilter = ref('all')
-const sourceFilter = ref('all')
+const contractorFilter = ref('all')
 
+const districts = ['ЦАО', 'САО', 'ЮАО', 'ЗАО', 'ВАО', 'СЗАО', 'СВАО', 'ЮВАО', 'ЮЗАО']
+
+// Список статусов на основе системного Enum
 const statusTabs = [
   { label: 'Все ОДХ', value: 'all' },
-  { label: 'Активные', value: 'Активный' },
-  { label: 'На проверке', value: 'На проверке' },
-  { label: 'В планировании', value: 'Планирование' },
-  { label: 'Завершенные', value: 'Завершено' }
+  { label: 'В процессе', value: ObjectStatus.IN_PROGRESS },
+  { label: 'Приняты', value: ObjectStatus.ACCEPTED },
+  { label: 'Ожидают', value: ObjectStatus.PENDING },
+  { label: 'Приостановлены', value: ObjectStatus.PAUSED },
+  { label: 'Завершены', value: ObjectStatus.COMPLETED }
 ]
+
+// Подгружаем компании для фильтрации
+const companies = ref<any[]>([])
+const isCompaniesLoading = ref(false)
+
+const fetchCompanies = async () => {
+  isCompaniesLoading.value = true
+  try {
+    const response = await apiFetch<{ data: any[] }>('/company/', { method: 'GET' })
+    companies.value = response.data || []
+  } catch (err) {
+    console.error('Ошибка загрузки компаний для фильтра:', err)
+  } finally {
+    isCompaniesLoading.value = false
+  }
+}
 
 onMounted(() => {
   fetchObjects()
+  fetchCompanies()
 })
 
 const filteredObjects = computed(() => {
@@ -89,14 +115,13 @@ const filteredObjects = computed(() => {
     const text = searchQuery.value.trim().toLowerCase()
     const matchesText = !text || 
       (obj.title && obj.title.toLowerCase().includes(text)) ||
-      (obj.contractor && obj.contractor.toLowerCase().includes(text)) ||
-      (obj.contractNumber && obj.contractNumber.toLowerCase().includes(text))
+      (obj.address && obj.address.toLowerCase().includes(text))
 
     const matchesStatus = currentStatusFilter.value === 'all' || obj.status === currentStatusFilter.value
-    const matchesRegion = regionFilter.value === 'all' || obj.region === regionFilter.value
-    const matchesSource = sourceFilter.value === 'all' || obj.source === sourceFilter.value
+    const matchesRegion = regionFilter.value === 'all' || obj.district === regionFilter.value
+    const matchesContractor = contractorFilter.value === 'all' || obj.contractor_id === Number(contractorFilter.value)
 
-    return matchesText && matchesStatus && matchesRegion && matchesSource
+    return matchesText && matchesStatus && matchesRegion && matchesContractor
   })
 })
 
@@ -104,7 +129,7 @@ const resetFilters = () => {
   searchQuery.value = ''
   currentStatusFilter.value = 'all'
   regionFilter.value = 'all'
-  sourceFilter.value = 'all'
+  contractorFilter.value = 'all'
 }
 </script>
 
@@ -222,5 +247,41 @@ const resetFilters = () => {
   cursor: pointer;
   font-size: 13px;
   text-decoration: underline;
+}
+
+.admin-page-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.objects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.fluent-button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.button-primary {
+  background: #0078d4;
+  border: 1px solid #0078d4;
+  color: #ffffff;
+}
+
+.button-primary:hover {
+  background: #106ebe;
 }
 </style>

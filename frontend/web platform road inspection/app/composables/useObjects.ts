@@ -2,8 +2,8 @@ import type { ApiResponse } from "~/types/api";
 import type { ObjectUpdate, ObjectCreate, ObjectItem } from "~/types/object";
 
 export function useObject() {
-  const objects = ref<Object[]>([]);
-  const currentObject = ref<Object | null>(null);
+  const objects = ref<ObjectItem[]>([]);
+  const currentObject = ref<ObjectItem | null>(null);
 
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
@@ -16,7 +16,7 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object[]>>("/object", {
+      const response = await apiFetch<ApiResponse<ObjectItem[]>>("/object", {
         method: "GET",
       });
       objects.value = response.data || [];
@@ -31,7 +31,7 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/object/${id}`, {
+      const response = await apiFetch<ApiResponse<ObjectItem>>(`/object/${id}`, {
         method: "GET",
       });
       currentObject.value = response.data;
@@ -46,13 +46,21 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<ObjectItem>>("/object/", {
+      const cleanPayload = {
+        ...payload,
+        contractor_id: payload.contractor_id ? Number(payload.contractor_id) : null,
+        supervisor_id: payload.supervisor_id ? Number(payload.supervisor_id) : null,
+      };
+
+      const response = await apiFetch<ApiResponse<ObjectItem>>("/object", {
         method: "POST",
-        body: { data: payload },
+        body: { data: cleanPayload },
       });
 
       const newObj = response.data;
-      objects.value.push(newObj);
+      if (newObj) {
+        objects.value.push(newObj);
+      }
       return newObj;
     } catch (err: any) {
       console.error("422 Details:", err.data?.detail);
@@ -72,13 +80,13 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/object/${id}`, {
+      const response = await apiFetch<ApiResponse<ObjectItem>>(`/object/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: { data: payload },
       });
       const updatedObj = response.data;
-      const index = objects.value.findIndex((u) => u === id);
+      const index = objects.value.findIndex((u) => u.id === id);
       if (index !== -1) {
         objects.value[index] = { ...objects.value[index], ...updatedObj };
       }
@@ -99,7 +107,7 @@ export function useObject() {
       await apiFetch(`/object/${id}`, {
         method: "DELETE",
       });
-      objects.value = objects.value.filter((u) => u !== id);
+      objects.value = objects.value.filter((u) => u.id !== id);
       return true;
     } catch (err: any) {
       error.value = err.data?.detail || "Ошибка при удалении объекта";

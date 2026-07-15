@@ -1,20 +1,15 @@
 <template>
-  <div class="fluent-object-card" @click="openModal">
+  <div class="fluent-object-card" @click="navigateToDetail">
     <div class="card-header">
       <div class="header-main">
         <div class="badge-row">
-          <span class="region-tag">{{ obj.region || 'Не указан' }}</span>
-          <span 
-            v-if="obj.source" 
-            class="source-tag" 
-            :class="obj.source.toLowerCase().replace(/\s+/g, '-')"
-          >
-            {{ obj.sourceLabel || obj.source }}
+          <span class="district-tag" :class="{ 'not-specified': !obj.district }">
+            📍 {{ obj.district || 'Округ не указан' }}
           </span>
         </div>
         <h3 class="object-title" :title="obj.title">{{ obj.title }}</h3>
       </div>
-      <span class="status-badge" :class="statusSlug">
+      <span class="status-badge" :class="obj.status">
         <span class="status-dot"></span>
         {{ getStatusLabel(obj.status) }}
       </span>
@@ -22,180 +17,72 @@
 
     <div class="card-body">
       <div class="info-row">
+        <span class="fluent-icon">🗺️</span>
+        <div class="info-content">
+          <span class="info-label">Адрес объекта</span>
+          <span class="info-value text-ellipsis" :title="obj.address || 'Не указан'">
+            {{ obj.address || 'Адрес не указан' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="info-row">
         <span class="fluent-icon">🏢</span>
         <div class="info-content">
           <span class="info-label">Генподрядчик</span>
           <span class="info-value text-ellipsis">
-            {{ getField('contractor') }}
+            {{ obj.contractor_name || (obj.contractor_id ? `Организация ID: ${obj.contractor_id}` : 'Не назначен') }}
           </span>
         </div>
       </div>
+
       <div class="info-row">
         <span class="fluent-icon">🛡️</span>
         <div class="info-content">
-          <span class="info-label">Заказчик / Исполнитель</span>
+          <span class="info-label">Куратор</span>
           <span class="info-value text-ellipsis">
-            {{ getField('executor') }}
+            {{ obj.supervisor_name || (obj.supervisor_id ? `Сотрудник ID: ${obj.supervisor_id}` : 'Не назначен') }}
           </span>
-        </div>
-      </div>
-
-      <div class="card-divider"></div>
-
-      <div class="progress-section">
-        <div class="progress-header">
-          <span class="section-subtitle">Освоение объёмов (СМР)</span>
-          <span class="progress-percent">{{ obj.progressSMR || 0 }}%</span>
-        </div>
-        <div class="progress-bar-bg">
-          <div 
-            class="progress-bar-fill" 
-            :style="{ width: (obj.progressSMR || 0) + '%' }"
-            :class="{ warning: (obj.progressSMR || 0) < 30, success: (obj.progressSMR || 0) >= 70 }"
-          ></div>
-        </div>
-      </div>
-
-      <div class="dates-row">
-        <div class="date-item">
-          <span class="date-label">Контракт:</span>
-          <span class="date-val">{{ obj.contractNumber || '—' }}</span>
-        </div>
-        <div class="date-item" v-if="obj.endDate">
-          <span class="date-label">Срок до:</span>
-          <span class="date-val">{{ obj.endDate }}</span>
         </div>
       </div>
     </div>
 
     <div class="card-footer">
-      <div class="finance-brief">
-        <div class="fin-item">
-          <span class="fin-lbl">Контракт</span>
-          <span class="fin-val">{{ getField('contractAmount') }}</span>
-        </div>
-        <div class="fin-item">
-          <span class="fin-lbl">Освоено</span>
-          <span class="fin-val success">{{ getField('spentAmount') }}</span>
-        </div>
-      </div>
-      <span v-if="obj.isOverdue" class="overdue-tag">⚠️ Просрочка</span>
+      <span class="object-id">ID: {{ obj.id }}</span>
+      <span class="details-link">Подробнее →</span>
     </div>
-
-    <CommonModal
-      :is-open="isModalOpen"
-      :title="obj.title"
-      width="720px"
-      @close="closeModal"
-    >
-      <div class="detail-content">
-        <div class="detail-section">
-          <h4 class="section-title">Основные реквизиты</h4>
-          <div class="detail-grid">
-            <div class="detail-field">
-              <label>Административный округ</label>
-              <div class="field-value">{{ obj.region || 'Не указан' }}</div>
-            </div>
-            <div class="detail-field">
-              <label>Статус</label>
-              <div class="field-value">{{ getStatusLabel(obj.status) }}</div>
-            </div>
-            <div class="detail-field full-width">
-              <label>Адрес объекта</label>
-              <div class="field-value text-wrap">{{ obj.address || 'Не указан' }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4 class="section-title">Участники и контракт</h4>
-          <div class="detail-grid">
-            <div class="detail-field">
-              <label>Генподрядчик</label>
-              <div class="field-value">{{ getField('contractor') }}</div>
-            </div>
-            <div class="detail-field">
-              <label>Заказчик / Исполнитель</label>
-              <div class="field-value">{{ getField('executor') }}</div>
-            </div>
-            <div class="detail-field">
-              <label>Номер контракта</label>
-              <div class="field-value">{{ obj.contractNumber || '—' }}</div>
-            </div>
-            <div class="detail-field">
-              <label>Дата контракта</label>
-              <div class="field-value">{{ obj.contractDate || '—' }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4 class="section-title">Финансовые показатели</h4>
-          <div class="bg-finance-grid">
-            <div class="finance-row-item">
-              <span class="fin-label">Сумма контракта:</span>
-              <span class="fin-val val-total">{{ getField('contractAmount') }}</span>
-            </div>
-            <div class="finance-row-item">
-              <span class="fin-label">Освоено средств:</span>
-              <span class="fin-val val-spent">{{ getField('spentAmount') }}</span>
-            </div>
-            <div class="finance-row-item">
-              <span class="fin-label">Остаток средств:</span>
-              <span class="fin-val val-rem">{{ getField('remainingAmount') }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </CommonModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { useRouter } from '#app'
+import { ObjectStatus } from '~/types/enums'
 import type { ObjectItem } from '~/types/object'
-import CommonModal from '~/components/common/common_modal.vue'
 
 const props = defineProps<{
   obj: ObjectItem
 }>()
 
-const isModalOpen = ref(false)
+const router = useRouter()
 
-const openModal = () => {
-  isModalOpen.value = true
+// Переход на страницу детального просмотра
+const navigateToDetail = () => {
+  router.push(`/monitoring/${props.obj.id}`)
 }
 
-const closeModal = () => {
-  isModalOpen.value = false
-}
-
-const statusMap: Record<string, string> = {
-  pending: 'Ожидает',
-  accepted: 'Принят',
-  in_progress: 'В работе',
-  completed: 'Завершён',
-  paused: 'Приостановлен',
-  cancelled: 'Отменён',
-  expired: 'Истёк',
-  failed: 'Сбой'
-}
-
-const getStatusLabel = (status: string) => statusMap[status] || status
-
-const statusSlug = computed(() => {
-  const status = props.obj.status || ''
-  return `status-${status.toLowerCase().replace(/_/g, '-')}`
-})
-
-const getField = (key: keyof ObjectItem | string) => {
-  if (props.obj[key as keyof ObjectItem]) {
-    return props.obj[key as keyof ObjectItem]
+// Понятные лейблы для статусов
+const getStatusLabel = (status: ObjectStatus): string => {
+  const labels: Record<ObjectStatus, string> = {
+    [ObjectStatus.PENDING]: 'Ожидает',
+    [ObjectStatus.ACCEPTED]: 'Принят',
+    [ObjectStatus.IN_PROGRESS]: 'В работе',
+    [ObjectStatus.COMPLETED]: 'Завершен',
+    [ObjectStatus.PAUSED]: 'Приостановлен',
+    [ObjectStatus.CANCELLED]: 'Отменен',
+    [ObjectStatus.EXPIRED]: 'Просрочен',
+    [ObjectStatus.FAILED]: 'Провален'
   }
-  if (props.obj.metadata_fields && props.obj.metadata_fields[key]) {
-    return props.obj.metadata_fields[key]
-  }
-  return 'Не указано'
+  return labels[status] || status
 }
 </script>
 
@@ -207,19 +94,20 @@ const getField = (key: keyof ObjectItem | string) => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease-in-out;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .fluent-object-card:hover {
   border-color: #0078d4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
+/* Шапка */
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -231,82 +119,84 @@ const getField = (key: keyof ObjectItem | string) => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex-grow: 1;
+  min-width: 0;
 }
 
 .badge-row {
   display: flex;
-  align-items: center;
   gap: 6px;
 }
 
-.region-tag {
-  background: #f3f2f1;
-  color: #616161;
+.district-tag {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 6px;
+  background: #f3f2f1;
+  color: #323130;
+  padding: 3px 8px;
   border-radius: 4px;
+  white-space: nowrap;
 }
 
-.source-tag {
-  background: #eff6fc;
-  color: #0078d4;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
+.district-tag.not-specified {
+  background: #f3f2f1;
+  color: #a19f9d;
 }
 
 .object-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #242424;
-  line-height: 1.3;
+  line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
-  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Статусы */
+/* Статусы (Fluent Design палитра) */
 .status-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
   padding: 4px 8px;
   border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
-  background: #f3f2f1;
-  color: #616161;
 }
 
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #a19f9d;
 }
 
-.status-badge.status-in-progress { background: #eef6ff; color: #0078d4; }
-.status-badge.status-in-progress .status-dot { background: #0078d4; }
+/* Цвета статусов */
+.status-badge.pending { background: #fff4ce; color: #795300; }
+.status-badge.pending .status-dot { background: #795300; }
 
-.status-badge.status-completed { background: #f0fdf4; color: #107c41; }
-.status-badge.status-completed .status-dot { background: #107c41; }
+.status-badge.accepted { background: #dff6dd; color: #107c41; }
+.status-badge.accepted .status-dot { background: #107c41; }
 
-.status-badge.status-pending { background: #fffdf5; color: #795e00; }
-.status-badge.status-pending .status-dot { background: #ffb900; }
+.status-badge.in_progress { background: #deecf9; color: #0078d4; }
+.status-badge.in_progress .status-dot { background: #0078d4; }
 
-.status-badge.status-paused,
-.status-badge.status-cancelled,
-.status-badge.status-failed { background: #fdf2f2; color: #a4261d; }
-.status-badge.status-paused .status-dot,
-.status-badge.status-cancelled .status-dot,
-.status-badge.status-failed .status-dot { background: #a4261d; }
+.status-badge.completed { background: #dff6dd; color: #107c41; }
+.status-badge.completed .status-dot { background: #107c41; }
 
+.status-badge.paused { background: #f3f2f1; color: #323130; }
+.status-badge.paused .status-dot { background: #323130; }
+
+.status-badge.cancelled, .status-badge.failed { background: #fde7e9; color: #a80000; }
+.status-badge.cancelled .status-dot, .status-badge.failed .status-dot { background: #a80000; }
+
+.status-badge.expired { background: #fde7e9; color: #d83b01; }
+.status-badge.expired .status-dot { background: #d83b01; }
+
+/* Тело */
 .card-body {
   display: flex;
   flex-direction: column;
@@ -315,27 +205,33 @@ const getField = (key: keyof ObjectItem | string) => {
 
 .info-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
+  align-items: flex-start;
 }
 
 .fluent-icon {
   font-size: 14px;
+  margin-top: 1px;
+  opacity: 0.8;
 }
 
 .info-content {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-width: 0;
+  flex-grow: 1;
 }
 
 .info-label {
-  font-size: 11px;
+  font-size: 10px;
   color: #797979;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .info-value {
-  font-size: 13px;
+  font-size: 12px;
   color: #242424;
   font-weight: 500;
 }
@@ -346,184 +242,30 @@ const getField = (key: keyof ObjectItem | string) => {
   text-overflow: ellipsis;
 }
 
-.card-divider {
-  height: 1px;
-  background: #f3f2f1;
-  margin: 2px 0;
-}
-
-/* Прогресс бар */
-.progress-section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.progress-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-}
-
-.section-subtitle {
-  color: #616161;
-}
-
-.progress-percent {
-  font-weight: 600;
-  color: #242424;
-}
-
-.progress-bar-bg {
-  height: 6px;
-  background: #f3f2f1;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: #0078d4;
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.progress-bar-fill.warning { background: #ffb900; }
-.progress-bar-fill.success { background: #107c41; }
-
-.dates-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #616161;
-}
-
-.date-item {
-  display: flex;
-  gap: 4px;
-}
-
-.date-label {
-  color: #797979;
-}
-
-.date-val {
-  font-weight: 500;
-}
-
+/* Футер */
 .card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  border-top: 1px solid #f3f2f1;
+  margin-top: auto;
   padding-top: 10px;
-}
-
-.finance-brief {
-  display: flex;
-  gap: 16px;
-}
-
-.fin-item {
-  display: flex;
-  flex-direction: column;
-}
-
-.fin-lbl {
-  font-size: 10px;
-  color: #797979;
-  text-transform: uppercase;
-}
-
-.fin-val {
-  font-size: 13px;
-  font-weight: 600;
-  color: #242424;
-}
-
-.fin-val.success {
-  color: #107c41;
-}
-
-.overdue-tag {
-  font-size: 11px;
-  color: #a4261d;
-  background: #fdf2f2;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-/* Стили модального окна */
-.detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.detail-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.section-title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #616161;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.detail-field label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #797979;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.detail-field.full-width {
-  grid-column: span 2;
-}
-
-.field-value {
-  background: #f3f2f1;
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: 1px solid #edebe9;
-  font-size: 13px;
-  color: #242424;
-}
-
-.field-value.text-wrap {
-  white-space: normal;
-  line-height: 1.4;
-}
-
-.bg-finance-grid {
-  background-color: #fafafa;
-  padding: 14px 16px;
-  border-radius: 6px;
-  border: 1px solid #eaeaea;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.finance-row-item {
+  border-top: 1px solid #f3f2f1;
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  align-items: center;
 }
 
-.fin-label { color: #616161; }
-.val-total { color: #242424; font-weight: 600; }
-.val-spent { color: #107c41; font-weight: 600; }
-.val-rem { color: #0078d4; font-weight: 600; }
+.object-id {
+  font-size: 11px;
+  color: #797979;
+  font-family: monospace;
+}
+
+.details-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0078d4;
+  transition: color 0.1s ease;
+}
+
+.fluent-object-card:hover .details-link {
+  color: #005a9e;
+}
 </style>

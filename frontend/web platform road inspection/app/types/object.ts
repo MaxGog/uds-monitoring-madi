@@ -1,48 +1,24 @@
-export type ObjectStatus =
-    | 'pending'
-    | 'accepted'
-    | 'in_progress'
-    | 'completed'
-    | 'paused'
-    | 'cancelled'
-    | 'expired'
-    | 'failed'
+import { ObjectStatus } from './enums'
 
 export interface ObjectItem {
-    isOverdue: any
     id: number
     title: string
-    address: string
-    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
+    address: string | null
+    district: string | null
     status: ObjectStatus
-    contractor?: string
-    executor?: string
-    progressSMR?: number
-    source?: string
-    sourceLabel?: string
-    contractNumber?: string
-    contractDate?: string
-    startDate?: string
-    endDate?: string
-    contractAmount?: string
-    spentAmount?: string
-    remainingAmount?: string
-    metadata_fields?: Record<string, any>
+    supervisor_id: number | null
+    contractor_id: number | null
+    supervisor_name?: string
+    contractor_name?: string
 }
 
 export interface ObjectCreate {
     title: string
     address: string
-    region: string
+    district: string
     status: ObjectStatus
-    contractor?: string
-    executor?: string
-    contractNumber?: string
-    contractDate?: string
-    startDate?: string
-    endDate?: string
-    contractAmount?: string
-    metadata_fields?: Record<string, any>
+    supervisor_id: number | null
+    contractor_id: number | null
 }
 
 export type ObjectUpdate = Partial<ObjectCreate>
