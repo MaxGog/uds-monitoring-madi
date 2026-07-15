@@ -37,21 +37,40 @@ async def test_document_s3_storage_crud_lifecycle(auth_client: AsyncClient, test
           owner_id = 1,
     )
 
+    upload_url_empty_file_dto = GetUploadUrlRequest(
+          name = TARGET_FILE_NAME,
+          content_type = TARGET_CONTENT_TYPE,
+          owner_type = None,
+          owner_id = None,
+    )
     
     upload_data = BaseRequest(data = upload_url_dto).model_dump(mode='json')
+    upload_empty_data = BaseRequest(data = upload_url_empty_file_dto).model_dump(mode='json')
     url_response = await auth_client.post("/fs/upload-url", json=upload_data)
+    url_response_empty_data = await auth_client.post("/fs/upload-url", json=upload_empty_data)
     assert url_response.status_code == status.HTTP_200_OK
-
-    url_json = url_response.json()["data"]
-    upload_url = url_json["upload_url"]
-    s3_bucket = url_json["s3_bucket"]
-    s3_key = url_json["s3_key"]
+    assert url_response_empty_data.status_code == status.HTTP_200_OK
 
     url_json = url_response.json()
     assert "data" in url_json
+    upload_url = url_json["data"]["upload_url"]
     s3_bucket = url_json["data"]["s3_bucket"]
     s3_key = url_json["data"]["s3_key"]
     
+
+    upload_url_empty_data = url_response_empty_data.json()["data"]["upload_url"]
+    s3_key_empty_data = url_response_empty_data.json()["data"]["s3_key"]
+
+    parsed_url_empty = urlparse(upload_url_empty_data)
+    query_params_empty = parse_qs(parsed_url_empty.query)
+
+    headers_empty = {
+        "Content-Type": TARGET_CONTENT_TYPE
+    }
+    for key, values in query_params_empty.items():
+        if key.startswith("x-amz-meta-"):
+            headers_empty[key] = values[0]
+
     if settings.minio.MINIO_SSL == False:
         assert url_json["data"]["upload_url"].startswith("http://")
     else:
@@ -74,13 +93,19 @@ async def test_document_s3_storage_crud_lifecycle(auth_client: AsyncClient, test
     file_bytes = test_file.read_bytes()
     expected_size = len(file_bytes)
 
+    minio_put_empty = requests.put(
+        upload_url_empty_data,
+        data = file_bytes,
+        headers = headers_empty,
+    )
+
     minio_put_response = requests.put(
         upload_url, 
         data=file_bytes, 
         headers=headers
     )
     assert minio_put_response.status_code == status.HTTP_200_OK
-
+    assert minio_put_empty.status_code == status.HTTP_200_OK
     await asyncio.sleep(2) # Ожидание отработки вебхука
 
     # ------------------------------------------------------------------------

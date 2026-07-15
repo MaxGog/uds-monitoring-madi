@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.core.db.postgres.data_orms.role_orm import Permission, Role
 from backend.core.db.postgres.data_orms.user_orm import User
 from backend.src.v1.auth.domain.models import CodeData
+from backend.src.v1.auth.domain.role_models import ActionType, EntityType
 from backend.src.v1.auth.presentation.dto.auth_dto import LoginResultDTO, RefreshSessionDTO
 from backend.src.v1.auth.presentation.dto.role_dto import RoleCreateRequest, RoleResponse, RoleUpdateRequest
 from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest, UserResponse, UserUpdateRequest
@@ -94,7 +95,28 @@ class IUserUsecases(Protocol):
 
 class IPermissionRepo(Protocol):
     @abstractmethod
-    async def get_by_ids(self, ids: List[int]) -> List[Permission]: pass
+    async def get_by_ids(self, ids: List[int]) -> List[Permission]:
+        """Получить список разрешений по их ID"""
+        pass
+
+    @abstractmethod
+    async def get_by_entity_and_action(self, entity: EntityType, action: ActionType) -> Optional[Permission]:
+        """Найти разрешение по уникальной паре (entity, action)"""
+        pass
+
+    @abstractmethod
+    async def create(self, entity: EntityType, action: ActionType) -> Permission:
+        """Создать новое разрешение в БД"""
+        pass
+
+    @abstractmethod
+    async def add(self, permission: Permission) -> Permission:
+        pass
+
+    @abstractmethod
+    async def delete_by_entity_and_action(self, entity: EntityType, action: ActionType) -> None:
+        """Удалить разрешение по типу сущности и действию"""
+        pass
 
 
 class IRoleUsecases(Protocol):

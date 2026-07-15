@@ -1,9 +1,13 @@
 from dataclasses import dataclass
 import logging
+import os
+import shutil
 from typing import List, Optional
 from uuid import UUID
+import uuid
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
+from urllib.parse import unquote
 import uuid6
 
 from backend.core.db.postgres.data_orms.document_orm import Document, DocumentOwnerType
@@ -11,10 +15,21 @@ from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 from backend.config.config import settings
-from backend.src.v1.filesystem.infrastructure.celery_sqs import process_document_upload_task
+from backend.src.v1.filesystem.infrastructure.celery_sqs import process_excel_file_task
 from backend.src.v1.filesystem.presentation.dtos import ConfirmUploadRequest, DocumentResponse, DocumentUpdateRequest, GetUploadUrlRequest
 
 logger = logging.getLogger(__file__)
+
+# Допустимые форматы для Excel
+ALLOWED_EXTENSIONS = {".xlsx", ".xls", ".xlsm"}
+ALLOWED_CONTENT_TYPES = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
+    "application/vnd.ms-excel",                                          # .xls
+}
+
+# Папка, куда временно сохраняем файлы перед отправкой в Celery
+TEMP_UPLOAD_DIR = "./temp_uploads"
+os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 
 @dataclass
 class FsUsecases(IFsUsecases):
@@ -37,22 +52,6 @@ class FsUsecases(IFsUsecases):
                 "s3_bucket": settings.minio.FILE_BUCKET_NAME,
                 "s3_key": unique_key
             }
-        except HTTPException as e:
-            logger.error(e)
-            raise e 
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # --- ОПОВЕЩЕНИЕ О ЗАГРУЗКЕ (ОТПРАВКА В CELERY) ---
-    async def confirm_upload(self, data: ConfirmUploadRequest, uploader_id: UUID) -> dict:
-        # Отправляем задачу в Celery.
-        try:
-            process_document_upload_task.delay(
-                payload=data.model_dump(),
-                uploader_id_str=str(uploader_id)
-            )
-            return {"message": "File processing dispatched to queue"}
         except HTTPException as e:
             logger.error(e)
             raise e 
@@ -177,15 +176,15 @@ class FsUsecases(IFsUsecases):
         s3_key: str,
         content_type: str,
         uploader_id: UUID | None,
-        owner_type_str: str | None,
+        owner_type: str | None,
         owner_id: int | None
     ) -> None:
         try:
             async with self.uow as uow:
                 owner_type_enum = None
-                if owner_type_str:
+                if owner_type:
                     try:
-                        owner_type_enum = DocumentOwnerType(owner_type_str.lower())
+                        owner_type_enum = DocumentOwnerType(owner_type.lower())
                     except ValueError as e:
                         logger.error(e)
                         owner_type_enum = None
@@ -199,8 +198,8 @@ class FsUsecases(IFsUsecases):
                     s3_key=s3_key,
                     content_type=content_type,
                     uploader_id=uploader_id,
-                    owner_type=owner_type_enum,  # Сюда уходит Либо Член Enum, либо чистый Python None
-                    owner_id=owner_id            # Сюда уходит Либо int, либо чистый Python None
+                    owner_type=owner_type_enum, 
+                    owner_id=owner_id
                 )
 
                 # Сохраняем в базу данных
@@ -209,9 +208,160 @@ class FsUsecases(IFsUsecases):
                 logger.info(f"Документ {document_id} успешно зарегистрирован в БД через вебхук")
 
         except Exception as e:
-            await uow.rollback()
             logger.error(f"Не удалось сохранить документ в базу данных: {e}")
             raise
 
-    async def delete_file(self):
-        pass
+    async def process_minio_webhook(self, event_data: dict) -> UUID | None:
+        """
+        Парсит вебхук S3/MinIO, валидирует метаданные и регистрирует файл в БД.
+        """
+        records = event_data.get("Records", [])
+        if not records:
+            logger.warning("Вебхук MinIO не содержит записей (Records)")
+            return None
+
+        record = records[0]
+        s3_data = record.get("s3", {})
+        
+        # 1. Извлекаем базовые параметры файла
+        s3_bucket = s3_data.get("bucket", {}).get("name")
+        raw_s3_key = s3_data.get("object", {}).get("key")
+        s3_key = unquote(raw_s3_key) if raw_s3_key else None
+        
+        if not s3_key:
+            raise ValueError("В событии вебхука отсутствует S3-ключ (object.key)")
+
+        size_bytes = s3_data.get("object", {}).get("size")
+        content_type = s3_data.get("object", {}).get("contentType")
+        etag = s3_data.get("object", {}).get("eTag", "").replace('"', '')
+
+        # 2. Безопасный парсинг User Metadata
+        raw_metadata = s3_data.get("object", {}).get("userMetadata", {})
+        user_metadata = {k.lower(): v for k, v in raw_metadata.items()}
+
+        def extract_meta(key: str) -> str | None:
+            """
+            Ищет метаданные по ключу с учетом возможных префиксов x-amz-meta-
+            и дефисов/подчеркиваний.
+            """
+            search_keys = [
+                key.lower(),
+                key.lower().replace("-", "_"),
+                f"x-amz-meta-{key.lower()}",
+                f"x-amz-meta-{key.lower()}".replace("-", "_")
+            ]
+            for k in search_keys:
+                val = user_metadata.get(k)
+                if val is not None:
+                    val_str = str(val).strip()
+                    if val_str.upper() in ("NULL", "NONE", ""):
+                        return None
+                    return val_str
+            return None
+
+        # Вытаскиваем сырые строки
+        raw_uploader_id = extract_meta("uploader-id")
+        raw_owner_type = extract_meta("owner-type")
+        raw_owner_id = extract_meta("owner-id")
+
+        # 3. Валидация типов данных
+        uploader_id = UUID(raw_uploader_id) if raw_uploader_id else None
+        owner_id = int(raw_owner_id) if raw_owner_id else None
+        
+        owner_type = None
+        if raw_owner_type:
+            try:
+                owner_type = DocumentOwnerType(raw_owner_type.lower())
+            except ValueError:
+                logger.warning(
+                    f"Неизвестный owner_type '{raw_owner_type}' в метаданных S3. "
+                    f"Будет записано NULL. Допустимые значения: {[e.value for e in DocumentOwnerType]}"
+                )
+                owner_type = None
+
+        # Вычисляем расширение файла и UUID документа
+        file_type = s3_key.split(".")[-1].lower() if "." in s3_key else "bin"
+        filename = s3_key.split("/")[-1]
+        
+        try:
+            possible_uuid = filename.split(".")[0]
+            document_id = UUID(possible_uuid)
+        except (ValueError, IndexError):
+            document_id = uuid6.uuid7()
+
+
+        await self.register_uploaded_file(
+            document_id=document_id,
+            name=filename,
+            size_bytes=size_bytes,
+            checksum_sha256=etag,
+            file_type=file_type,
+            s3_bucket=s3_bucket,
+            s3_key=s3_key,
+            content_type=content_type,
+            uploader_id=uploader_id,
+            owner_type=owner_type,
+            owner_id=owner_id
+        )
+
+        return document_id
+    
+    def is_excel_file(self, file: UploadFile) -> bool:
+            """
+            Проверяет, является ли файл Excel-таблицей по расширению и MIME-типу.
+            """
+            filename = file.filename or ""
+            _, ext = os.path.splitext(filename.lower())
+            
+            # 1. Проверка по расширению
+            if ext not in ALLOWED_EXTENSIONS:
+                return False
+                
+            # 2. Проверка по MIME-типу (Content-Type)
+            if file.content_type not in ALLOWED_CONTENT_TYPES:
+                return False
+                
+            return True
+
+    async def upload_document(self, file):
+        """
+        Эндпоинт для загрузки документов.
+        Принимает файлы, валидирует их и отправляет Excel-файлы в Celery.
+        """
+        # 1. Валидация формата файла
+        if not self.is_excel_file(file):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Недопустимый формат файла. Разрешены только файлы Excel (.xlsx, .xls)"
+            )
+
+        # Генерируем уникальное имя файла, чтобы избежать конфликтов в файловой системе
+        document_id = str(uuid.uuid4())
+        _, ext = os.path.splitext(file.filename)
+        unique_filename = f"{document_id}{ext}"
+        dest_path = os.path.join(TEMP_UPLOAD_DIR, unique_filename)
+
+        try:
+            # 2. Сохраняем файл на локальный диск (в реальном проекте здесь может быть загрузка в S3)
+            with open(dest_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+                
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Не удалось сохранить файл на сервере: {str(e)}"
+            )
+
+        # 3. Отправляем задачу в Celery асинхронно через .delay()
+        # Мы передаем путь к сохраненному файлу, а не сам файл в байтах!
+        task = process_excel_file_task.delay(
+            file_path=dest_path, 
+            document_id=document_id
+        )
+
+        return {
+            "status": "queued",
+            "message": "Файл успешно валидирован и отправлен на обработку",
+            "document_id": document_id,
+            "celery_task_id": task.id
+        }

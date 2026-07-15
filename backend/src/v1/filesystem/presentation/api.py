@@ -164,81 +164,13 @@ async def minio_webhook(
     """
     Эндпоинт, который MinIO вызывает сам сразу после успешного сохранения файла
     """
-    print("=====================MINIO WEBHOOK EVENT=================================")
     try:
-        records = event_data.get("Records", [])
-        if not records:
-            logger.warning("Получен пустой вебхук от MinIO")
-            return {"status": "ignored", "message": "No records found"}
+        result = await uc.process_minio_webhook(event_data)
 
-        record = records[0]
-        s3_data = record.get("s3", {})
-        
-        # 1. Извлекаем базовую информацию о бакете и ключе
-        s3_bucket = s3_data.get("bucket", {}).get("name")
-        raw_s3_key = s3_data.get("object", {}).get("key")
-        # Декодируем из URL-формата (common%2Fimage.png -> common/image.png)
-        s3_key = unquote(raw_s3_key) if raw_s3_key else None
-        
-        size_bytes = s3_data.get("object", {}).get("size")
-        content_type = s3_data.get("object", {}).get("contentType")
-        # MinIO присылает ETag (MD5 хэш) в двойных кавычках, убираем их
-        etag = s3_data.get("object", {}).get("eTag", "").replace('"', '')
-
-        # 2. Извлекаем пользовательские метаданные (User Metadata)
-        raw_metadata = s3_data.get("object", {}).get("userMetadata", {})
-        
-        # Нормализуем ключи в нижний регистр, чтобы избежать проблем с регистром
-        user_metadata = {k.lower(): v for k, v in raw_metadata.items()}
-
-        # Функция для безопасной очистки строк от "NULL"/"None"
-        def clean_meta_value(key: str) -> str | None:
-            val = user_metadata.get(key)
-            if val is None:
-                return None
-            val_str = str(val).strip()
-            if val_str.upper() in ("NULL", "NONE", ""):
-                return None
-            return val_str
-
-        # Вытаскиваем очищенные строки метаданных
-        raw_uploader_id = clean_meta_value("x-amz-meta-uploader-id")
-        raw_owner_type = clean_meta_value("x-amz-meta-owner-type")
-        raw_owner_id = clean_meta_value("x-amz-meta-owner-id")
-
-        # 3. Валидация и парсинг типов данных
-        uploader_id = uuid.UUID(raw_uploader_id) if raw_uploader_id else None
-        owner_id = int(raw_owner_id) if raw_owner_id else None
-        
-        # Вычисляем расширение файла для file_type
-        file_type = s3_key.split(".")[-1].lower() if s3_key and "." in s3_key else "bin"
-
-        # Пытаемся вытащить UUID документа из имени файла (S3-ключа)
-        # Если в ключе 'common/019f4862-...', то имя файла — '019f4862-...'
-        filename = s3_key.split("/")[-1] if s3_key else "unknown"
-        try:
-            # Извлекаем UUID (без расширения)
-            possible_uuid = filename.split(".")[0]
-            document_id = uuid.UUID(possible_uuid)
-        except (ValueError, IndexError):
-            document_id = uuid6.uuid7()
-
-        await uc.register_uploaded_file(
-            document_id=document_id,
-            name=filename,
-            size_bytes=size_bytes,
-            checksum_sha256=etag,
-            file_type=file_type,
-            s3_bucket=s3_bucket,
-            s3_key=s3_key,
-            content_type=content_type,
-            uploader_id=uploader_id,
-            owner_type_str=raw_owner_type,
-            owner_id=owner_id
-        )
-
-        return {"status": "success", "document_id": str(document_id)}
-
+        return {"status": "success", "result": str(result)}
+    except HTTPException as e:
+        logger.error(e)
+        raise e
     except Exception as e:
         logger.error(f"Ошибка при обработке вебхука MinIO: {str(e)}", exc_info=True)
         raise HTTPException(

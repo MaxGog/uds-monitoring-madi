@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,13 +21,16 @@ class PermissionCreateRequest(BaseModel):
 class RoleCreateRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, description="Уникальное имя роли (например, 'manager')")
     scope: ScopeType = Field(default=ScopeType.LOCAL, description="Область видимости данных")
-    permissions: Optional[List[int]] = Field(default_factory=list, description="Список ID прав для привязки к роли")#Optional[List[PermissionCreateRequest]] = Field(default_factory=list, description="Список прав для создания")
+    permissions: Optional[List[Union[int, PermissionCreateRequest]]] = Field(
+        None,
+        description="Список ID прав или объектов {entity, action} для автосоздания и привязки"
+    )
 
 # --- UPDATE (PATCH) ---
 class RoleUpdateRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=100)
     scope: Optional[ScopeType] = Field(default=None)
-    permissions: Optional[List[int]] = Field(default_factory=list, description="Список ID прав для привязки к роли") #Optional[List[PermissionCreateRequest]] = Field(default_factory=list, description="Список прав для создания")
+    permissions: Optional[List[Union[int, PermissionCreateRequest]]] = Field(None    )
 
 # --- RESPONSE ---
 class RoleResponse(BaseModel):

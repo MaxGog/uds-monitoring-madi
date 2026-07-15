@@ -30,7 +30,7 @@ class Document(Base):
     uploader_id: Mapped[uuid6.UUID] = mapped_column(ForeignKey("users.id"))
     uploader: Mapped["User"] = relationship("User")
 
-    owner_type: Mapped[DocumentOwnerType] = mapped_column(SqlEnum(DocumentOwnerType), default=Null, nullable=True)
+    owner_type: Mapped[DocumentOwnerType] = mapped_column(SqlEnum(DocumentOwnerType), nullable=True)
     owner_id: Mapped[int] = mapped_column(Integer, nullable=True) # ID сущности (Contract, Act, и т.д.)
     # Результаты парсинга (структурированные данные, пока не уверен как это будет реализовано на самом деле)
     #status: Mapped[str] = mapped_column(String(50), default="pending")
