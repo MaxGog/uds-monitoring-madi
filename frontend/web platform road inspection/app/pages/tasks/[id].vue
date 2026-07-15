@@ -1,125 +1,96 @@
 <template>
-  <div class="page">
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <NuxtLink to="/tasks" class="btn-back" title="Назад к списку задач">
-          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-            <path fill-rule="evenodd" d="M15 8a.75.75 0 0 1-.75.75H4.31l3.72 3.72a.75.75 0 1 1-1.06 1.06l-5-5a.75.75 0 0 1 0-1.06l5-5a.75.75 0 0 1 1.06 1.06L4.31 7.25H14.25A.75.75 0 0 1 15 8z"/>
-          </svg>
-          <span>К списку задач</span>
-        </NuxtLink>
-        <h2 class="page-title">
-          {{ isEdit ? 'Редактирование задачи' : 'Создание задачи' }}
-        </h2>
-      </div>
-    </div>
+  <div class="task-page">
+    <PageToolbar
+      :title="isEdit ? 'Редактирование задачи' : 'Создание задачи'"
+      subtitle="Заполните информацию о задаче"
+    >
+      <template #actions>
+        <button class="fluent-button button-secondary" @click="goBack">
+          Отмена
+        </button>
+        <button
+          class="fluent-button button-primary"
+          :disabled="isSubmitting || isLoading"
+          @click="handleSubmit"
+        >
+          {{ isSubmitting ? 'Сохранение...' : isEdit ? 'Сохранить изменения' : 'Создать задачу' }}
+        </button>
+      </template>
+    </PageToolbar>
 
-    <div v-if="isLoading && !isSubmitting" class="form-card shimmer-loader">
+    <div v-if="isLoading && !isSubmitting" class="loading-card">
       Загрузка данных задачи...
     </div>
 
-    <div v-else class="form-card">
-      <form @submit.prevent="handleSubmit" class="fluent-form">
-        
-        <div v-if="error" class="error-banner" role="alert">
-          {{ error }}
-        </div>
+    <form v-else @submit.prevent="handleSubmit" class="form-layout">
+      <div v-if="error" class="error-banner">
+        ⚠️ {{ error }}
+      </div>
 
-        <div class="form-grid">
+      <div class="form-section">
+        <h3 class="section-title">Основные параметры</h3>
+        <FormControls>
           <div class="form-group full-width">
-            <label class="form-label">Название задачи <span class="required">*</span></label>
+            <label for="task-title">Название задачи *</label>
             <input
+              id="task-title"
               v-model="form.title"
               type="text"
-              class="fluent-input"
-              placeholder="Например: Проверка КС-2 по объекту..."
               required
+              class="fluent-input"
+              placeholder="Например: Проверка КС-2 по объекту"
             />
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Тип задачи <span class="required">*</span></label>
-            <select v-model="form.type" class="fluent-select" required>
-              <option :value="TaskType.CMR_CHECK">Проверка СМР</option>
-              <option :value="TaskType.ACTS_EXPORT">Выгрузка актов</option>
-              <option :value="TaskType.REGISTRY_RECONCILIATION">Сверка реестров</option>
-              <option :value="TaskType.OTHER">Другое</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Статус задачи</label>
-            <select v-model="form.status" class="fluent-select">
-              <option :value="TaskStatus.PENDING">В ожидании</option>
-              <option :value="TaskStatus.STARTED">Запущена</option>
-              <option :value="TaskStatus.IN_PROGRESS">В работе</option>
-              <option :value="TaskStatus.COMPLETED">Завершена</option>
-              <option :value="TaskStatus.PAUSED">Приостановлена</option>
-              <option :value="TaskStatus.CANCELLED">Отменена</option>
-            </select>
-          </div>
-
           <div class="form-group full-width">
-            <label class="form-label">Описание задачи</label>
+            <label for="task-desc">Описание</label>
             <textarea
+              id="task-desc"
               v-model="form.description"
               class="fluent-textarea"
               rows="4"
-              placeholder="Подробное описание задачи, инструкции или комментарии..."
+              placeholder="Подробное описание задачи..."
             ></textarea>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Наименование объекта</label>
-            <input
-              v-model="form.objectTitle"
-              type="text"
-              class="fluent-input"
-              placeholder="Укажите название объекта"
-            />
-          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="task-status">Статус *</label>
+              <select id="task-status" v-model="form.status" class="fluent-select" required>
+                <option v-for="(label, value) in statusOptions" :key="value" :value="value">
+                  {{ label }}
+                </option>
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">Срок выполнения (Дата)</label>
-            <input
-              v-model="form.dueDate"
-              type="date"
-              class="fluent-input"
-            />
+            <div class="form-group">
+              <label for="task-priority">Приоритет *</label>
+              <select id="task-priority" v-model="form.priority" class="fluent-select" required>
+                <option v-for="(label, value) in priorityOptions" :key="value" :value="value">
+                  {{ label }}
+                </option>
+              </select>
+            </div>
           </div>
 
           <div class="form-group full-width">
-            <label class="form-label">Ответственные сотрудники</label>
-            <select 
-              v-model="form.responsibleNames" 
-              class="fluent-select" 
-              multiple 
+            <label for="task-performers">Исполнители</label>
+            <select
+              id="task-performers"
+              v-model="form.performer_ids"
+              class="fluent-select"
+              multiple
               style="height: 100px;"
             >
-              <option 
-                v-for="u in usersList" 
-                :key="u.id" 
-                :value="u.full_name || u.email || u.username"
-              >
-                {{ u.full_name || u.email || u.username }}
+              <option v-for="u in usersList" :key="u.id" :value="u.id">
+                {{ u.full_name || u.username || u.email }}
               </option>
             </select>
             <span class="field-hint">Зажмите Ctrl (или Cmd), чтобы выбрать нескольких</span>
           </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn-secondary" @click="goBack">
-            Отмена
-          </button>
-          <button type="submit" class="btn-primary" :disabled="isSubmitting || isLoading">
-            <span v-if="isSubmitting">Сохранение...</span>
-            <span v-else>{{ isEdit ? 'Сохранить изменения' : 'Создать задачу' }}</span>
-          </button>
-        </div>
-
-      </form>
-    </div>
+        </FormControls>
+      </div>
+    </form>
   </div>
 </template>
 
@@ -128,7 +99,10 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTasks } from '~/composables/useTasks'
 import { apiFetch } from '~/composables/useAPI'
-import { TaskType, TaskStatus, type TaskCreate } from '~/types/task'
+import { TaskStatus, TaskPriority } from '~/types/enums'
+import type { TaskCreate } from '~/types/task'
+import PageToolbar from '~/components/common/page_toolbar.vue'
+import FormControls from '~/components/common/form_controls.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -141,15 +115,29 @@ const { createTask, updateTask, fetchTask, isLoading, error } = useTasks()
 const isSubmitting = ref(false)
 const usersList = ref<any[]>([])
 
+const statusOptions = {
+  [TaskStatus.PENDING]: 'В ожидании',
+  [TaskStatus.IN_PROGRESS]: 'В работе',
+  [TaskStatus.COMPLETED]: 'Завершена',
+  [TaskStatus.PAUSED]: 'Приостановлена',
+  [TaskStatus.CANCELLED]: 'Отменена',
+  [TaskStatus.EXPIRED]: 'Просрочена',
+  [TaskStatus.FAILED]: 'Провалена'
+}
+
+const priorityOptions = {
+  [TaskPriority.LOW]: 'Низкий',
+  [TaskPriority.MEDIUM]: 'Средний',
+  [TaskPriority.HIGH]: 'Высокий',
+  [TaskPriority.CRITICAL]: 'Критический'
+}
+
 const form = reactive({
   title: '',
-  type: TaskType.CMR_CHECK,
-  status: TaskStatus.PENDING,
   description: '',
-  objectTitle: '',
-  dueDate: '',
-  responsibleNames: [] as string[],
-  hasReminderTrigger: false
+  status: TaskStatus.PENDING,
+  priority: TaskPriority.MEDIUM,
+  performer_ids: [] as string[]
 })
 
 const loadUsers = async () => {
@@ -159,75 +147,48 @@ const loadUsers = async () => {
       usersList.value = res.data
     }
   } catch (e) {
-    console.error('Ошибка при загрузке пользователей:', e)
+    console.error('Ошибка загрузки пользователей:', e)
   }
 }
 
 const loadTaskData = async () => {
   if (!isEdit.value) return
-
   const numericId = Number(taskId.value)
   const task = await fetchTask(numericId)
-
   if (task) {
-    const rawTask = task as any
     form.title = task.title || ''
-    form.type = task.type || TaskType.CMR_CHECK
-    form.status = task.status || TaskStatus.PENDING
     form.description = task.description || ''
-    
-    form.objectTitle = task.objectTitle || rawTask.object_title || ''
-
-    const rawDate = task.dueDate || rawTask.due_date
-    if (rawDate) {
-      form.dueDate = String(rawDate).split('T')[0]
-    } else {
-      form.dueDate = ''
-    }
-
-    const resp = task.responsibleNames || rawTask.responsible_names || []
-    form.responsibleNames = Array.isArray(resp) ? [...resp] : []
-    
-    form.hasReminderTrigger = task.hasReminderTrigger ?? rawTask.has_reminder_trigger ?? false
+    form.status = task.status || TaskStatus.PENDING
+    form.priority = task.priority || TaskPriority.MEDIUM
+    form.performer_ids = task.performer_ids || []
   }
 }
 
-const goBack = () => {
-  router.push('/tasks')
-}
+const goBack = () => router.push('/tasks')
+
 const handleSubmit = async () => {
+  if (!form.title.trim()) {
+    alert('Название задачи обязательно')
+    return
+  }
+
   isSubmitting.value = true
-
-  const payload: Record<string, any> = {
+  const payload: TaskCreate = {
     title: form.title,
-    type: form.type,
+    description: form.description || null,
     status: form.status,
-    description: form.description,
-    
-    objectTitle: form.objectTitle,
-    object_title: form.objectTitle,
-
-    dueDate: form.dueDate ? form.dueDate : null,
-    due_date: form.dueDate ? form.dueDate : null,
-
-    responsibleNames: form.responsibleNames,
-    responsible_names: form.responsibleNames,
-
-    hasReminderTrigger: form.hasReminderTrigger,
-    has_reminder_trigger: form.hasReminderTrigger
+    priority: form.priority,
+    performer_ids: form.performer_ids
   }
 
   try {
     let result = null
     if (isEdit.value) {
-      result = await updateTask(Number(taskId.value), payload as any)
+      result = await updateTask(Number(taskId.value), payload)
     } else {
-      result = await createTask(payload as any)
+      result = await createTask(payload)
     }
-
-    if (result) {
-      goBack()
-    }
+    if (result) goBack()
   } finally {
     isSubmitting.value = false
   }
@@ -240,183 +201,140 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #ffffff;
-  border: 1px solid #e1e3e8;
-  border-radius: 8px;
-  padding: 12px 20px;
-}
-
-.toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #0078d4;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 4px;
-  transition: background-color 0.1s ease;
-}
-
-.btn-back:hover {
-  background-color: #f3f3f3;
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #242424;
-  margin: 0;
-}
-
-.form-card {
-  background: #ffffff;
-  border: 1px solid #e1e3e8;
-  border-radius: 8px;
-  padding: 24px;
-}
-
-.shimmer-loader {
-  color: #605e5c;
-  font-size: 14px;
-  text-align: center;
-  padding: 40px;
-}
-
-.fluent-form {
+.task-page {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding-bottom: 24px;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.loading-card {
+  background: #ffffff;
+  border: 1px solid #e1e3e8;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  color: #605e5c;
+}
+
+.form-layout {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
-.full-width {
-  grid-column: 1 / -1;
+.form-section {
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #e1e3e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  margin: 0 0 20px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #242424;
+  border-bottom: 1px solid #f3f2f1;
+  padding-bottom: 8px;
+}
+
+.fluent-button {
+  padding: 6px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s, border-color 0.1s;
+}
+.button-secondary {
+  background: #ffffff;
+  border: 1px solid #d2d0ce;
+  color: #323130;
+}
+.button-secondary:hover {
+  background: #f3f2f1;
+}
+.button-primary {
+  background: #0078d4;
+  border: 1px solid #0078d4;
+  color: #ffffff;
+}
+.button-primary:hover {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+.button-primary:disabled {
+  background: #f3f2f1;
+  color: #a19f9d;
+  border-color: #f3f2f1;
+  cursor: not-allowed;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
-
-.form-label {
+.form-group.full-width {
+  grid-column: span 2;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.form-group label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: #323130;
-}
-
-.required {
-  color: #a80000;
 }
 
 .fluent-input,
 .fluent-select,
 .fluent-textarea {
-  border: 1px solid #8a8886;
-  border-bottom: 2px solid #605e5c;
+  border: 1px solid #d6d9dc;
   border-radius: 4px;
   padding: 8px 12px;
   font-size: 13px;
   font-family: inherit;
   background: #ffffff;
-  transition: border-color 0.15s ease;
+  color: #242424;
+  transition: border-color 0.15s;
   box-sizing: border-box;
   width: 100%;
 }
-
 .fluent-input:focus,
 .fluent-select:focus,
 .fluent-textarea:focus {
-  outline: none;
   border-color: #0078d4;
-  border-bottom-color: #0078d4;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
 }
 
 .field-hint {
   font-size: 11px;
-  color: #605e5c;
+  color: #797775;
+  margin-top: 2px;
 }
 
 .error-banner {
-  background-color: #fde7e9;
+  background: #fde7e9;
+  border: 1px solid #fccfd2;
   color: #a80000;
   padding: 10px 14px;
   border-radius: 4px;
   font-size: 13px;
 }
 
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
-  border-top: 1px solid #f3f2f1;
-  padding-top: 16px;
-}
-
-.btn-primary {
-  background-color: #0078d4;
-  color: #ffffff;
-  border: none;
-  height: 32px;
-  padding: 0 20px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 4px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background-color 0.15s ease;
-}
-
-.btn-primary:hover {
-  background-color: #106ebe;
-}
-
-.btn-primary:disabled {
-  background-color: #c8c8c8;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #ffffff;
-  border: 1px solid #d1d1d1;
-  height: 32px;
-  padding: 0 20px;
-  font-size: 13px;
-  font-weight: 400;
-  color: #242424;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background-color: #f3f3f3;
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
