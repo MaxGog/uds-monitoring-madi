@@ -26,6 +26,8 @@ const menuItems = [
   { label: 'Формирование ДК', to: '/roadmap', icon: '🗺️' },
   { label: 'Задачи', to: '/tasks', icon: '✔️' },
   { label: 'Пользователи', to: '/users', icon: '👤', adminOnly: true },
+  { label: 'Управление контрактами', to: '/admin/contracts', icon: '📁', adminOnly: true },
+  { label: 'Справочник компаний', to: '/admin/companies', icon: '🏢', adminOnly: true },
 ]
 
 const filteredMenuItems = computed(() => {
