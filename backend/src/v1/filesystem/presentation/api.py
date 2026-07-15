@@ -178,6 +178,28 @@ async def minio_webhook(
             detail="Internal webhook processing error"
         )
 
+@router.post("/upload-estimation", status_code=status.HTTP_202_ACCEPTED)
+@inject
+async def upload_estimation(
+    uc: FromDishka[IFsUsecases],
+    current_user: CurrentUserPayload,
+    scope: ScopeType = Depends(RequireAccess(EntityType.DOCUMENT, ActionType.CREATE)),
+    file: UploadFile = File(...),
+):
+    '''
+    Просто тестовый эндпоинт-пример подгрузки файла и его парсинг.
+    '''
+    try:
+        user_id = current_user.get("sub")
+        await uc.parse_excel(user_id = user_id, file = file)
+        return
+    except HTTPException as e:
+        logger.error(e)
+        raise e
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 public_fs_router = APIRouter(prefix="/fss", tags=["Public Testing"])
 
 

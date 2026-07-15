@@ -7,7 +7,6 @@ import pytest
 from typing import AsyncIterator
 from httpx import AsyncClient, ASGITransport
 from dishka import FromDishka, make_async_container, AsyncContainer
-from dishka.integrations.fastapi import inject
 import asyncio
 from backend.core.ioc.auth_ioc import AuthProvider
 from backend.core.ioc.dbs_ioc import DbProvider
@@ -15,8 +14,7 @@ from backend.core.ioc.filesystem_ioc import FilesystemProvider
 from backend.core.ioc.repo_ioc import RepoProvider
 from backend.core.ioc.uc_ioc import UsecaseProvider
 from backend.core.db.postgres.unit_of_work import IUnitOfWork
-from backend.src.v1.auth.domain.interfaces import IAuthUsecases, IUserRepo, IUserUsecases
-from backend.src.v1.auth.presentation.dto.user_dto import UserCreateRequest
+from backend.src.v1.auth.domain.interfaces import IAuthUsecases, IUserUsecases
 from main import create_app
 
 @pytest.fixture(scope="session")
