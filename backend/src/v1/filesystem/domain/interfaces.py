@@ -26,6 +26,12 @@ class IAwsService(Protocol):
     def delete_object(self, bucket: str, s3_key: str) -> None:
         pass
 
+    @abstractmethod
+    async def upload_file(self, file_obj, s3_key: str, content_type: str, metadata: dict | None): pass
+
+    @abstractmethod
+    async def download_file(self, s3_key: str) -> str: pass
+
 class IFileRepo(Protocol):
     @abstractmethod
     async def get_by_id(self, doc_id: UUID) -> Optional[Document]: pass
@@ -44,9 +50,9 @@ class IFsUsecases(Protocol):
     async def initiate_upload(self, uploader_id: UUID, data: GetUploadUrlRequest) -> dict:
         pass
     
-    @abstractmethod
-    async def confirm_upload(self, data: ConfirmUploadRequest, uploader_id: UUID) -> dict:
-        pass
+    # @abstractmethod
+    # async def confirm_upload(self, data: ConfirmUploadRequest, uploader_id: UUID) -> dict:
+    #     pass
 
     @abstractmethod
     async def get_document_download_link(self, item_id: UUID) -> str:
@@ -67,3 +73,10 @@ class IFsUsecases(Protocol):
     @abstractmethod
     async def get_files(self, owner_type: Optional[DocumentOwnerType] = None, owner_id: Optional[int] = None) -> List[DocumentResponse]:
         pass
+
+    @abstractmethod
+    async def process_minio_webhook(self, event_data: dict) -> UUID | None:
+        pass
+    
+    @abstractmethod
+    async def parse_excel(self, user_id: UUID, file): pass

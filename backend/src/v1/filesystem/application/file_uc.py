@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import hashlib
 import logging
 import os
 import shutil
@@ -7,7 +8,7 @@ from uuid import UUID
 import uuid
 
 from fastapi import HTTPException, UploadFile, status
-from urllib.parse import unquote
+from urllib.parse import quote, unquote, unquote_plus
 import uuid6
 
 from backend.core.db.postgres.data_orms.document_orm import Document, DocumentOwnerType
@@ -15,7 +16,6 @@ from backend.core.db.postgres.unit_of_work import IUnitOfWork
 from backend.src.v1.auth.domain.interfaces import IUserRepo
 from backend.src.v1.filesystem.domain.interfaces import IAwsService, IFileRepo, IFsUsecases
 from backend.config.config import settings
-from backend.src.v1.filesystem.infrastructure.celery_sqs import process_excel_file_task
 from backend.src.v1.filesystem.presentation.dtos import ConfirmUploadRequest, DocumentResponse, DocumentUpdateRequest, GetUploadUrlRequest
 
 logger = logging.getLogger(__file__)
@@ -43,7 +43,7 @@ class FsUsecases(IFsUsecases):
         try:
             # Генерируем уникальный s3_key на базе UUIDv7, сохраняя оригинальное расширение
             file_ext = data.name.split(".")[-1] if "." in data.name else "bin"
-            owner_folder = data.owner_type.value if hasattr(data.owner_type, 'value') else str(data.owner_type)
+            owner_folder = data.owner_type.value if hasattr(data.owner_type, 'value') else str(data.owner_type) # type: ignore
             unique_key = f"{owner_folder or 'common'}/{uuid6.uuid7()}.{file_ext}"
             upload_url = await self.aws_service.generate_upload_url(content_type = data.content_type, s3_key = unique_key, uploader_id = uploader_id, owner_type=data.owner_type, owner_id = data.owner_id)
             
@@ -121,7 +121,7 @@ class FsUsecases(IFsUsecases):
                     raise HTTPException(status_code=404, detail="Document not found")
                     
                 # Удаляем физический файл из хранилища MinIO
-                await self.aws_service.delete_object(doc.s3_bucket, doc.s3_key)
+                await self.aws_service.delete_object(doc.s3_bucket, doc.s3_key) # type: ignore
                 
                 # Удаляем метаданные из СУБД
                 await uow.file_repo.delete(doc)
@@ -181,6 +181,10 @@ class FsUsecases(IFsUsecases):
     ) -> None:
         try:
             async with self.uow as uow:
+                existing = await uow.file_repo.get_by_id(document_id)
+                if existing:
+                    logger.warning(f"Документ {document_id} уже зарегистрирован.")
+                    return
                 owner_type_enum = None
                 if owner_type:
                     try:
@@ -207,14 +211,18 @@ class FsUsecases(IFsUsecases):
                 await uow.commit()
                 logger.info(f"Документ {document_id} успешно зарегистрирован в БД через вебхук")
 
+                # Отправка задачи
+                excel_types = {"xlsx", "xls", "csv"}
+                if file_type in excel_types:
+                    from backend.src.v1.filesystem.infrastructure.parser_service.task import process_excel_import_task
+                    await process_excel_import_task.kiq(document_id=str(document_id))
+                    logger.info(f"Задача импорта Excel для {document_id} отправлена в Celery")
+
         except Exception as e:
             logger.error(f"Не удалось сохранить документ в базу данных: {e}")
             raise
 
     async def process_minio_webhook(self, event_data: dict) -> UUID | None:
-        """
-        Парсит вебхук S3/MinIO, валидирует метаданные и регистрирует файл в БД.
-        """
         records = event_data.get("Records", [])
         if not records:
             logger.warning("Вебхук MinIO не содержит записей (Records)")
@@ -222,12 +230,12 @@ class FsUsecases(IFsUsecases):
 
         record = records[0]
         s3_data = record.get("s3", {})
-        
-        # 1. Извлекаем базовые параметры файла
+
         s3_bucket = s3_data.get("bucket", {}).get("name")
         raw_s3_key = s3_data.get("object", {}).get("key")
-        s3_key = unquote(raw_s3_key) if raw_s3_key else None
-        
+        # unquote_plus корректно раскодирует и %XX, и '+' -> пробел
+        s3_key = unquote_plus(raw_s3_key) if raw_s3_key else None
+
         if not s3_key:
             raise ValueError("В событии вебхука отсутствует S3-ключ (object.key)")
 
@@ -235,15 +243,10 @@ class FsUsecases(IFsUsecases):
         content_type = s3_data.get("object", {}).get("contentType")
         etag = s3_data.get("object", {}).get("eTag", "").replace('"', '')
 
-        # 2. Безопасный парсинг User Metadata
         raw_metadata = s3_data.get("object", {}).get("userMetadata", {})
         user_metadata = {k.lower(): v for k, v in raw_metadata.items()}
 
         def extract_meta(key: str) -> str | None:
-            """
-            Ищет метаданные по ключу с учетом возможных префиксов x-amz-meta-
-            и дефисов/подчеркиваний.
-            """
             search_keys = [
                 key.lower(),
                 key.lower().replace("-", "_"),
@@ -259,15 +262,15 @@ class FsUsecases(IFsUsecases):
                     return val_str
             return None
 
-        # Вытаскиваем сырые строки
         raw_uploader_id = extract_meta("uploader-id")
         raw_owner_type = extract_meta("owner-type")
         raw_owner_id = extract_meta("owner-id")
+        raw_original_filename = extract_meta("original-filename")
+        original_filename = unquote(raw_original_filename) if raw_original_filename else None
 
-        # 3. Валидация типов данных
         uploader_id = UUID(raw_uploader_id) if raw_uploader_id else None
         owner_id = int(raw_owner_id) if raw_owner_id else None
-        
+
         owner_type = None
         if raw_owner_type:
             try:
@@ -279,20 +282,23 @@ class FsUsecases(IFsUsecases):
                 )
                 owner_type = None
 
-        # Вычисляем расширение файла и UUID документа
-        file_type = s3_key.split(".")[-1].lower() if "." in s3_key else "bin"
-        filename = s3_key.split("/")[-1]
-        
+        # Ключ теперь строго вида estimations/{document_id}.{ext}
+        key_filename = s3_key.split("/")[-1]           # "{document_id}.ext"
+        file_type = key_filename.split(".")[-1].lower() if "." in key_filename else "bin"
+
         try:
-            possible_uuid = filename.split(".")[0]
+            possible_uuid = key_filename.rsplit(".", 1)[0]
             document_id = UUID(possible_uuid)
         except (ValueError, IndexError):
+            # На случай объектов, загруженных не через наш эндпоинт
             document_id = uuid6.uuid7()
 
+        # Если оригинальное имя не пришло в метаданных (например, файл залит вручную) — fallback на ключ
+        display_name = original_filename or key_filename
 
         await self.register_uploaded_file(
             document_id=document_id,
-            name=filename,
+            name=display_name,
             size_bytes=size_bytes,
             checksum_sha256=etag,
             file_type=file_type,
@@ -323,45 +329,50 @@ class FsUsecases(IFsUsecases):
                 
             return True
 
-    async def upload_document(self, file):
-        """
-        Эндпоинт для загрузки документов.
-        Принимает файлы, валидирует их и отправляет Excel-файлы в Celery.
-        """
-        # 1. Валидация формата файла
-        if not self.is_excel_file(file):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Недопустимый формат файла. Разрешены только файлы Excel (.xlsx, .xls)"
-            )
-
-        # Генерируем уникальное имя файла, чтобы избежать конфликтов в файловой системе
-        document_id = str(uuid.uuid4())
-        _, ext = os.path.splitext(file.filename)
-        unique_filename = f"{document_id}{ext}"
-        dest_path = os.path.join(TEMP_UPLOAD_DIR, unique_filename)
-
+    async def parse_excel(self, user_id: UUID, file):
         try:
-            # 2. Сохраняем файл на локальный диск (в реальном проекте здесь может быть загрузка в S3)
-            with open(dest_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-                
+            allowed_types = {
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel",
+                "text/csv",
+            }
+            if file.content_type not in allowed_types:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Разрешены только файлы Excel (.xlsx, .xls, .csv)"
+                )
+
+            document_id = uuid6.uuid7()
+            _, ext = os.path.splitext(file.filename or "")
+            ext = ext.lower() or ".bin"
+
+            s3_key = f"estimations/{document_id}{ext}"
+
+            metadata = {
+                "uploader-id": str(user_id),
+                "owner-type": "contract",
+                "owner-id": "123",
+                "original-filename": quote(file.filename or "", safe=""),
+            }
+
+            try:
+                await self.aws_service.upload_file(
+                    file_obj=file.file,
+                    s3_key=s3_key,
+                    content_type=file.content_type,
+                    metadata=metadata
+                )
+            except Exception as e:
+                logger.error(f"Ошибка загрузки в S3: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Ошибка загрузки в S3 хранилище: {str(e)}"
+                )
+
+            return {
+                "status": "uploading",
+                "document_id": document_id,
+            }
         except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Не удалось сохранить файл на сервере: {str(e)}"
-            )
-
-        # 3. Отправляем задачу в Celery асинхронно через .delay()
-        # Мы передаем путь к сохраненному файлу, а не сам файл в байтах!
-        task = process_excel_file_task.delay(
-            file_path=dest_path, 
-            document_id=document_id
-        )
-
-        return {
-            "status": "queued",
-            "message": "Файл успешно валидирован и отправлен на обработку",
-            "document_id": document_id,
-            "celery_task_id": task.id
-        }
+            logger.error(e)
+            raise e

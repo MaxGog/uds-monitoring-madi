@@ -22,6 +22,7 @@ from backend.src.v1.filesystem.infrastructure.file_repo import PgFileRepo
 # Автоматический хелпер для работы с асинхронными транзакциями через контекстный менеджер. Сразу через интерфейс.
 
 class IUnitOfWork(Protocol):
+    session: AsyncSession
     user_repo: IUserRepo
     file_repo: IFileRepo
     permission_repo: IPermissionRepo

@@ -10,13 +10,11 @@ from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
 from types_aiobotocore_s3 import S3Client
 import uvicorn
+import taskiq_fastapi
 
 from backend.core.db.redis.redis_conn import check_redis_connection
-from backend.core.ioc.auth_ioc import AuthProvider
-from backend.core.ioc.dbs_ioc import DbProvider
-from backend.core.ioc.filesystem_ioc import FilesystemProvider
-from backend.core.ioc.repo_ioc import RepoProvider
-from backend.core.ioc.uc_ioc import UsecaseProvider
+from backend.core.ioc.container import create_app_container
+from backend.core.tasks import broker
 from backend.core.utils.csrf.csrf import CsrfSettings
 from backend.core.utils.logger.app_logger import setup_logger
 from backend.src.v1.auth.presentation.api import router as auth_router
@@ -37,30 +35,31 @@ from backend.core.db.aws.minio_conn import check_aws_connection
 from backend.config.config import settings
 
 logger = logging.getLogger(__file__)
-
 # Порядок вызовов функционала влияет
 @CsrfProtect.load_config
 def get_csrf_settings():
     return CsrfSettings()
 
 def create_app(container: AsyncContainer | None = None) -> FastAPI:
-
+    
     if container is None:
-        container = make_async_container(DbProvider(), AuthProvider(), FilesystemProvider(), RepoProvider(), UsecaseProvider())
+        container = create_app_container()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        #await broker.startup()
+
         setup_logger()
         await check_db_connection(db_engine)
         await check_redis_connection(redis_client)
         client = await container().get(S3Client)
         await check_aws_connection(client)
         yield
-
+        #await broker.shutdown()
+        await container.close()
         await db_engine.dispose()
 
     app = FastAPI(lifespan=lifespan)
-
 
     @app.exception_handler(CsrfProtectError)
     def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):

@@ -1,7 +1,9 @@
-from datetime import timedelta
 import logging
+import os
+import tempfile
 from uuid import UUID
 
+import aiofiles
 from types_aiobotocore_s3 import S3Client
 from backend.config.config import settings
 from backend.src.v1.filesystem.domain.interfaces import IAwsService
@@ -20,7 +22,7 @@ class MinioFileService(IAwsService):
         )
         return presigned_url
     
-    async def generate_upload_url(self, s3_key: str, content_type: str, uploader_id: UUID, owner_type: str | None, owner_id: int | None) -> str:
+    async def generate_upload_url(self, s3_key: str, content_type: str, uploader_id: UUID, owner_type: str | None, owner_id: int | None) -> str | None:
         """
         Генерирует ссылку, заставляя MinIO ожидать метаданные файла.
         """
@@ -28,7 +30,7 @@ class MinioFileService(IAwsService):
             metadata = {"uploader-id": str(uploader_id)}
             
             if owner_type:
-                metadata["owner-type"] = owner_type.value if hasattr(owner_type, 'value') else str(owner_type)
+                metadata["owner-type"] = owner_type if hasattr(owner_type, 'value') else str(owner_type)
                 
             if owner_id is not None:
                 metadata["owner-id"] = str(owner_id)
@@ -69,3 +71,30 @@ class MinioFileService(IAwsService):
 
     async def delete_object(self, bucket: str, s3_key: str) -> None:
         await self.client.delete_object(Bucket=bucket, Key=s3_key)
+
+
+    # Для celery
+    async def upload_file(self, file_obj, s3_key: str, content_type: str, metadata: dict):
+        file_bytes = file_obj.read()
+        await self.client.put_object(
+            Bucket=settings.minio.FILE_BUCKET_NAME,
+            Key=s3_key,
+            Body=file_bytes,
+            ContentType=content_type,
+            Metadata=metadata
+        )
+    # Для celery
+    async def download_file(self, s3_key: str) -> str:
+        """Скачивает файл во временный локальный файл и возвращает путь к нему"""
+        # Celery воркер скачает файл локально, чтобы openpyxl мог его прочитать
+        temp_dir = tempfile.gettempdir()
+        local_path = os.path.join(temp_dir, os.path.basename(s3_key))
+        response = await self.client.get_object(
+            Bucket=settings.minio.FILE_BUCKET_NAME,
+            Key=s3_key,
+        )
+
+        async with aiofiles.open(local_path, "wb") as f:
+            async for chunk in response["Body"].iter_chunks():
+                await f.write(chunk)
+        return local_path
