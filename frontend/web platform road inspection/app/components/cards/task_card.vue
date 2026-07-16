@@ -1,261 +1,217 @@
 <template>
-  <div class="task-row" :class="['status-' + statusClass, { 'is-completed': task.completed }]">
-    <div class="task-checkbox-wrapper">
+  <div class="task-card" @click="goToTask">
+    <div class="task-checkbox" @click.stop>
       <input
         type="checkbox"
-        :id="'task-' + task.id"
-        :checked="task.completed"
+        :checked="isCompleted"
         :disabled="!isAdmin"
-        @change="$emit('toggle', task.id)"
-        class="fluent-checkbox"
+        @change="$emit('toggle', task)"
       />
-      <label :for="'task-' + task.id" class="fluent-checkbox-label"></label>
     </div>
 
-    <div class="task-info">
-      <div class="task-header-row">
-        <span class="task-title">{{ task.title }}</span>
-        <div class="task-pill-group">
-          <span class="task-status-pill" :class="statusClass">{{ task.status }}</span>
-          <span class="task-type-pill">{{ task.type }}</span>
+    <div class="task-content">
+      <div class="task-header">
+        <span class="task-id">#{{ task.id }}</span>
+        <h3 class="task-title" :class="{ completed: isCompleted }">{{ task.title }}</h3>
+        <div class="task-badges">
+          <span class="badge status" :class="statusClass">{{ statusLabel }}</span>
+          <span class="badge priority" :class="priorityClass">{{ priorityLabel }}</span>
         </div>
       </div>
-
-      <p v-if="task.description" class="task-desc">{{ task.description }}</p>
-
+      <p v-if="task.description" class="task-description">{{ task.description }}</p>
       <div class="task-meta">
-        <span class="meta-item">📁 {{ task.objectTitle }}</span>
-        <span v-if="task.dueDate" class="meta-item">📅 {{ task.dueDate }}</span>
-        <span class="meta-item">👤 {{ task.responsibleNames.join(', ') }}</span>
+        <span v-if="performerCount" class="meta-item">
+          👤 {{ performerCount }} исполнитель{{ performerCount > 1 ? 'я' : '' }}
+        </span>
+        <span v-if="task.created_at" class="meta-item">
+          🗓️ {{ formatDate(task.created_at) }}
+        </span>
       </div>
     </div>
 
-    <div class="task-actions">
-      <button
-        v-if="isAdmin"
-        class="icon-action-btn"
-        title="Удалить"
-        @click="$emit('delete', task.id)"
-      >
-        🗑️
-      </button>
+    <div class="task-actions" @click.stop>
+      <button class="btn-action" @click="$emit('edit', task)">✎</button>
+      <button v-if="isAdmin" class="btn-action danger" @click="$emit('delete', task.id)">✕</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-
-interface Task {
-  id: number
-  title: string
-  description?: string
-  priority: string
-  priorityLabel: string
-  objectTitle: string
-  dueDate?: string
-  assignee: string
-  responsibleNames: string[]
-  type: string
-  status: string
-  scope: string
-  completed: boolean
-  createdAt: string
-  authorName: string
-}
+import { TaskStatus, TaskPriority } from '~/types/enums'
 
 const props = defineProps<{
-  task: Task
-  isAdmin: boolean
+  task: any
+  isAdmin?: boolean
 }>()
 
-const emit = defineEmits<{
-  (e: 'toggle', id: number): void
-  (e: 'delete', id: number): void
-}>()
+const emit = defineEmits(['toggle', 'edit', 'delete'])
+
+const goToTask = () => navigateTo(`/tasks/${props.task.id}`)
+
+const isCompleted = computed(() => props.task.status === TaskStatus.COMPLETED)
+const performerCount = computed(() => (props.task.performer_ids || []).length)
 
 const statusClass = computed(() => {
-  if (props.task.status === 'Просрочена') return 'danger'
-  if (props.task.status === 'Скоро дедлайн') return 'warn'
-  if (props.task.status === 'Выполнена') return 'done'
-  return 'active'
+  const status = props.task.status as TaskStatus
+  switch (status) {
+    case TaskStatus.COMPLETED: return 'done'
+    case TaskStatus.IN_PROGRESS: return 'active'
+    case TaskStatus.PENDING: return 'warn'
+    case TaskStatus.PAUSED: return 'paused'
+    case TaskStatus.CANCELLED:
+    case TaskStatus.EXPIRED:
+    case TaskStatus.FAILED: return 'danger'
+    default: return 'default'
+  }
 })
+
+const statusLabel = computed(() => {
+  const map: Record<TaskStatus, string> = {
+    [TaskStatus.PENDING]: 'Ожидает',
+    [TaskStatus.IN_PROGRESS]: 'В работе',
+    [TaskStatus.COMPLETED]: 'Завершена',
+    [TaskStatus.PAUSED]: 'Приостановлена',
+    [TaskStatus.CANCELLED]: 'Отменена',
+    [TaskStatus.EXPIRED]: 'Просрочена',
+    [TaskStatus.FAILED]: 'Провалена',
+    [TaskStatus.ACCEPTED]: 'Принято'
+  }
+  return map[props.task.status as TaskStatus] || props.task.status
+})
+
+const priorityClass = computed(() => {
+  const priority = props.task.priority as TaskPriority
+  switch (priority) {
+    case TaskPriority.LOW: return 'low'
+    case TaskPriority.MEDIUM: return 'medium'
+    case TaskPriority.HIGH: return 'high'
+    case TaskPriority.CRITICAL: return 'critical'
+    default: return ''
+  }
+})
+
+const priorityLabel = computed(() => {
+  const map: Record<TaskPriority, string> = {
+    [TaskPriority.LOW]: 'Низкий',
+    [TaskPriority.MEDIUM]: 'Средний',
+    [TaskPriority.HIGH]: 'Высокий',
+    [TaskPriority.CRITICAL]: 'Критический'
+  }
+  return map[props.task.priority as TaskPriority] || props.task.priority
+})
+
+const formatDate = (date: string) => new Date(date).toLocaleDateString('ru-RU')
 </script>
 
 <style scoped>
-.task-row {
+.task-card {
   display: flex;
-  align-items: flex-start;
-  padding: 16px 18px;
-  border-bottom: 1px solid #f3f3f3;
-  transition: background-color 0.15s ease;
-  gap: 14px;
-}
-
-.task-row:last-child {
-  border-bottom: none;
-}
-
-.task-row:hover {
-  background-color: #fafbff;
-}
-
-.task-checkbox-wrapper {
-  margin-top: 2px;
-  position: relative;
-  width: 18px;
-  height: 18px;
-}
-
-.fluent-checkbox {
-  position: absolute;
-  opacity: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e1e3e8;
+  border-radius: 6px;
+  background: #fff;
+  transition: 0.15s;
   cursor: pointer;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
-  margin: 0;
 }
-
-.fluent-checkbox-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 18px;
-  height: 18px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #ffffff;
-  box-sizing: border-box;
-}
-
-.fluent-checkbox:hover + .fluent-checkbox-label {
+.task-card:hover {
   border-color: #0078d4;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
-
-.fluent-checkbox:checked + .fluent-checkbox-label {
-  background-color: #0078d4;
-  border-color: #0078d4;
+.task-checkbox {
+  flex-shrink: 0;
 }
-
-.fluent-checkbox:checked + .fluent-checkbox-label::after {
-  content: '';
-  position: absolute;
-  left: 5px;
-  top: 2px;
-  width: 4px;
-  height: 8px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.task-info {
+.task-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
-
-.task-header-row {
+.task-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.task-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #121212;
-}
-
-.task-pill-group {
-  display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
-
-.task-status-pill,
-.task-type-pill {
-  font-size: 11px;
+.task-id {
   font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 999px;
-  text-transform: uppercase;
-}
-
-.task-status-pill.active {
-  background: #e8f0fe;
-  color: #0f62fe;
-}
-
-.task-status-pill.warn {
-  background: #fff4ce;
-  color: #a35400;
-}
-
-.task-status-pill.danger {
-  background: #ffe7e5;
-  color: #a4261d;
-}
-
-.task-status-pill.done {
-  background: #e6f4ea;
-  color: #107c41;
-}
-
-.task-type-pill {
-  background: #f3f6ff;
-  color: #1f3f8b;
-}
-
-.task-desc {
-  font-size: 13px;
-  color: #4b5563;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.task-row.is-completed .task-title {
-  text-decoration: line-through;
-  color: #8b8b8b;
-}
-
-.task-row.is-completed .task-desc {
-  color: #9ca3af;
-}
-
-.task-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  color: #0078d4;
   font-size: 12px;
-  color: #6b7280;
-  margin-top: 4px;
 }
+.task-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #242424;
+}
+.task-title.completed {
+  text-decoration: line-through;
+  color: #888;
+}
+.task-badges {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.badge {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+.badge.status.done { background: #dff6dd; color: #107c41; }
+.badge.status.active { background: #deecf9; color: #0078d4; }
+.badge.status.warn { background: #fff4ce; color: #797775; }
+.badge.status.paused { background: #fef6e6; color: #b25a00; }
+.badge.status.danger { background: #fde7e9; color: #a80000; }
+.badge.status.default { background: #f3f2f1; color: #605e5c; }
 
+.badge.priority.low { background: #e1e3e8; color: #605e5c; }
+.badge.priority.medium { background: #f3f2f1; color: #323130; }
+.badge.priority.high { background: #fedfce; color: #b25a00; }
+.badge.priority.critical { background: #fde7e9; color: #a80000; }
+
+.task-description {
+  margin: 0;
+  font-size: 12px;
+  color: #605e5c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-meta {
+  font-size: 12px;
+  color: #797775;
+  display: flex;
+  gap: 16px;
+}
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 .task-actions {
   display: flex;
-  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
-
-.icon-action-btn {
+.btn-action {
   background: transparent;
   border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
   font-size: 14px;
-  opacity: 0;
-  transition: opacity 0.15s, background-color 0.15s;
+  color: #605e5c;
+  transition: 0.15s;
 }
-
-.task-row:hover .icon-action-btn {
-  opacity: 0.7;
+.btn-action:hover {
+  background: #f3f2f1;
 }
-
-.icon-action-btn:hover {
-  background-color: #f3f4f6;
+.btn-action.danger:hover {
+  background: #fde7e9;
+  color: #a80000;
 }
 </style>

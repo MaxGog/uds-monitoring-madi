@@ -1,8 +1,8 @@
 <template>
   <div class="app-layout">
     <app-header
-      :menu-items="menuItems"
-      :user="currentUser"
+      :menu-items="filteredMenuItems"
+      :user="currentUserHeader!"
       @search="handleSearch"
       @navigate="handleNavigate"
     />
@@ -13,7 +13,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useUserProfile } from '~/composables/useUserProfile'
+
+const { currentUserHeader, isAdmin, loadProfile } = useUserProfile()
 
 const menuItems = [
   { label: 'Главная', to: '/', icon: '🏠' },
@@ -23,12 +26,16 @@ const menuItems = [
   { label: 'Формирование ДК', to: '/roadmap', icon: '🗺️' },
   { label: 'Задачи', to: '/tasks', icon: '✔️' },
   { label: 'Пользователи', to: '/users', icon: '👤', adminOnly: true },
+  { label: 'Управление контрактами', to: '/admin/contracts', icon: '📁', adminOnly: true },
+  { label: 'Справочник компаний', to: '/admin/companies', icon: '🏢', adminOnly: true },
 ]
 
-const currentUser = ref({
-  fullName: 'Иванов Иван',
-  email: 'user@example.com',
-  role: 'Администратор',
+const filteredMenuItems = computed(() => {
+  return menuItems.filter(item => !item.adminOnly || isAdmin.value)
+})
+
+onMounted(async () => {
+  await loadProfile()
 })
 
 const handleSearch = (query: string) => {

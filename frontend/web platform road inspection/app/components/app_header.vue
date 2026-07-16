@@ -18,8 +18,13 @@
     </div>
 
     <div class="header-right">
-      <UserAvatar :full-name="user?.fullName" :email="user?.email" show-name />
-      
+      <NuxtLink to="/users/" class="user-profile-link" title="Профиль">
+       <UserAvatar 
+          :id="user?.id"
+          :full-name="user?.fullName" 
+          :email="user?.email" 
+        />
+      </NuxtLink>
       <button class="icon-btn" @click="onNotifications" title="Уведомления">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -52,6 +57,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from '#app'
 import SearchBar from '~/components/search_bar.vue'
 import UserAvatar from '~/components/user_avatar.vue'
+import { useUserProfile } from '~/composables/useUserProfile'
 
 interface MenuItem {
   label: string
@@ -60,12 +66,12 @@ interface MenuItem {
   adminOnly?: boolean
 }
 
-const props = defineProps<{
-  menuItems?: MenuItem[]
-  user?: { fullName?: string; email?: string; role?: string }
-}>()
-
-const emit = defineEmits(['navigate', 'search', 'notifications'])
+export interface UserHeaderInfo {
+  fullName?: string
+  name?: string
+  email?: string
+  role?: string
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -76,9 +82,22 @@ const defaultMenu: MenuItem[] = []
 
 const filteredMenuItems = computed(() => {
   return (props.menuItems || defaultMenu).filter(
-    item => !item.adminOnly || props.user?.role === 'Администратор'
+    item => !item.adminOnly || props.user?.role === 'admin'
   )
 })
+
+const props = defineProps<{
+  user?: { fullName?: string; email?: string; role?: string; id?: string | number }
+  menuItems?: MenuItem[]
+}>()
+
+const emit = defineEmits<{
+  (e: 'navigate', query: string): void
+  (e: 'search', query: string): void
+  (e: 'navigate', item: any): void
+}>()
+
+const { isAdmin } = useUserProfile()
 
 const isActive = (to: string) => {
   return route.path === to || (to !== '/' && route.path.startsWith(to + '/'))
@@ -104,7 +123,7 @@ const onSearch = () => {
 }
 
 const onNotifications = () => {
-  emit('notifications')
+  return
 }
 
 const toggleMenu = () => {
@@ -253,6 +272,17 @@ const toggleMenu = () => {
 
 .sidebar-menu.is-collapsed .link-label {
     display: none;
+}
+
+.user-profile-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #242424;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
 }
 
 @media (max-width: 768px) {

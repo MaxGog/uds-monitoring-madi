@@ -16,18 +16,11 @@ export interface Roadmap {
     lastSource: 'Google Sheets' | 'Ручной ввод' | 'Интеграция API'
     milestones: Array<{
         id: number
-        name: string           
+        name: string
         planDate: string
         factDate: string | null
         status: 'В графике' | 'Внимание' | 'Критический сдвиг' | 'Выполнено'
     }>
     responsibleManager: string
     hasRiskAlert: boolean
-}
-export interface RoadmapCreate {
-
-}
-
-export interface RoadmapUpdate {
-    
 }

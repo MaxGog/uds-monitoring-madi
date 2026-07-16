@@ -91,41 +91,41 @@
 
 <script setup lang="ts">
 import { ref, computed, type Ref } from 'vue'
-import { useMockData, type MockRoadmapItem } from '~/composables/useMockData'
 import PageToolbar from '~/components/common/page_toolbar.vue'
 import FilterBar from '~/components/common/filter_bar.vue'
 import EmptyState from '~/components/common/empty_state.vue'
 import SearchBar from '~/components/search_bar.vue'
 
-const roadmapItems = useMockData().roadmapItems as Ref<MockRoadmapItem[]>
+const { roadmaps, isLoading, fetchRoadmaps } = useRoadmap()
 
 const search = ref('')
 const regionFilter = ref('all')
 const riskFilter = ref('all')
 
-const uniqueRegions = computed<string[]>(() => {
-  return [...new Set(roadmapItems.value.map(item => item.region))]
+onMounted(async () => {
+  await fetchRoadmaps()
 })
 
-const highRiskCount = computed(() => {
-  return roadmapItems.value.filter(item => item.risk === 'Высокий').length
+const uniqueRegions = computed(() => {
+  const regions = roadmaps.value.map(item => item.region).filter(Boolean)
+  return [...new Set(regions)]
 })
 
-const countText = computed(
-  () => `Всего планов: ${roadmapItems.value.length} (Критический риск: ${highRiskCount.value})`
-)
+const countText = computed(() => {
+  return `Всего дорожных карт: ${roadmaps.value.length} (Найдено: ${filteredRoadmapItems.value.length})`
+})
 
 const filteredRoadmapItems = computed(() => {
-  return roadmapItems.value.filter(item => {
-    const term = search.value.trim().toLowerCase()
-    const matchesText = !term ||
-      item.title.toLowerCase().includes(term) ||
-      item.manager.toLowerCase().includes(term)
+  return roadmaps.value.filter(item => {
+    const matchesSearch = 
+      item.title.toLowerCase().includes(search.value.toLowerCase()) ||
+      (item.responsibleManager && item.responsibleManager.toLowerCase().includes(search.value.toLowerCase())) ||
+      (item.manager && item.manager.toLowerCase().includes(search.value.toLowerCase()))
 
     const matchesRegion = regionFilter.value === 'all' || item.region === regionFilter.value
     const matchesRisk = riskFilter.value === 'all' || item.risk === riskFilter.value
 
-    return matchesText && matchesRegion && matchesRisk
+    return matchesSearch && matchesRegion && matchesRisk
   })
 })
 
@@ -136,7 +136,7 @@ const getRiskSlug = (risk: string) => {
 }
 
 const openCreateModal = () => {
-  alert('Интеграция со скриптом Code.gs: Открытие формы генерации новой ДК на основе шаблона Google Sheets.')
+  console.log('Открытие модального окна создания ДК')
 }
 </script>
 

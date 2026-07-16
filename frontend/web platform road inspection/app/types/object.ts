@@ -1,26 +1,24 @@
-export interface Object {
+import { ObjectStatus } from './enums'
+
+export interface ObjectItem {
     id: number
     title: string
-    region: 'ЦАО' | 'САО' | 'ЮАО' | 'ЗАО' | 'ВАО'
-    status: 'Активный' | 'На проверке' | 'Планирование' | 'Завершено'
-    contractor: string
-    executor: string
-    progressSMR: number
-    source: string
-    sourceLabel: string
-    contractNumber: string
-    contractDate: string
-    contractAmount: string
-    spentAmount: string
-    remainingAmount: string
-    hasActs: boolean
-    connectedActsCount: number
-    historyLog: Array<{ date: string; action: string; user: string }>
+    address: string | null
+    district: string | null
+    status: ObjectStatus
+    supervisor_id: number | null
+    contractor_id: number | null
+    supervisor_name?: string
+    contractor_name?: string
 }
+
 export interface ObjectCreate {
-
+    title: string
+    address: string
+    district: string
+    status: ObjectStatus
+    supervisor_id: number | null
+    contractor_id: number | null
 }
 
-export interface ObjectUpdate {
-
-}
+export type ObjectUpdate = Partial<ObjectCreate>

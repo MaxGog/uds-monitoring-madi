@@ -1,55 +1,31 @@
+import { TaskStatus, TaskPriority } from './enums'
+
 export interface Task {
     id: number
     title: string
-    description: string
-    completed: boolean // Избыточное поле, оставляю, чтобы не переделывать код
+    description: string | null
     status: TaskStatus
-    type: TaskType
-    objectTitle: string
-    dueDate: string
-    responsibleNames: string[]
-    hasReminderTrigger: boolean
+    priority: TaskPriority
+    performer_ids: string[]
+    author_id?: string
+    author_name?: string
+    created_at: string
+    updated_at: string
+    completed_at: string | null
 }
 
 export interface TaskCreate {
-
+    title: string
+    description?: string | null
+    status?: TaskStatus
+    priority?: TaskPriority
+    performer_ids?: string[]
 }
 
 export interface TaskUpdate {
-    
+    title?: string
+    description?: string | null
+    status?: TaskStatus
+    priority?: TaskPriority
+    performer_ids?: string[]
 }
-
-export enum TaskStatus {
-    PENDING = 'pending',
-    STARTED = 'started',
-    IN_PROGRESS = 'in_progress',
-    COMPLETED = 'completed',
-    PAUSED = 'paused',
-    CANCELLED = 'cancelled',
-    EXPIRED = 'expired',
-    FAILED = 'failed',
-}
-
-export enum TaskType {
-    CMR_CHECK = 'cmr_check',
-    ACTS_EXPORT = 'acts_export',
-    REGISTRY_RECONCILIATION = 'registry_reconciliation',
-    OTHER = 'other'
-}
-
-// Ключи для i18n
-export const TASK_STATUS_LABELS = {
-  pending: 'task.status.pending',
-  started: 'tast.status.started',
-  in_progress: 'task.status.in_progress',
-  completed: 'task.status.completed',
-} as const;
-
-// Ключи для i18n
-export const TASK_TYPE_LABELS: Record<TaskType, string> = {
-    [TaskType.CMR_CHECK]: 'task.types.cmr_check',
-    [TaskType.ACTS_EXPORT]: 'task.types.acts_export',
-    [TaskType.REGISTRY_RECONCILIATION]: 'task.types.registry_reconciliation',
-    [TaskType.OTHER]: 'task.types.other',
-};
-

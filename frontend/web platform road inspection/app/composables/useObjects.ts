@@ -1,9 +1,9 @@
 import type { ApiResponse } from "~/types/api";
-import type { Object, ObjectCreate, ObjectUpdate } from "~/types/object";
+import type { ObjectUpdate, ObjectCreate, ObjectItem } from "~/types/object";
 
 export function useObject() {
-  const objects = ref<Object[]>([]);
-  const currentObject = ref<Object | null>(null);
+  const objects = ref<ObjectItem[]>([]);
+  const currentObject = ref<ObjectItem | null>(null);
 
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
@@ -16,12 +16,12 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object[]>>(`/Object/`, {
+      const response = await apiFetch<ApiResponse<ObjectItem[]>>("/object", {
         method: "GET",
       });
-      objects.value = response.data;
+      objects.value = response.data || [];
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при загрузке пользователей";
+      error.value = err.data?.detail || "Ошибка при загрузке объектов";
     } finally {
       isLoading.value = false;
     }
@@ -31,34 +31,42 @@ export function useObject() {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/Object/${id}`, {
+      const response = await apiFetch<ApiResponse<ObjectItem>>(`/object/${id}`, {
         method: "GET",
       });
       currentObject.value = response.data;
     } catch (err: any) {
-      error.value =
-        err.data?.detail || "Ошибка при загрузке данных о своём пользователе";
+      error.value = err.data?.detail || "Ошибка при загрузке объекта";
     } finally {
       isLoading.value = false;
     }
   };
 
-  const createObject = async (payload: ObjectCreate) => {
+  const createObject = async (payload: ObjectCreate): Promise<ObjectItem | null> => {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>("/Object", {
+      const cleanPayload = {
+        ...payload,
+        contractor_id: payload.contractor_id ? Number(payload.contractor_id) : null,
+        supervisor_id: payload.supervisor_id ? Number(payload.supervisor_id) : null,
+      };
+
+      const response = await apiFetch<ApiResponse<ObjectItem>>("/object", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: { data: payload },
+        body: { data: cleanPayload },
       });
-      const newUser = response.data;
-      objects.value.push(newUser);
-      return newUser;
+
+      const newObj = response.data;
+      if (newObj) {
+        objects.value.push(newObj);
+      }
+      return newObj;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при создании пользователя";
+      console.error("422 Details:", err.data?.detail);
+      error.value = Array.isArray(err.data?.detail)
+        ? err.data.detail.map((e: any) => `${e.loc.join('.')}: ${e.msg}`).join(', ')
+        : err.data?.detail || "Ошибка при создании объекта";
       return null;
     } finally {
       isLoading.value = false;
@@ -67,28 +75,25 @@ export function useObject() {
 
   const updateObject = async (
     id: number,
-    payload: ObjectUpdate,
+    payload: ObjectUpdate
   ): Promise<Object | null> => {
     isLoading.value = true;
     cleanError();
     try {
-      const response = await apiFetch<ApiResponse<Object>>(`/users/${id}`, {
+      const response = await apiFetch<ApiResponse<ObjectItem>>(`/object/${id}`, {
         method: "PATCH",
-        body: payload,
+        headers: { "Content-Type": "application/json" },
+        body: { data: payload },
       });
-      const updatedUser = response.data;
-      // Локально обновляем массив, чтобы избежать лишнего запроса к БД
+      const updatedObj = response.data;
       const index = objects.value.findIndex((u) => u.id === id);
       if (index !== -1) {
-        objects.value[index] = { ...objects.value[index], ...updatedUser };
-      }
-      if (currentObject.value?.id === id) {
-        currentObject.value = { ...currentObject.value, ...updatedUser };
+        objects.value[index] = { ...objects.value[index], ...updatedObj };
       }
 
-      return updatedUser;
+      return updatedObj;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при обновлении пользователя";
+      error.value = err.data?.detail || "Ошибка при обновлении объекта";
       return null;
     } finally {
       isLoading.value = false;
@@ -97,19 +102,15 @@ export function useObject() {
 
   const deleteObject = async (id: number): Promise<boolean> => {
     isLoading.value = true;
-    clearError();
+    cleanError();
     try {
-      await apiFetch(`/Object/${id}`, {
+      await apiFetch(`/object/${id}`, {
         method: "DELETE",
       });
-      // Локально удаляем из стейта
       objects.value = objects.value.filter((u) => u.id !== id);
-      if (currentObject.value?.id === id) {
-        currentObject.value = null;
-      }
       return true;
     } catch (err: any) {
-      error.value = err.data?.detail || "Ошибка при удалении";
+      error.value = err.data?.detail || "Ошибка при удалении объекта";
       return false;
     } finally {
       isLoading.value = false;
@@ -118,6 +119,7 @@ export function useObject() {
 
   return {
     objects,
+    currentObject,
     isLoading,
     error,
     cleanError,
