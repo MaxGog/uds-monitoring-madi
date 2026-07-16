@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ObjectShortResponse(BaseModel):
     id: int
     title: str
-    address: str
+    address: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
