@@ -62,10 +62,20 @@ class ActUsecases(IActUsecases):
                 if contract_id and not await uow.contract_repo.get_by_id(contract_id):
                     raise HTTPException(status_code=400, detail=f"Contract {contract_id} not found")
 
-                # Формируем позиции акта
+                requested_item_ids = {item.contract_item_id for item in data.items}
+
+                existing_items = await uow.contract_repo.get_many_by_ids(list(requested_item_ids))
+                existing_ids = {item.id for item in existing_items}
+
+                missing_ids = requested_item_ids - existing_ids
+                if missing_ids:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Contract items with IDs {list(missing_ids)} not found"
+                    )
+                
                 orm_items = []
                 for item in data.items:
-                    # Здесь можно добавить проверку существования contract_item_id через uow если нужно
                     orm_items.append(
                         ActItem(
                             contract_item_id=item.contract_item_id,

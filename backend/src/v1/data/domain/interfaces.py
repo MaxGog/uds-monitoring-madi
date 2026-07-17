@@ -3,7 +3,7 @@ from typing import List, Optional, Protocol
 
 from backend.core.db.postgres.data_orms.act_orm import Act
 from backend.core.db.postgres.data_orms.company_orm import Company
-from backend.core.db.postgres.data_orms.contract_orm import Contract
+from backend.core.db.postgres.data_orms.contract_orm import Contract, ContractItem
 from backend.core.db.postgres.data_orms.object_orm import Object
 from backend.core.db.postgres.data_orms.task_orm import Task
 from backend.core.db.postgres.data_orms.work_orm import Work
@@ -215,3 +215,6 @@ class IContractRepo(Protocol):
     
     @abstractmethod
     async def delete(self, contract: Contract) -> None: pass
+
+    @abstractmethod
+    async def get_many_by_ids(self, ids: List[int]) -> List[ContractItem]: pass

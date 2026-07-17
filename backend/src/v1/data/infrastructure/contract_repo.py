@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from sqlalchemy import select
 
-from backend.core.db.postgres.data_orms.contract_orm import Contract
+from backend.core.db.postgres.data_orms.contract_orm import Contract, ContractItem
 from backend.src.v1.data.domain.interfaces import IContractRepo
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -42,3 +42,9 @@ class PgContractRepo(IContractRepo):
 
     async def delete(self, contract: Contract) -> None:
         await self.session.delete(contract)
+
+    # Для contract items
+    async def get_many_by_ids(self, ids: List[int]) -> List[ContractItem]:
+        stmt = select(ContractItem).where(ContractItem.id.in_(ids))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
