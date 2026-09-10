@@ -1,0 +1,79 @@
+@import './variables.css';
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    color: var(--text);
+    background: radial-gradient(circle at 8% 8%, rgba(103, 82, 245, 0.12), transparent 32%),
+        radial-gradient(circle at 88% 12%, rgba(72, 214, 210, 0.18), transparent 30%),
+        linear-gradient(135deg, #f9fbff 0%, #eef4ff 100%);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+
+::-webkit-scrollbar {
+    width: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--violet), var(--violet-2));
+    border-radius: 999px;
+    border: 2px solid #f4f5fb;
+}
+
+::-webkit-scrollbar-track {
+    background: #f4f5fb;
+    border-radius: 999px;
+}
+
+.panel {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(222, 226, 244, 0.95);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    padding: 18px;
+}
+
+.main-btn {
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--violet), var(--violet-2));
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+    padding: 12px 16px;
+    box-shadow: 0 12px 28px rgba(103, 82, 245, 0.26);
+    transition: all 0.15s;
+}
+
+.main-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 34px rgba(103, 82, 245, 0.32);
+}
+
+.main-btn.secondary {
+    background: #fff;
+    color: var(--violet);
+    border: 1px solid #ded9ff;
+    box-shadow: none;
+}

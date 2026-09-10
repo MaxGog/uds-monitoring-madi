@@ -1,10 +1,18 @@
-# Nuxt Minimal Starter
+# Frontend — Road Inspection UI
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Интерфейс проекта мониторинга УДС на Nuxt 5.
 
-## Setup
+## Описание
 
-Make sure to install dependencies:
+Это фронтенд-часть веб-приложения для управления объектами, задачами и мониторинга состояния дорожной инфраструктуры.
+
+## Требования
+
+- Node.js 18+ или совместимая версия
+- npm / pnpm / yarn / bun
+- backend-сервис на `http://localhost:8000` для реальной авторизации и работы API
+
+## Установка
 
 ```bash
 # npm
@@ -20,9 +28,13 @@ yarn install
 bun install
 ```
 
-## Development Server
+## Запуск в режиме разработки
 
-Start the development server on `http://localhost:3000`:
+Фронтенд по умолчанию запускается на:
+
+```bash
+http://localhost:4000
+```
 
 ```bash
 # npm
@@ -38,38 +50,58 @@ yarn dev
 bun run dev
 ```
 
-## Production
+## Mock auth (тестирование UI без бэкенда)
 
-Build the application for production:
+Если нужно проверить интерфейс без реальной авторизации, включите mock-режим.
+
+```bash
+export NUXT_PUBLIC_MOCK_AUTH=true
+npm run dev
+```
+
+На Windows PowerShell:
+
+```powershell
+$env:NUXT_PUBLIC_MOCK_AUTH = 'true'
+npm run dev
+```
+
+После запуска откройте `/login` и используйте кнопку `Локальный вход (Bypass)`.
+
+В этом режиме фронтенд сохраняет токен в cookie и mock-пользователя в `localStorage`, что позволяет работать с UI без реального login flow.
+
+## Сценарии работы
+
+- **Без mock-режима** — приложение ожидает реальную авторизацию через backend OAuth / PKCE.
+- **С mock-режимом** — кнопка локального входа доступна, и приложение сохраняет mock-данные на клиенте.
+
+## Сборка и предпросмотр
 
 ```bash
 # npm
 npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
 npm run preview
 
 # pnpm
+pnpm build
 pnpm preview
 
 # yarn
+yarn build
 yarn preview
 
 # bun
+bun run build
 bun run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## Полезные ссылки
+
+- API backend: `http://localhost:8000`
+- Фронтенд: `http://localhost:4000`
+
+## Примечания
+
+- Если бэкенд запущен на другом адресе, настройте соответствующие URL в коде и окружении.
+- Для mock-auth используется переменная `NUXT_PUBLIC_MOCK_AUTH=true`.
+- Фронтенд ожидает callback URL `http://localhost:4000/login/callback` при реальной авторизации.

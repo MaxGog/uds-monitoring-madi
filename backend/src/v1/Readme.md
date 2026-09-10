@@ -1,6 +1,6 @@
-Тут вся логика и реализация "Clean Architecture"
+mc admin config set myminio notify_webhook:fastapi \
+  endpoint="http://your-backend-api/api/v1/documents/webhook" \
+  queue_limit="1000"
 
-В фиче авторизации будут одновременно логика работы самой авторизации + работа с юзерами.
-В filesystem - реализация работы с Minio.
-Эндпоинты будут исходить из моделей данных на фронте и т.д.
-Дальнейший функционал уточнить.
+mc admin service restart myminio
+mc event add myminio/documents arn:minio:sqs::fastapi:webhook --event put

@@ -1,0 +1,50 @@
+server:
+  host: localhost
+  port: 8000
+  mode: Development
+  cookie-name: refresh_token #refresh
+  ssl: 
+    enabled: true
+    cert_file: "server.crt"
+    key_file: "server.pem"
+  csrf: true
+
+logger:
+  development: true
+  disableCaller: false
+  disableStacktrace: false
+  encoding: "console" #"json"
+  level: "info" #"info/debug"
+  # aioredis_logging: false
+  # uvicorn_logging: true
+  # sqlalchemy_logging: false
+  # protocol_logging: false
+
+postgres:
+  pgHost: postgre_dev
+  pgPort: 5432
+  pgUser: admin
+  pgPassword: password
+  pgDbName: app_db
+  pgSsl: false
+  pgDriver: postgresql+asyncpg
+  pgLogging: false
+
+redis:
+  redisAddr: redis_dev:6379
+  redisPassword: "password"
+  redisDb: 0
+  redisDefaultdb: 0
+  minIdleConns: 200
+  poolSize: 12000
+  poolTimeout: 240
+  db: 0
+
+aws:
+  endpoint: minio_dev:9000
+  minioAccessKey: minioadmin
+  minioSecretKey: minioadminpassword
+  useSSL: false
+  minioEndpoint: http://127.0.0.1:9000
+  fileBucketName: files
+

@@ -7,9 +7,9 @@ services:
     container_name: postgres_dev
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: app_db
     ports:
       - "5432:5432"
     volumes:
@@ -24,14 +24,21 @@ services:
       -c log_duration=on
       -c log_line_prefix='%m [%p] %q%u@%d'
       -c log_destination=stderr
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    
 
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin_dev
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: admin@mail.ru
+      PGADMIN_DEFAULT_PASSWORD: password
     ports:
       - "5050:80"
     depends_on:
@@ -46,13 +53,19 @@ services:
     image: redis:7-alpine
     container_name: redis_dev
     restart: always
-    command: redis-server --requirepass ${REDIS_PASS}
+    command: redis-server --requirepass password
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - web_api
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
 
   redis-insight:
     image: redis/redisinsight:latest
@@ -75,19 +88,39 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ADMIN}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASS}
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+      MINIO_NOTIFY_WEBHOOK_ENABLE_fastapi: "on"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_fastapi: "http://host.docker.internal:8000/fs/webhook"
     volumes:
       - miniodata:/data
     networks:
       - web_api
     command: server /data --console-address ":9001"
+    healthcheck:
+      # Специальный внутренний эндпоинт MinIO для проверки готовности ноды
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   mc:
     image: minio/mc:latest
     container_name: minio_mc_dev
     depends_on:
       - minio
+    # entrypoint: >
+    #   /bin/sh -c "
+    #   until (/usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadminpassword); do 
+    #     echo 'Ожидание запуска MinIO...'; 
+    #     sleep 2; 
+    #   done;
+
+    #   /usr/bin/mc event add --event put myminio/files arn:minio:sqs::fastapi:webhook;
+      
+    #   echo 'MinIO успешно настроен и связан с FastAPI!';
+    #   "
     # entrypoint: >
     #   /bin/sh -c "
     #   /usr/bin/mc alias rm local;
